@@ -1,6 +1,6 @@
-const express = require("express");
-const { buildAuthPayload } = require("../services/normalizers");
-const {
+import express from "express";
+import { buildAuthPayload } from "../services/normalizers.js";
+import {
   applyRecurringRules,
   buildDashboard,
   buildDefaultCategoryResponse,
@@ -15,21 +15,21 @@ const {
   getSubcategoryUsageCount,
   sortEntries,
   validateMonth,
-} = require("../services/storeModel");
-const { DEFAULT_EXPENSE_KINDS } = require("../config/defaultSeeds");
-const { asyncHandler, HttpError } = require("../http/errors");
-const {
+} from "../services/storeModel.js";
+import { DEFAULT_EXPENSE_KINDS } from "../config/defaultSeeds.js";
+import { asyncHandler, HttpError } from "../http/errors.js";
+import {
   cleanOptionalString,
   cleanRequiredString,
   uniqueSortedStrings,
   normalizeType,
-} = require("../utils/common");
-const {
+} from "../utils/common.js";
+import {
   getAuthProfileSync,
   readUserStore,
   requireAuth,
   updateUserStore,
-} = require("../services/userContext");
+} from "../services/userContext.js";
 
 const router = express.Router();
 
@@ -1554,4 +1554,4 @@ router.put(
   }),
 );
 
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const { getFirebaseClientConfig } = require("./config/firebaseClientConfig");
+import { getFirebaseClientConfig } from "./config/firebaseClientConfig.js";
 
 function getRequiredConfig() {
   const config = getFirebaseClientConfig();
@@ -124,7 +124,7 @@ function buildDocumentBody(data) {
   };
 }
 
-async function verifyIdTokenWithRest(idToken) {
+export async function verifyIdTokenWithRest(idToken) {
   const response = await fetch(getIdentityLookupUrl(), {
     method: "POST",
     headers: {
@@ -155,7 +155,7 @@ async function verifyIdTokenWithRest(idToken) {
   };
 }
 
-async function getDocument(documentPath, idToken) {
+export async function getDocument(documentPath, idToken) {
   const response = await fetch(getFirestoreDocumentUrl(documentPath), {
     headers: {
       Authorization: `Bearer ${idToken}`,
@@ -174,7 +174,7 @@ async function getDocument(documentPath, idToken) {
   return documentToPlainObject(payload);
 }
 
-async function setDocument(documentPath, idToken, data) {
+export async function setDocument(documentPath, idToken, data) {
   const topLevelFields = Object.keys(data);
   const updateMask = topLevelFields
     .map((field) => `updateMask.fieldPaths=${encodeURIComponent(field)}`)
@@ -197,9 +197,4 @@ async function setDocument(documentPath, idToken, data) {
   }
 }
 
-module.exports = {
-  getFirebaseClientConfig,
-  getDocument,
-  setDocument,
-  verifyIdTokenWithRest,
-};
+export { getFirebaseClientConfig };

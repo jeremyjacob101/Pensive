@@ -1,7 +1,7 @@
-const {
+import {
   DEFAULT_COUNTERPARTY_SUGGESTIONS,
-} = require("../config/defaultSeeds");
-const {
+} from "../config/defaultSeeds.js";
+import {
   cleanOptionalString,
   cleanRequiredString,
   createId,
@@ -15,15 +15,17 @@ const {
   normalizeType,
   parseAmount,
   uniqueSortedStrings,
-} = require("../utils/common");
+} from "../utils/common.js";
 
-const PARTIAL_REIMBURSEMENT_TYPES = new Set([
+export { getCurrentMonth };
+
+export const PARTIAL_REIMBURSEMENT_TYPES = new Set([
   "partial reimbursement",
   "split reimbursement",
 ]);
-const REIMBURSEMENT_TYPES = new Set(["reimbursement", "refund"]);
-const SHARED_PAYMENT_TYPES = new Set(["shared payment", "split payment"]);
-const PARTIAL_SHARED_PAYMENT_TYPES = new Set([
+export const REIMBURSEMENT_TYPES = new Set(["reimbursement", "refund"]);
+export const SHARED_PAYMENT_TYPES = new Set(["shared payment", "split payment"]);
+export const PARTIAL_SHARED_PAYMENT_TYPES = new Set([
   "partial shared payment",
   "split cost",
 ]);
@@ -44,11 +46,11 @@ function padSuffix(suffix) {
   return String(suffix).padStart(SUFFIX_PAD_LENGTH, "0");
 }
 
-function formatEntryCode(prefix, serial, suffix = 0) {
+export function formatEntryCode(prefix, serial, suffix = 0) {
   return `${prefix}${padSerial(Math.max(1, serial))}-${padSuffix(Math.max(0, suffix))}`;
 }
 
-function parseEntryCode(value) {
+export function parseEntryCode(value) {
   const cleaned = String(value ?? "").trim();
   const match = cleaned.match(ENTRY_CODE_PATTERN);
 
@@ -72,7 +74,7 @@ function parseEntryCode(value) {
   };
 }
 
-function normalizeEntryCode(value, type, fallbackSerial, fallbackSuffix = 0) {
+export function normalizeEntryCode(value, type, fallbackSerial, fallbackSuffix = 0) {
   const parsed = parseEntryCode(value);
 
   if (parsed && parsed.prefix === getPrefix(type)) {
@@ -82,7 +84,7 @@ function normalizeEntryCode(value, type, fallbackSerial, fallbackSuffix = 0) {
   return formatEntryCode(getPrefix(type), fallbackSerial, fallbackSuffix);
 }
 
-function getNextEntryCode(existingEntries, type) {
+export function getNextEntryCode(existingEntries, type) {
   const prefix = getPrefix(type);
   const maxSerial = existingEntries.reduce((currentMax, entry) => {
     const parsed = parseEntryCode(entry.entryCode);
@@ -97,7 +99,7 @@ function getNextEntryCode(existingEntries, type) {
   return formatEntryCode(prefix, maxSerial + 1, 0);
 }
 
-function getNextSplitEntryCode(existingEntries, type, anchorEntryCode) {
+export function getNextSplitEntryCode(existingEntries, type, anchorEntryCode) {
   const anchor = parseEntryCode(anchorEntryCode);
   const prefix = getPrefix(type);
 
@@ -118,7 +120,7 @@ function getNextSplitEntryCode(existingEntries, type, anchorEntryCode) {
   return formatEntryCode(prefix, anchor.serial, maxSuffix + 1);
 }
 
-function sortEntries(entries) {
+export function sortEntries(entries) {
   return [...entries].sort((left, right) => {
     const leftValue = `${left.date}-${left.updatedAt}`;
     const rightValue = `${right.date}-${right.updatedAt}`;
@@ -126,7 +128,7 @@ function sortEntries(entries) {
   });
 }
 
-function filterEntries(userStore, filters = {}) {
+export function filterEntries(userStore, filters = {}) {
   const { type, month } = filters;
 
   return sortEntries(
@@ -142,7 +144,7 @@ function getMostRecentEntryCode(existingEntries, type) {
   return sortEntries(existingEntries.filter((entry) => entry.type === type))[0]?.entryCode ?? null;
 }
 
-function buildEntryFromBody(
+export function buildEntryFromBody(
   body,
   options = {},
 ) {
@@ -267,11 +269,11 @@ function buildEntryFromBody(
   };
 }
 
-function validateMonth(month) {
+export function validateMonth(month) {
   return /^\d{4}-\d{2}$/.test(month);
 }
 
-function buildProfileFromBody(body, existingProfile) {
+export function buildProfileFromBody(body, existingProfile) {
   const fullName = cleanRequiredString(getValueFromBody(body, "fullName", existingProfile.fullName));
   const email = normalizeEmail(getValueFromBody(body, "email", existingProfile.email));
   const pictureUrl = cleanOptionalString(
@@ -395,7 +397,7 @@ function getRecurringRuleResponses(userStore, now = new Date()) {
     });
 }
 
-function buildReferenceData(userStore) {
+export function buildReferenceData(userStore) {
   const entryAccounts = userStore.entries.map((entry) => entry.account);
   const defaultAccounts = userStore.defaults.accounts.map((account) => account.name);
   const categoryValues = {
@@ -481,7 +483,7 @@ function buildReferenceData(userStore) {
   };
 }
 
-function applyRecurringRules(userStore, now = new Date()) {
+export function applyRecurringRules(userStore, now = new Date()) {
   const existingOccurrenceKeys = new Set(
     userStore.entries
       .map((entry) => entry.recurringOccurrenceKey)
@@ -645,7 +647,7 @@ function buildEvenUpRecord(record, userStore) {
   };
 }
 
-function getAccountUsageCount(userStore, accountName) {
+export function getAccountUsageCount(userStore, accountName) {
   return userStore.entries.filter((entry) => entry.account === accountName).length;
 }
 
@@ -655,7 +657,7 @@ function getCategoryUsageCount(userStore, type, categoryName) {
   ).length;
 }
 
-function getSubcategoryUsageCount(userStore, type, categoryName, subcategoryName) {
+export function getSubcategoryUsageCount(userStore, type, categoryName, subcategoryName) {
   return userStore.entries.filter(
     (entry) =>
       entry.type === type &&
@@ -664,13 +666,13 @@ function getSubcategoryUsageCount(userStore, type, categoryName, subcategoryName
   ).length;
 }
 
-function getExpenseKindUsageCount(userStore, entryKindName) {
+export function getExpenseKindUsageCount(userStore, entryKindName) {
   return userStore.entries.filter(
     (entry) => entry.type === "expense" && entry.entryKind === entryKindName,
   ).length;
 }
 
-function buildDefaultCategoryResponse(userStore, category) {
+export function buildDefaultCategoryResponse(userStore, category) {
   return {
     ...category,
     usageCount: getCategoryUsageCount(userStore, category.type, category.name),
@@ -686,7 +688,7 @@ function buildDefaultCategoryResponse(userStore, category) {
   };
 }
 
-function buildDefaultsOverview(userStore) {
+export function buildDefaultsOverview(userStore) {
   return {
     accounts: userStore.defaults.accounts.map((account) => ({
       ...account,
@@ -732,7 +734,7 @@ function buildDefaultsOverview(userStore) {
   };
 }
 
-function buildDashboard(userStore, month = getCurrentMonth()) {
+export function buildDashboard(userStore, month = getCurrentMonth()) {
   const entries = filterEntries(userStore, { month });
   const totals = {
     income: 0,
@@ -841,29 +843,3 @@ function buildDashboard(userStore, month = getCurrentMonth()) {
     },
   };
 }
-
-module.exports = {
-  PARTIAL_REIMBURSEMENT_TYPES,
-  PARTIAL_SHARED_PAYMENT_TYPES,
-  REIMBURSEMENT_TYPES,
-  SHARED_PAYMENT_TYPES,
-  applyRecurringRules,
-  buildDashboard,
-  buildDefaultCategoryResponse,
-  buildDefaultsOverview,
-  buildEntryFromBody,
-  buildProfileFromBody,
-  buildReferenceData,
-  filterEntries,
-  formatEntryCode,
-  getAccountUsageCount,
-  getCurrentMonth,
-  getExpenseKindUsageCount,
-  getNextEntryCode,
-  getNextSplitEntryCode,
-  getSubcategoryUsageCount,
-  normalizeEntryCode,
-  parseEntryCode,
-  sortEntries,
-  validateMonth,
-};

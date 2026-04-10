@@ -1,6 +1,6 @@
-const { verifyIdTokenWithRest } = require("../firebaseRest");
-const { getUserStoreRepository } = require("../storage/userStore");
-const { getUsernameFromEmail, validateUsername } = require("../utils/common");
+import { verifyIdTokenWithRest } from "../firebaseRest.js";
+import { getUserStoreRepository } from "../storage/userStore.js";
+import { getUsernameFromEmail, validateUsername } from "../utils/common.js";
 
 function getVerifier(req) {
   return req.app.locals.verifyIdToken ?? verifyIdTokenWithRest;
@@ -10,7 +10,7 @@ function getRepository(req) {
   return req.app.locals.userStoreRepository ?? getUserStoreRepository();
 }
 
-function getAuthProfileSync(req) {
+export function getAuthProfileSync(req) {
   return req.app.locals.syncAuthProfile ?? (async () => undefined);
 }
 
@@ -35,7 +35,7 @@ function buildAuthUserFromToken(decodedToken) {
   };
 }
 
-async function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   try {
     const token = parseBearerToken(req.headers.authorization);
 
@@ -55,17 +55,10 @@ async function requireAuth(req, res, next) {
   }
 }
 
-async function readUserStore(req, options) {
+export async function readUserStore(req, options) {
   return getRepository(req).readUserStore(req.authUser, options);
 }
 
-async function updateUserStore(req, updater, options) {
+export async function updateUserStore(req, updater, options) {
   return getRepository(req).updateUserStore(req.authUser, updater, options);
 }
-
-module.exports = {
-  getAuthProfileSync,
-  readUserStore,
-  requireAuth,
-  updateUserStore,
-};

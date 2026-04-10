@@ -1,12 +1,12 @@
-const { randomBytes, scryptSync, timingSafeEqual } = require("crypto");
+import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 
-function hashPassword(password) {
+export function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hash}`;
 }
 
-function verifyPassword(password, passwordHash) {
+export function verifyPassword(password, passwordHash) {
   const [salt, storedHash] = String(passwordHash ?? "").split(":");
 
   if (!salt || !storedHash) {
@@ -22,8 +22,3 @@ function verifyPassword(password, passwordHash) {
 
   return timingSafeEqual(derived, known);
 }
-
-module.exports = {
-  hashPassword,
-  verifyPassword,
-};

@@ -1,12 +1,12 @@
-function isPlainObject(value) {
+export function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function hasOwn(obj, key) {
+export function hasOwn(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
-function cleanOptionalString(value) {
+export function cleanOptionalString(value) {
   if (value === undefined || value === null) {
     return null;
   }
@@ -15,15 +15,15 @@ function cleanOptionalString(value) {
   return cleaned ? cleaned : null;
 }
 
-function cleanRequiredString(value) {
+export function cleanRequiredString(value) {
   return cleanOptionalString(value);
 }
 
-function normalizeType(value, fallback = "expense") {
+export function normalizeType(value, fallback = "expense") {
   return value === "income" ? "income" : fallback;
 }
 
-function parseAmount(value) {
+export function parseAmount(value) {
   const amount = Number(value);
 
   if (!Number.isFinite(amount) || amount < 0) {
@@ -33,12 +33,12 @@ function parseAmount(value) {
   return Number(amount.toFixed(2));
 }
 
-function parseNumberish(value, fallback = 0) {
+export function parseNumberish(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : fallback;
 }
 
-function normalizeDateInput(
+export function normalizeDateInput(
   value,
   fallbackDate = new Date().toISOString().slice(0, 10),
 ) {
@@ -63,7 +63,7 @@ function normalizeDateInput(
   return parsed.toISOString().slice(0, 10);
 }
 
-function normalizeTimestamp(
+export function normalizeTimestamp(
   value,
   fallbackTimestamp = new Date().toISOString(),
 ) {
@@ -80,7 +80,7 @@ function normalizeTimestamp(
   return parsed.toISOString();
 }
 
-function inferLegacyTimestamp(entry) {
+export function inferLegacyTimestamp(entry) {
   const numericId = Number(entry?.id);
 
   if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -96,11 +96,11 @@ function inferLegacyTimestamp(entry) {
   return parsed.toISOString();
 }
 
-function getCurrentMonth() {
+export function getCurrentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-function getValueFromBody(body, primaryKey, fallbackValue, aliases = []) {
+export function getValueFromBody(body, primaryKey, fallbackValue, aliases = []) {
   if (hasOwn(body, primaryKey)) {
     return body[primaryKey];
   }
@@ -114,7 +114,7 @@ function getValueFromBody(body, primaryKey, fallbackValue, aliases = []) {
   return fallbackValue;
 }
 
-function slugifyIdPart(value) {
+export function slugifyIdPart(value) {
   return String(value)
     .trim()
     .toLowerCase()
@@ -122,13 +122,13 @@ function slugifyIdPart(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-function normalizeUsernameKey(value) {
+export function normalizeUsernameKey(value) {
   return String(value ?? "")
     .trim()
     .toLowerCase();
 }
 
-function validateUsername(value) {
+export function validateUsername(value) {
   const username = normalizeUsernameKey(value);
 
   if (!username) {
@@ -145,7 +145,7 @@ function validateUsername(value) {
   return { username };
 }
 
-function validatePassword(value) {
+export function validatePassword(value) {
   const password = String(value ?? "");
 
   if (!password) {
@@ -159,7 +159,7 @@ function validatePassword(value) {
   return { password };
 }
 
-function normalizeEmail(value) {
+export function normalizeEmail(value) {
   const email = cleanOptionalString(value);
 
   if (!email) {
@@ -169,7 +169,7 @@ function normalizeEmail(value) {
   return email.toLowerCase();
 }
 
-function normalizeAge(value) {
+export function normalizeAge(value) {
   if (value === undefined || value === null || value === "") {
     return null;
   }
@@ -183,17 +183,17 @@ function normalizeAge(value) {
   return age;
 }
 
-function uniqueSortedStrings(values) {
+export function uniqueSortedStrings(values) {
   return [...new Set(values.filter(Boolean))].sort((left, right) =>
     left.localeCompare(right),
   );
 }
 
-function createId() {
+export function createId() {
   return crypto.randomUUID();
 }
 
-function getMonthLabelFromDate(dateValue) {
+export function getMonthLabelFromDate(dateValue) {
   const date =
     typeof dateValue === "string"
       ? new Date(`${dateValue}T00:00:00`)
@@ -205,7 +205,7 @@ function getMonthLabelFromDate(dateValue) {
   });
 }
 
-function normalizeMonthLabelToken(value) {
+export function normalizeMonthLabelToken(value) {
   const cleaned = cleanOptionalString(value);
 
   if (!cleaned) {
@@ -227,7 +227,7 @@ function normalizeMonthLabelToken(value) {
   return cleaned;
 }
 
-function normalizeAllocationMonths(value, fallbackDate) {
+export function normalizeAllocationMonths(value, fallbackDate) {
   const rawValues = Array.isArray(value)
     ? value
     : typeof value === "string"
@@ -244,14 +244,14 @@ function normalizeAllocationMonths(value, fallbackDate) {
   return [getMonthLabelFromDate(fallbackDate)];
 }
 
-function buildCurrentMonthStartDate() {
+export function buildCurrentMonthStartDate() {
   const today = new Date();
   return new Date(today.getFullYear(), today.getMonth(), 1)
     .toISOString()
     .slice(0, 10);
 }
 
-function getUsernameFromEmail(email) {
+export function getUsernameFromEmail(email) {
   if (!email) {
     return "user";
   }
@@ -266,31 +266,3 @@ function getUsernameFromEmail(email) {
       .replace(/^-+|-+$/g, "") || "user"
   );
 }
-
-module.exports = {
-  buildCurrentMonthStartDate,
-  cleanOptionalString,
-  cleanRequiredString,
-  createId,
-  getCurrentMonth,
-  getMonthLabelFromDate,
-  getUsernameFromEmail,
-  getValueFromBody,
-  hasOwn,
-  inferLegacyTimestamp,
-  isPlainObject,
-  normalizeAge,
-  normalizeAllocationMonths,
-  normalizeDateInput,
-  normalizeEmail,
-  normalizeMonthLabelToken,
-  normalizeTimestamp,
-  normalizeType,
-  normalizeUsernameKey,
-  parseAmount,
-  parseNumberish,
-  slugifyIdPart,
-  uniqueSortedStrings,
-  validatePassword,
-  validateUsername,
-};

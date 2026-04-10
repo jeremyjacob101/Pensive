@@ -1,13 +1,13 @@
-const { getDocument, setDocument } = require("../firebaseRest");
-const { normalizeStoredUserStore } = require("../services/normalizers");
-const {
+import { getDocument, setDocument } from "../firebaseRest.js";
+import { normalizeStoredUserStore } from "../services/normalizers.js";
+import {
   cleanOptionalString,
   getUsernameFromEmail,
-} = require("../utils/common");
+} from "../utils/common.js";
 
 const USER_COLLECTION = "financeUsers";
 
-function getUserStoreRepository() {
+export function getUserStoreRepository() {
   function deriveUsername(authUser) {
     return (
       cleanOptionalString(authUser.displayName) ??
@@ -77,7 +77,3 @@ function getUserStoreRepository() {
     updateUserStore,
   };
 }
-
-module.exports = {
-  getUserStoreRepository,
-};

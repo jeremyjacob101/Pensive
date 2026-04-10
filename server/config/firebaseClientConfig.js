@@ -1,5 +1,8 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let cachedConfig = null;
 
@@ -23,7 +26,7 @@ function readEnvFile(filePath) {
   );
 }
 
-function getFirebaseClientConfig() {
+export function getFirebaseClientConfig() {
   if (cachedConfig) {
     return cachedConfig;
   }
@@ -47,7 +50,3 @@ function getFirebaseClientConfig() {
 
   return cachedConfig;
 }
-
-module.exports = {
-  getFirebaseClientConfig,
-};

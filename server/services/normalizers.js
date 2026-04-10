@@ -1,5 +1,5 @@
-const { SEED_TIMESTAMP } = require("../config/constants");
-const {
+import { SEED_TIMESTAMP } from "../config/constants.js";
+import {
   DEFAULT_ACCOUNTS,
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_EXPENSE_KINDS,
@@ -8,8 +8,8 @@ const {
   DEFAULT_INCOME_SUBCATEGORIES,
   DEFAULT_RECURRING_TEMPLATES,
   DEFAULT_SUBCATEGORIES,
-} = require("../config/defaultSeeds");
-const {
+} from "../config/defaultSeeds.js";
+import {
   buildCurrentMonthStartDate,
   cleanOptionalString,
   cleanRequiredString,
@@ -24,8 +24,8 @@ const {
   parseAmount,
   parseNumberish,
   slugifyIdPart,
-} = require("../utils/common");
-const { normalizeEntryCode } = require("./storeModel");
+} from "../utils/common.js";
+import { normalizeEntryCode } from "./storeModel.js";
 
 function dedupeByName(items) {
   const seen = new Set();
@@ -111,7 +111,7 @@ function createSeedImportantDate(template) {
   };
 }
 
-function createSeedDefaults() {
+export function createSeedDefaults() {
   return {
     accounts: DEFAULT_ACCOUNTS.map((name) => createSeedAccount(name)),
     categories: {
@@ -131,13 +131,13 @@ function createSeedDefaults() {
   };
 }
 
-function createSeedRecurringRules() {
+export function createSeedRecurringRules() {
   return DEFAULT_RECURRING_TEMPLATES.map((template) =>
     createSeedRecurringRule(template),
   );
 }
 
-function createSeedImportantDates() {
+export function createSeedImportantDates() {
   return DEFAULT_IMPORTANT_DATES.map((template) =>
     createSeedImportantDate(template),
   );
@@ -277,7 +277,7 @@ function normalizeStoredSubcategory(subcategory, fallbackPrefix) {
   };
 }
 
-function normalizeStoredCategory(category, fallbackType) {
+export function normalizeStoredCategory(category, fallbackType) {
   if (typeof category === "string") {
     return createSeedCategory(fallbackType, category, []);
   }
@@ -505,7 +505,7 @@ function normalizeStoredProfile(username, profile, fallbackEmail) {
   };
 }
 
-function normalizeStoredUserStore(username, rawStore, fallbackEmail) {
+export function normalizeStoredUserStore(username, rawStore, fallbackEmail) {
   const parsedStore = isPlainObject(rawStore) ? rawStore : {};
   const entries = Array.isArray(parsedStore.entries)
     ? parsedStore.entries
@@ -534,18 +534,9 @@ function normalizeStoredUserStore(username, rawStore, fallbackEmail) {
   };
 }
 
-function buildAuthPayload(userStore) {
+export function buildAuthPayload(userStore) {
   return {
     username: userStore.profile.username,
     profile: userStore.profile,
   };
 }
-
-module.exports = {
-  buildAuthPayload,
-  createSeedDefaults,
-  createSeedImportantDates,
-  createSeedRecurringRules,
-  normalizeStoredCategory,
-  normalizeStoredUserStore,
-};

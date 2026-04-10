@@ -1,8 +1,8 @@
-const DEFAULT_EXPENSE_KINDS = ["Regular", "Reimbursement", "Transfer"];
+export const DEFAULT_EXPENSE_KINDS = ["Regular", "Reimbursement", "Transfer"];
 
-const DEFAULT_ACCOUNTS = ["Checking", "Savings", "Cash", "Credit Card"];
+export const DEFAULT_ACCOUNTS = ["Checking", "Savings", "Cash", "Credit Card"];
 
-const DEFAULT_EXPENSE_CATEGORIES = [
+export const DEFAULT_EXPENSE_CATEGORIES = [
   "Housing",
   "Utilities",
   "Groceries",
@@ -15,7 +15,7 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   "Other",
 ];
 
-const DEFAULT_INCOME_CATEGORIES = [
+export const DEFAULT_INCOME_CATEGORIES = [
   "Salary",
   "Bonus",
   "Gift",
@@ -24,7 +24,7 @@ const DEFAULT_INCOME_CATEGORIES = [
   "Other",
 ];
 
-const DEFAULT_SUBCATEGORIES = {
+export const DEFAULT_SUBCATEGORIES = {
   Housing: ["Rent", "Maintenance", "Supplies"],
   Utilities: ["Electric", "Water", "Internet", "Phone"],
   Groceries: ["Supermarket", "Market", "Household"],
@@ -37,7 +37,7 @@ const DEFAULT_SUBCATEGORIES = {
   Other: ["Miscellaneous"],
 };
 
-const DEFAULT_INCOME_SUBCATEGORIES = {
+export const DEFAULT_INCOME_SUBCATEGORIES = {
   Salary: ["Primary Job"],
   Bonus: ["Performance", "Holiday"],
   Gift: ["Personal", "General"],
@@ -46,7 +46,7 @@ const DEFAULT_INCOME_SUBCATEGORIES = {
   Other: ["Miscellaneous"],
 };
 
-const DEFAULT_COUNTERPARTY_SUGGESTIONS = {
+export const DEFAULT_COUNTERPARTY_SUGGESTIONS = {
   expense: [
     "Landlord",
     "Utility Provider",
@@ -58,17 +58,5 @@ const DEFAULT_COUNTERPARTY_SUGGESTIONS = {
   income: ["Employer", "Client", "Bank", "Individual", "Marketplace"],
 };
 
-const DEFAULT_RECURRING_TEMPLATES = [];
-const DEFAULT_IMPORTANT_DATES = [];
-
-module.exports = {
-  DEFAULT_ACCOUNTS,
-  DEFAULT_COUNTERPARTY_SUGGESTIONS,
-  DEFAULT_EXPENSE_CATEGORIES,
-  DEFAULT_EXPENSE_KINDS,
-  DEFAULT_IMPORTANT_DATES,
-  DEFAULT_INCOME_CATEGORIES,
-  DEFAULT_INCOME_SUBCATEGORIES,
-  DEFAULT_RECURRING_TEMPLATES,
-  DEFAULT_SUBCATEGORIES,
-};
+export const DEFAULT_RECURRING_TEMPLATES = [];
+export const DEFAULT_IMPORTANT_DATES = [];

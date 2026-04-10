@@ -1,11 +1,12 @@
-const cors = require("cors");
-const express = require("express");
-const { PORT } = require("./config/constants");
-const { errorHandler } = require("./http/errors");
-const apiRoutes = require("./routes/api");
-const { getUserStoreRepository } = require("./storage/userStore");
+import cors from "cors";
+import express from "express";
+import { fileURLToPath } from "url";
+import { PORT } from "./config/constants.js";
+import { errorHandler } from "./http/errors.js";
+import apiRoutes from "./routes/api.js";
+import { getUserStoreRepository } from "./storage/userStore.js";
 
-function createApp(dependencies = {}) {
+export function createApp(dependencies = {}) {
   const app = express();
 
   app.locals.userStoreRepository =
@@ -32,7 +33,7 @@ function createApp(dependencies = {}) {
   return app;
 }
 
-function startServer(port = PORT, dependencies) {
+export function startServer(port = PORT, dependencies) {
   const app = createApp(dependencies);
 
   return app.listen(port, () => {
@@ -40,11 +41,6 @@ function startServer(port = PORT, dependencies) {
   });
 }
 
-if (require.main === module) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   startServer();
 }
-
-module.exports = {
-  createApp,
-  startServer,
-};

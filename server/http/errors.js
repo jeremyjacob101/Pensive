@@ -1,4 +1,4 @@
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(status, message) {
     super(message);
     this.name = "HttpError";
@@ -26,7 +26,7 @@ function inferStatus(error) {
   return 400;
 }
 
-function errorHandler(error, _req, res, _next) {
+export function errorHandler(error, _req, res, _next) {
   const status = inferStatus(error);
   const message =
     error instanceof Error && error.message
@@ -36,14 +36,8 @@ function errorHandler(error, _req, res, _next) {
   res.status(status >= 400 && status < 600 ? status : 500).json({ error: message });
 }
 
-function asyncHandler(handler) {
+export function asyncHandler(handler) {
   return function wrappedHandler(req, res, next) {
     Promise.resolve(handler(req, res, next)).catch(next);
   };
 }
-
-module.exports = {
-  HttpError,
-  asyncHandler,
-  errorHandler,
-};
