@@ -7,8 +7,7 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "test": "node --test",
-    "recurring:run-all": "node scripts/runRecurringForAllUsers.js",
-    "testing:run-all": "node scripts/runTestingExpenseForAllUsers.js"
+    "recurring:run-all": "node scripts/runRecurringForAllUsers.js"
   },
   "keywords": [],
   "author": "",
