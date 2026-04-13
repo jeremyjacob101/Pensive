@@ -1,4 +1,4 @@
-import express from "express";
+import { createRouter } from "../http/router.js";
 import { buildAuthPayload } from "../services/normalizers.js";
 import {
   applyRecurringRules,
@@ -31,7 +31,7 @@ import {
   updateUserStore,
 } from "../services/userContext.js";
 
-const router = express.Router();
+const router = createRouter();
 
 function buildError(message, status = 400) {
   return new HttpError(status, message);
