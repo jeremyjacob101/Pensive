@@ -1,4 +1,4 @@
-import { runRecurringForAllUsers } from "../services/recurringBatch.js";
+import { runTestingExpenseForAllUsers } from "../services/testingBatch.js";
 import { getAdminUserStoreRepository } from "../storage/adminUserStore.js";
 import { getDateFromDateKey, getDatePartsInTimeZone } from "../utils/common.js";
 
@@ -8,9 +8,9 @@ async function main() {
   const wallClockNow = new Date();
 
   const effectiveDate =
-    process.env.RECURRING_BUSINESS_DATE ??
+    process.env.TESTING_BUSINESS_DATE ??
     getDatePartsInTimeZone(TIME_ZONE, wallClockNow).dateKey;
-  const summary = await runRecurringForAllUsers({
+  const summary = await runTestingExpenseForAllUsers({
     repository: getAdminUserStoreRepository(),
     now: getDateFromDateKey(effectiveDate),
   });
@@ -23,7 +23,7 @@ async function main() {
 main().catch((error) => {
   console.error(
     JSON.stringify({
-      type: "recurring-batch-fatal",
+      type: "testing-batch-fatal",
       error: error instanceof Error ? error.message : "Unknown error",
     }),
   );

@@ -1,13 +1,13 @@
-name: Nightly recurring
+name: Testing expense smoke
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "10 12 * * *"
       timezone: "Asia/Jerusalem"
 
 jobs:
-  run-recurring:
+  run-testing-expense:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,5 +28,5 @@ jobs:
       - name: Install server dependencies
         run: npm ci
 
-      - name: Run nightly recurring batch
-        run: npm run recurring:run-all
+      - name: Run testing expense smoke batch
+        run: npm run testing:run-all
