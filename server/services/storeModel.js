@@ -16,6 +16,13 @@ import {
   parseAmount,
   uniqueSortedStrings,
 } from "../utils/common.js";
+import {
+  buildOccurrenceDate,
+  buildOccurrenceKey,
+  formatLocalDateKey,
+  isRecurringRuleActive,
+  parseRecurringIntervalMonths,
+} from "./recurringRules.js";
 
 export { getCurrentMonth };
 
@@ -303,30 +310,6 @@ export function buildProfileFromBody(body, existingProfile) {
   };
 }
 
-function parseRecurringIntervalMonths(frequency) {
-  const normalized = frequency.trim().toLowerCase();
-  const match = normalized.match(/(\d+)/);
-
-  if (normalized.includes("month")) {
-    return Math.max(1, Number(match?.[1] ?? 1));
-  }
-
-  return 1;
-}
-
-function getDaysInMonth(year, monthIndex) {
-  return new Date(year, monthIndex + 1, 0).getDate();
-}
-
-function buildOccurrenceDate(year, monthIndex, dayOfMonth) {
-  const safeDay = Math.min(dayOfMonth, getDaysInMonth(year, monthIndex));
-  return new Date(year, monthIndex, safeDay);
-}
-
-function buildOccurrenceKey(ruleId, dueDate) {
-  return `${ruleId}:${dueDate}`;
-}
-
 function getNextRecurringOccurrence(rule, now = new Date(), existingEntries = []) {
   const intervalMonths = parseRecurringIntervalMonths(rule.frequency);
   const start = new Date(`${rule.startDate}T00:00:00`);
@@ -336,7 +319,7 @@ function getNextRecurringOccurrence(rule, now = new Date(), existingEntries = []
   for (let offset = 0; offset < 48; offset += intervalMonths) {
     const month = new Date(startingMonth.getFullYear(), startingMonth.getMonth() + offset, 1);
     const dueDate = buildOccurrenceDate(month.getFullYear(), month.getMonth(), rule.dayOfMonth);
-    const dueDateKey = dueDate.toISOString().slice(0, 10);
+    const dueDateKey = formatLocalDateKey(dueDate);
 
     if (dueDateKey < rule.startDate) {
       continue;
@@ -366,7 +349,9 @@ function getRecurringRuleResponses(userStore, now = new Date()) {
         generatedEntries.length > 0
           ? sortEntries(generatedEntries)[0].date
           : null;
-      const nextTriggerDate = getNextRecurringOccurrence(rule, now, existingEntries);
+      const nextTriggerDate = isRecurringRuleActive(rule)
+        ? getNextRecurringOccurrence(rule, now, existingEntries)
+        : null;
 
       return {
         ...rule,
@@ -377,8 +362,11 @@ function getRecurringRuleResponses(userStore, now = new Date()) {
       };
     })
     .sort((left, right) => {
-      if (left.status !== right.status) {
-        return left.status.localeCompare(right.status);
+      const leftActive = isRecurringRuleActive(left);
+      const rightActive = isRecurringRuleActive(right);
+
+      if (leftActive !== rightActive) {
+        return leftActive ? -1 : 1;
       }
 
       if (left.nextTriggerDate && right.nextTriggerDate) {
@@ -493,7 +481,7 @@ export function applyRecurringRules(userStore, now = new Date()) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   userStore.recurringRules.forEach((rule) => {
-    if (rule.status.toLowerCase() !== "add") {
+    if (!isRecurringRuleActive(rule)) {
       return;
     }
 
@@ -509,7 +497,7 @@ export function applyRecurringRules(userStore, now = new Date()) {
         break;
       }
 
-      const dueDateKey = dueDate.toISOString().slice(0, 10);
+      const dueDateKey = formatLocalDateKey(dueDate);
 
       if (dueDateKey < rule.startDate) {
         continue;
@@ -562,6 +550,14 @@ export function applyRecurringRules(userStore, now = new Date()) {
     triggeredRuleIds: [
       ...new Set(createdEntries.map((entry) => entry.linkedRecurringRuleId).filter(Boolean)),
     ],
+  };
+}
+
+export function buildRecurringRunResponse(recurringResult) {
+  return {
+    createdCount: recurringResult.createdEntries.length,
+    createdEntries: recurringResult.createdEntries,
+    triggeredRuleIds: recurringResult.triggeredRuleIds.filter(Boolean),
   };
 }
 
@@ -831,7 +827,7 @@ export function buildDashboard(userStore, month = getCurrentMonth()) {
     evenUpRecords,
     importantDates,
     recurringSummary: {
-      activeCount: recurringRules.filter((rule) => rule.status.toLowerCase() === "add").length,
+      activeCount: recurringRules.filter((rule) => isRecurringRuleActive(rule)).length,
       upcomingCount,
       generatedThisMonth,
       nextRuleName: nextRule?.name ?? null,

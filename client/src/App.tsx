@@ -265,6 +265,7 @@ export default function App() {
             onDeleteRecurring={recurring.deleteRecurringRule}
             onEditEvenUp={recurring.editEvenUpRecord}
             onEditRecurring={recurring.editRecurringRule}
+            onToggleRecurring={recurring.toggleRecurringRule}
             onEvenUpDraftChange={recurring.updateEvenUpDraft}
             onOpenEvenUp={recurring.openEvenUpEditor}
             onOpenRecurring={recurring.openRecurringEditor}

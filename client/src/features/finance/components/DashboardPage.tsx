@@ -35,6 +35,7 @@ type DashboardPageProps = {
   onDeleteRecurring: (rule: RecurringRule) => void;
   onEditEvenUp: (record: EvenUpRecord) => void;
   onEditRecurring: (rule: RecurringRule) => void;
+  onToggleRecurring: (rule: RecurringRule) => void;
   onEvenUpDraftChange: <K extends keyof EvenUpDraft>(field: K, value: EvenUpDraft[K]) => void;
   onOpenEvenUp: () => void;
   onOpenRecurring: () => void;
@@ -52,6 +53,14 @@ type DashboardPageProps = {
 function buildRecurringScheduleLabel(rule: RecurringRule) {
   return `${rule.frequency} on day ${rule.dayOfMonth}`;
 }
+
+const RECURRING_FREQUENCY_OPTIONS = [
+  "Monthly",
+  "Every 2 months",
+  "Every 3 months",
+  "Every 6 months",
+  "Every 12 months",
+];
 
 export function DashboardPage({
   actionError,
@@ -72,6 +81,7 @@ export function DashboardPage({
   onDeleteRecurring,
   onEditEvenUp,
   onEditRecurring,
+  onToggleRecurring,
   onEvenUpDraftChange,
   onOpenEvenUp,
   onOpenRecurring,
@@ -82,16 +92,8 @@ export function DashboardPage({
   onSelectedMonthChange,
   shiftMonth,
 }: DashboardPageProps) {
-  void isRecurringSaving;
-  void recurringDraft;
-  void referenceData;
-  void onCancelRecurring;
-  void onDeleteRecurring;
-  void onEditRecurring;
-  void onOpenRecurring;
-  void onRecurringDraftChange;
-  void onRunRecurring;
-  void onSaveRecurring;
+  const recurringCategories = referenceData.categories[recurringDraft?.type ?? "expense"];
+  const recurringCounterparties = referenceData.counterparties[recurringDraft?.type ?? "expense"];
 
   return (
     <>
@@ -157,11 +159,182 @@ export function DashboardPage({
                 <p className="eyebrow">Recurring</p>
                 <h3>Recurring rules</h3>
               </div>
+              <div className="detail-actions">
+                <button className="ghost-action" onClick={onRunRecurring} type="button">
+                  Run now
+                </button>
+                <button className="mini-action" onClick={onOpenRecurring} type="button">
+                  New recurring
+                </button>
+              </div>
             </div>
             <p className="panel-meta">
-              Recurring automation is disabled for now. This list is display-only until you decide
-              how it should behave.
+              Nightly automation runs at 3:00 AM Israel time and backfills any missed due
+              recurring entries once.
             </p>
+
+            {recurringDraft ? (
+              <div className="inline-form">
+                <div className="inline-form-grid">
+                  <label>
+                    Type
+                    <select
+                      onChange={(event) =>
+                        onRecurringDraftChange(
+                          "type",
+                          event.target.value as RecurringRuleDraft["type"],
+                        )
+                      }
+                      value={recurringDraft.type}
+                    >
+                      <option value="expense">Expense</option>
+                      <option value="income">Income</option>
+                    </select>
+                  </label>
+                  <label>
+                    Status
+                    <select
+                      onChange={(event) => onRecurringDraftChange("status", event.target.value)}
+                      value={recurringDraft.status}
+                    >
+                      <option value="add">Active</option>
+                      <option value="paused">Paused</option>
+                    </select>
+                  </label>
+                  <label>
+                    Name
+                    <input
+                      onChange={(event) => onRecurringDraftChange("name", event.target.value)}
+                      value={recurringDraft.name}
+                    />
+                  </label>
+                  <label>
+                    Amount
+                    <input
+                      inputMode="decimal"
+                      onChange={(event) => onRecurringDraftChange("amount", event.target.value)}
+                      value={recurringDraft.amount}
+                    />
+                  </label>
+                  <label>
+                    Frequency
+                    <select
+                      onChange={(event) => onRecurringDraftChange("frequency", event.target.value)}
+                      value={recurringDraft.frequency}
+                    >
+                      {RECURRING_FREQUENCY_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Day of month
+                    <input
+                      inputMode="numeric"
+                      max="31"
+                      min="1"
+                      onChange={(event) => onRecurringDraftChange("dayOfMonth", event.target.value)}
+                      value={recurringDraft.dayOfMonth}
+                    />
+                  </label>
+                  <label>
+                    Start date
+                    <input
+                      onChange={(event) => onRecurringDraftChange("startDate", event.target.value)}
+                      type="date"
+                      value={recurringDraft.startDate}
+                    />
+                  </label>
+                  <label>
+                    Account
+                    <select
+                      onChange={(event) => onRecurringDraftChange("account", event.target.value)}
+                      value={recurringDraft.account}
+                    >
+                      <option value="">No account</option>
+                      {referenceData.accounts.map((account) => (
+                        <option key={account} value={account}>
+                          {account}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Category
+                    <select
+                      onChange={(event) => onRecurringDraftChange("category", event.target.value)}
+                      value={recurringDraft.category}
+                    >
+                      <option value="">Uncategorized</option>
+                      {recurringCategories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {recurringDraft.type === "expense" ? (
+                    <label>
+                      Expense type
+                      <select
+                        onChange={(event) => onRecurringDraftChange("entryKind", event.target.value)}
+                        value={recurringDraft.entryKind}
+                      >
+                        {referenceData.expenseKinds.map((entryKind) => (
+                          <option key={entryKind} value={entryKind}>
+                            {entryKind}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <label>
+                    Counterparty
+                    <select
+                      onChange={(event) => onRecurringDraftChange("counterparty", event.target.value)}
+                      value={recurringDraft.counterparty}
+                    >
+                      <option value="">
+                        {recurringDraft.type === "expense" ? "No payee" : "No payer"}
+                      </option>
+                      {recurringCounterparties.map((counterparty) => (
+                        <option key={counterparty} value={counterparty}>
+                          {counterparty}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="full-width">
+                    Notes
+                    <textarea
+                      onChange={(event) => onRecurringDraftChange("notes", event.target.value)}
+                      rows={2}
+                      value={recurringDraft.notes}
+                    />
+                  </label>
+                </div>
+
+                <div className="inline-form-actions">
+                  <button className="ghost-action" onClick={onCancelRecurring} type="button">
+                    Cancel
+                  </button>
+                  <button
+                    className={`save-action ${recurringDraft.type === "income" ? "income" : "expense"}`}
+                    disabled={isRecurringSaving}
+                    onClick={onSaveRecurring}
+                    type="button"
+                  >
+                    {isRecurringSaving
+                      ? "Saving..."
+                      : recurringDraft.id
+                        ? "Save recurring"
+                        : "Add recurring"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             <div className="detail-stack">
               {dashboard?.recurringRules.length ? (
@@ -186,13 +359,35 @@ export function DashboardPage({
                         {formatDisplayValue(rule.counterparty, rule.type === "expense" ? "No payee" : "No payer")}
                       </p>
                       <p>
-                        Start {formatLongDate(rule.startDate)} · Triggered {rule.triggeredCount} times
+                        Start {formatLongDate(rule.startDate)} · Last{" "}
+                        {formatDisplayValue(
+                          rule.lastTriggeredAt ? formatLongDate(rule.lastTriggeredAt) : null,
+                          "Never",
+                        )}{" "}
+                        · Next{" "}
+                        {formatDisplayValue(
+                          rule.nextTriggerDate ? formatLongDate(rule.nextTriggerDate) : null,
+                          rule.status === "add" ? "No future trigger" : "Paused",
+                        )}
                       </p>
+                      <p>Triggered {rule.triggeredCount} times</p>
+                    </div>
+
+                    <div className="detail-actions">
+                      <button className="text-action" onClick={() => onToggleRecurring(rule)} type="button">
+                        {rule.status === "add" ? "Pause" : "Activate"}
+                      </button>
+                      <button className="text-action" onClick={() => onEditRecurring(rule)} type="button">
+                        Edit
+                      </button>
+                      <button className="text-action danger" onClick={() => onDeleteRecurring(rule)} type="button">
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="empty-state">Recurring rules will appear here when they exist in imported data.</p>
+                <p className="empty-state">No recurring rules yet. Add one to automate future expenses or income.</p>
               )}
             </div>
           </article>

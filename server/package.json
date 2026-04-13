@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "recurring:run-all": "node scripts/runRecurringForAllUsers.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "firebase-admin": "^13.8.0",
     "nodemon": "^3.1.14"
   }
 }

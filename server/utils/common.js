@@ -100,6 +100,44 @@ export function getCurrentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
+export function getDatePartsInTimeZone(timeZone, value = new Date()) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+
+  const parts = formatter.formatToParts(value);
+  const lookup = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: Number(lookup.year),
+    month: Number(lookup.month),
+    day: Number(lookup.day),
+    hour: Number(lookup.hour),
+    minute: Number(lookup.minute),
+    second: Number(lookup.second),
+    dateKey: `${lookup.year}-${lookup.month}-${lookup.day}`,
+  };
+}
+
+export function getDateKeyInTimeZone(timeZone, value = new Date()) {
+  return getDatePartsInTimeZone(timeZone, value).dateKey;
+}
+
+export function getDateFromDateKey(dateKey) {
+  return new Date(`${dateKey}T12:00:00.000Z`);
+}
+
 export function getValueFromBody(body, primaryKey, fallbackValue, aliases = []) {
   if (hasOwn(body, primaryKey)) {
     return body[primaryKey];

@@ -7,6 +7,7 @@ import {
   buildDefaultsOverview,
   buildEntryFromBody,
   buildProfileFromBody,
+  buildRecurringRunResponse,
   buildReferenceData,
   filterEntries,
   getAccountUsageCount,
@@ -18,9 +19,12 @@ import {
 } from "../services/storeModel.js";
 import { DEFAULT_EXPENSE_KINDS } from "../config/defaultSeeds.js";
 import { asyncHandler, HttpError } from "../http/errors.js";
+import { buildRecurringRuleFromBody } from "../services/recurringRules.js";
 import {
   cleanOptionalString,
   cleanRequiredString,
+  getDateFromDateKey,
+  getDateKeyInTimeZone,
   uniqueSortedStrings,
   normalizeType,
 } from "../utils/common.js";
@@ -916,40 +920,15 @@ router.post(
   "/recurring-rules",
   asyncHandler(async (req, res) => {
     const recurringRule = await updateUserStore(req, (store) => {
-      const now = new Date().toISOString();
-      const name = cleanOptionalString(req.body.name);
-      const amount = Number(req.body.amount);
-      const dayOfMonth = Number(req.body.dayOfMonth);
+      const result = buildRecurringRuleFromBody(req.body, {
+        now: new Date().toISOString(),
+      });
 
-      if (
-        !name ||
-        !Number.isFinite(amount) ||
-        amount <= 0 ||
-        !Number.isFinite(dayOfMonth)
-      ) {
-        throw buildError("name, amount, and day of month are required");
+      if ("error" in result) {
+        throw buildError(result.error);
       }
 
-      const rule = {
-        id: crypto.randomUUID(),
-        type: req.body.type === "income" ? "income" : "expense",
-        status: cleanOptionalString(req.body.status) ?? "add",
-        name,
-        amount: Number(amount.toFixed(2)),
-        frequency: cleanOptionalString(req.body.frequency) ?? "Monthly",
-        dayOfMonth: Math.max(1, Math.min(31, Math.round(dayOfMonth))),
-        account: cleanOptionalString(req.body.account),
-        category: cleanOptionalString(req.body.category),
-        entryKind:
-          req.body.type === "income"
-            ? null
-            : (cleanOptionalString(req.body.entryKind) ?? "Regular"),
-        counterparty: cleanOptionalString(req.body.counterparty),
-        notes: cleanOptionalString(req.body.notes),
-        startDate: String(req.body.startDate ?? now.slice(0, 10)),
-        createdAt: now,
-        updatedAt: now,
-      };
+      const rule = result.rule;
 
       store.recurringRules.push(rule);
 
@@ -973,43 +952,16 @@ router.put(
       }
 
       const existing = store.recurringRules[index];
-      const nextName = cleanOptionalString(req.body.name ?? existing.name);
-      const nextAmount = Number(req.body.amount ?? existing.amount);
-      const nextDayOfMonth = Number(req.body.dayOfMonth ?? existing.dayOfMonth);
+      const result = buildRecurringRuleFromBody(req.body, {
+        existingRule: existing,
+        now: new Date().toISOString(),
+      });
 
-      if (
-        !nextName ||
-        !Number.isFinite(nextAmount) ||
-        nextAmount <= 0 ||
-        !Number.isFinite(nextDayOfMonth)
-      ) {
-        throw buildError("name, amount, and day of month are required");
+      if ("error" in result) {
+        throw buildError(result.error);
       }
 
-      const nextType = req.body.type === "income" ? "income" : existing.type;
-
-      store.recurringRules[index] = {
-        ...existing,
-        type: nextType,
-        status: cleanOptionalString(req.body.status) ?? existing.status,
-        name: nextName,
-        amount: Number(nextAmount.toFixed(2)),
-        frequency:
-          cleanOptionalString(req.body.frequency) ?? existing.frequency,
-        dayOfMonth: Math.max(1, Math.min(31, Math.round(nextDayOfMonth))),
-        account: cleanOptionalString(req.body.account ?? existing.account),
-        category: cleanOptionalString(req.body.category ?? existing.category),
-        entryKind:
-          nextType === "income"
-            ? null
-            : cleanOptionalString(req.body.entryKind ?? existing.entryKind),
-        counterparty: cleanOptionalString(
-          req.body.counterparty ?? existing.counterparty,
-        ),
-        notes: cleanOptionalString(req.body.notes ?? existing.notes),
-        startDate: String(req.body.startDate ?? existing.startDate),
-        updatedAt: new Date().toISOString(),
-      };
+      store.recurringRules[index] = result.rule;
 
       return buildDashboard(store, getCurrentMonth()).recurringRules.find(
         (candidate) => candidate.id === req.params.id,
@@ -1045,16 +997,18 @@ router.delete(
 router.post(
   "/recurring-rules/run",
   asyncHandler(async (req, res) => {
+    const effectiveDate =
+      cleanOptionalString(req.body.date) ??
+      getDateKeyInTimeZone("Asia/Jerusalem");
     const result = await updateUserStore(
       req,
       (store) => {
-        const recurringResult = applyRecurringRules(store);
+        const recurringResult = applyRecurringRules(
+          store,
+          getDateFromDateKey(effectiveDate),
+        );
 
-        return {
-          createdCount: recurringResult.createdEntries.length,
-          createdEntries: recurringResult.createdEntries,
-          triggeredRuleIds: recurringResult.triggeredRuleIds.filter(Boolean),
-        };
+        return buildRecurringRunResponse(recurringResult);
       },
       { skipRecurring: true },
     );

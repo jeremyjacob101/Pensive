@@ -25,6 +25,7 @@ import {
   parseNumberish,
   slugifyIdPart,
 } from "../utils/common.js";
+import { normalizeRecurringStatus } from "./recurringRules.js";
 import { normalizeEntryCode } from "./storeModel.js";
 
 function dedupeByName(items) {
@@ -330,14 +331,17 @@ function normalizeStoredRecurringRule(rule) {
   return {
     id: cleanOptionalString(rule.id) ?? createId(),
     type: normalizeType(rule.type, "expense"),
-    status: cleanOptionalString(rule.status) ?? "add",
+    status: normalizeRecurringStatus(rule.status),
     name,
     amount,
     frequency: cleanOptionalString(rule.frequency) ?? "Monthly",
     dayOfMonth: Math.max(1, Math.min(31, Number(rule.dayOfMonth) || 1)),
     account: cleanOptionalString(rule.account),
     category: cleanOptionalString(rule.category),
-    entryKind: cleanOptionalString(rule.entryKind) ?? "Regular",
+    entryKind:
+      normalizeType(rule.type, "expense") === "income"
+        ? null
+        : cleanOptionalString(rule.entryKind) ?? "Regular",
     counterparty: cleanOptionalString(rule.counterparty),
     notes: cleanOptionalString(rule.notes),
     startDate,

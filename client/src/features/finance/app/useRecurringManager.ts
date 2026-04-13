@@ -3,12 +3,14 @@ import { requestJson } from "../../../lib/firebaseApi";
 import {
   getDefaultCategory,
   getInitialEvenUpDraft,
+  getInitialRecurringRuleDraft,
 } from "../fallbacks";
 import type {
   EvenUpDraft,
   EvenUpRecord,
   RecurringRule,
   RecurringRuleDraft,
+  RecurringRunResult,
   ReferenceData,
 } from "../types";
 
@@ -19,6 +21,27 @@ type UseRecurringManagerOptions = {
   onRefresh: () => void;
   onRequireAuth: () => void;
 };
+
+function toRecurringDraft(rule: RecurringRule, availableExpenseKinds: string[]): RecurringRuleDraft {
+  return {
+    id: rule.id,
+    type: rule.type,
+    status: rule.status,
+    name: rule.name,
+    amount: String(rule.amount),
+    frequency: rule.frequency,
+    dayOfMonth: String(rule.dayOfMonth),
+    account: rule.account ?? "",
+    category: rule.category ?? "",
+    entryKind:
+      rule.type === "expense"
+        ? rule.entryKind ?? availableExpenseKinds[0] ?? "Regular"
+        : "",
+    counterparty: rule.counterparty ?? "",
+    notes: rule.notes ?? "",
+    startDate: rule.startDate,
+  };
+}
 
 export function useRecurringManager({
   activeUsername,
@@ -86,14 +109,20 @@ export function useRecurringManager({
       return;
     }
 
-    setActionError("Recurring rules are display-only right now.");
+    setActionError(null);
     setSaveMessage(null);
+    setRecurringDraft(getInitialRecurringRuleDraft(referenceData));
   }
 
   function editRecurringRule(rule: RecurringRule) {
-    void rule;
-    setActionError("Recurring rules are display-only right now.");
+    if (!activeUsername) {
+      onRequireAuth();
+      return;
+    }
+
+    setActionError(null);
     setSaveMessage(null);
+    setRecurringDraft(toRecurringDraft(rule, availableExpenseKinds));
   }
 
   function cancelRecurringEditor() {
@@ -101,24 +130,131 @@ export function useRecurringManager({
   }
 
   async function saveRecurringRule() {
-    if (!activeUsername) {
+    if (!activeUsername || !recurringDraft) {
       return;
     }
 
-    setRecurringDraft(null);
-    setIsRecurringSaving(false);
-    setActionError("Recurring rules are display-only right now.");
+    if (!recurringDraft.name.trim() || recurringDraft.amount.trim() === "") {
+      setActionError("Name and amount are required.");
+      return;
+    }
+
+    setIsRecurringSaving(true);
+    setActionError(null);
     setSaveMessage(null);
+
+    try {
+      const payload = {
+        type: recurringDraft.type,
+        status: recurringDraft.status,
+        name: recurringDraft.name.trim(),
+        amount: Number(recurringDraft.amount),
+        frequency: recurringDraft.frequency,
+        dayOfMonth: Number(recurringDraft.dayOfMonth),
+        account: recurringDraft.account.trim() || null,
+        category: recurringDraft.category.trim() || null,
+        entryKind:
+          recurringDraft.type === "expense" ? recurringDraft.entryKind.trim() || null : null,
+        counterparty: recurringDraft.counterparty.trim() || null,
+        notes: recurringDraft.notes.trim() || null,
+        startDate: recurringDraft.startDate,
+      };
+
+      const path = recurringDraft.id
+        ? `/recurring-rules/${recurringDraft.id}`
+        : "/recurring-rules";
+      const method = recurringDraft.id ? "PUT" : "POST";
+      const savedRule = await requestJson<RecurringRule>(
+        path,
+        { method, body: JSON.stringify(payload) },
+        activeUsername,
+      );
+
+      setSaveMessage(
+        `${savedRule.type === "income" ? "Income" : "Expense"} recurring rule ${
+          recurringDraft.id ? "updated" : "saved"
+        } for ${savedRule.name}.`,
+      );
+      setRecurringDraft(null);
+      onRefresh();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to save recurring rule.",
+      );
+    } finally {
+      setIsRecurringSaving(false);
+    }
   }
 
   function deleteRecurringRule(rule: RecurringRule) {
-    void rule;
     if (!activeUsername) {
       return;
     }
 
-    setActionError("Recurring rules are display-only right now.");
-    setSaveMessage(null);
+    if (!window.confirm(`Delete recurring rule "${rule.name}"?`)) {
+      return;
+    }
+
+    void (async () => {
+      setActionError(null);
+      setSaveMessage(null);
+
+      try {
+        await requestJson<{ deleted: true }>(
+          `/recurring-rules/${rule.id}`,
+          { method: "DELETE" },
+          activeUsername,
+        );
+        if (recurringDraft?.id === rule.id) {
+          setRecurringDraft(null);
+        }
+        setSaveMessage(`Deleted recurring rule "${rule.name}".`);
+        onRefresh();
+      } catch (error) {
+        setActionError(
+          error instanceof Error ? error.message : "Unable to delete recurring rule.",
+        );
+      }
+    })();
+  }
+
+  function toggleRecurringRule(rule: RecurringRule) {
+    if (!activeUsername) {
+      return;
+    }
+
+    const nextStatus = rule.status === "add" ? "paused" : "add";
+
+    void (async () => {
+      setActionError(null);
+      setSaveMessage(null);
+
+      try {
+        await requestJson<RecurringRule>(
+          `/recurring-rules/${rule.id}`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              status: nextStatus,
+            }),
+          },
+          activeUsername,
+        );
+        if (recurringDraft?.id === rule.id) {
+          setRecurringDraft((currentDraft) =>
+            currentDraft ? { ...currentDraft, status: nextStatus } : currentDraft,
+          );
+        }
+        setSaveMessage(
+          `${nextStatus === "add" ? "Activated" : "Paused"} recurring rule "${rule.name}".`,
+        );
+        onRefresh();
+      } catch (error) {
+        setActionError(
+          error instanceof Error ? error.message : "Unable to update recurring rule.",
+        );
+      }
+    })();
   }
 
   async function runRecurringNow() {
@@ -127,8 +263,31 @@ export function useRecurringManager({
       return;
     }
 
-    setActionError("Recurring rules are display-only right now.");
+    setActionError(null);
     setSaveMessage(null);
+    setIsRecurringSaving(true);
+
+    try {
+      const result = await requestJson<RecurringRunResult>(
+        "/recurring-rules/run",
+        { method: "POST" },
+        activeUsername,
+      );
+      setSaveMessage(
+        result.createdCount > 0
+          ? `Generated ${result.createdCount} recurring entr${
+              result.createdCount === 1 ? "y" : "ies"
+            }.`
+          : "No recurring entries were due right now.",
+      );
+      onRefresh();
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "Unable to run recurring rules.",
+      );
+    } finally {
+      setIsRecurringSaving(false);
+    }
   }
 
   function openEvenUpEditor() {
@@ -262,6 +421,7 @@ export function useRecurringManager({
     },
     saveRecurringRule,
     deleteRecurringRule,
+    toggleRecurringRule,
     runRecurringNow,
     openEvenUpEditor,
     editEvenUpRecord,
