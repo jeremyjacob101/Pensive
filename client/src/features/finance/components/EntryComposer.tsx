@@ -73,7 +73,9 @@ export function EntryComposer({
           </button>
         </div>
 
-        {saveError ? <div className="status-banner error inline">{saveError}</div> : null}
+        {saveError ? (
+          <div className="status-banner error inline">{saveError}</div>
+        ) : null}
 
         <div className="composer-grid">
           <label className="full-width">
@@ -105,7 +107,9 @@ export function EntryComposer({
             <label>
               Expense type
               <select
-                onChange={(event) => onDraftChange("entryKind", event.target.value)}
+                onChange={(event) =>
+                  onDraftChange("entryKind", event.target.value)
+                }
                 value={draft.entryKind}
               >
                 {availableExpenseKinds.map((entryKind) => (
@@ -120,7 +124,9 @@ export function EntryComposer({
               Paid by
               <input
                 list="counterparty-options"
-                onChange={(event) => onDraftChange("counterparty", event.target.value)}
+                onChange={(event) =>
+                  onDraftChange("counterparty", event.target.value)
+                }
                 placeholder="Who paid you?"
                 value={draft.counterparty}
               />
@@ -145,7 +151,9 @@ export function EntryComposer({
           <label>
             Sub-category
             <select
-              onChange={(event) => onDraftChange("subcategory", event.target.value)}
+              onChange={(event) =>
+                onDraftChange("subcategory", event.target.value)
+              }
               value={draft.subcategory}
             >
               <option value="">None</option>
@@ -167,7 +175,9 @@ export function EntryComposer({
                 )
               }
               placeholder={isExpense ? "Optional" : "April 2026, May 2026"}
-              value={isExpense ? draft.counterparty : draft.allocationMonthsText}
+              value={
+                isExpense ? draft.counterparty : draft.allocationMonthsText
+              }
             />
             <datalist id="counterparty-options">
               {availableCounterparties.map((counterparty) => (
@@ -191,7 +201,9 @@ export function EntryComposer({
           <label className="full-width">
             Comments
             <textarea
-              onChange={(event) => onDraftChange("comments", event.target.value)}
+              onChange={(event) =>
+                onDraftChange("comments", event.target.value)
+              }
               placeholder="Optional comments"
               rows={2}
               value={draft.comments}

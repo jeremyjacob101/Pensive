@@ -21,14 +21,13 @@ function normalizeOrigin(origin) {
 }
 
 function getAllowedOrigins() {
-  const configuredOrigins = process.env.CORS_ORIGIN ?? process.env.FRONTEND_ORIGIN;
+  const configuredOrigins =
+    process.env.CORS_ORIGIN ?? process.env.FRONTEND_ORIGIN;
   const rawOrigins = configuredOrigins
     ? configuredOrigins.split(",")
     : DEFAULT_ALLOWED_ORIGINS;
 
-  return rawOrigins
-    .map(normalizeOrigin)
-    .filter(Boolean);
+  return rawOrigins.map(normalizeOrigin).filter(Boolean);
 }
 
 export function createApp(dependencies = {}) {

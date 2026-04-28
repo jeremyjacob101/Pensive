@@ -3,7 +3,10 @@ import {
   cleanRequiredString,
   type StoredBillReference,
 } from "../../features/finance/storeModel";
-import type { BillReference, NotepadDocument } from "../../features/finance/types";
+import type {
+  BillReference,
+  NotepadDocument,
+} from "../../features/finance/types";
 import { withUserStoreTransaction } from "./store";
 
 function findBillIndex(bills: StoredBillReference[], billId: string) {
@@ -28,7 +31,9 @@ function normalizeBillBody(
     consumerNumber: cleanOptionalString(
       body.consumerNumber ?? existingBill?.consumerNumber,
     ),
-    meterNumber: cleanOptionalString(body.meterNumber ?? existingBill?.meterNumber),
+    meterNumber: cleanOptionalString(
+      body.meterNumber ?? existingBill?.meterNumber,
+    ),
     contractAccount: cleanOptionalString(
       body.contractAccount ?? existingBill?.contractAccount,
     ),
@@ -80,7 +85,8 @@ export async function updateBillRecord(
     const nextBill = normalizeBillBody(body, existingBill);
     const duplicate = store.bills.find(
       (bill, index) =>
-        index !== billIndex && bill.name.toLowerCase() === nextBill.name.toLowerCase(),
+        index !== billIndex &&
+        bill.name.toLowerCase() === nextBill.name.toLowerCase(),
     );
 
     if (duplicate) {

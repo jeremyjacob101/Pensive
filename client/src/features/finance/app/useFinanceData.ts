@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { requestJson } from "../../../lib/firebaseApi";
-import {
-  fallbackDefaultsOverview,
-  fallbackReferenceData,
-} from "../fallbacks";
+import { fallbackDefaultsOverview, fallbackReferenceData } from "../fallbacks";
 import type {
   DashboardResponse,
   DefaultsOverview,

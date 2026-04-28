@@ -1,4 +1,9 @@
-import { formatMonthLabel, currency, formatDisplayValue, formatLongDate } from "../utils";
+import {
+  formatMonthLabel,
+  currency,
+  formatDisplayValue,
+  formatLongDate,
+} from "../utils";
 import type { BreakdownItem } from "../app/useTransactionsData";
 import type { Entry, EntryType } from "../types";
 
@@ -133,7 +138,11 @@ export function TransactionsPage({
             <p className="eyebrow">Filters</p>
             <h3>Search the full ledger</h3>
           </div>
-          <button className="ghost-action" onClick={onResetFilters} type="button">
+          <button
+            className="ghost-action"
+            onClick={onResetFilters}
+            type="button"
+          >
             Reset filters
           </button>
         </div>
@@ -165,7 +174,10 @@ export function TransactionsPage({
             Type
             <select
               onChange={(event) =>
-                onFilterChange("type", event.target.value as TransactionsPageFilters["type"])
+                onFilterChange(
+                  "type",
+                  event.target.value as TransactionsPageFilters["type"],
+                )
               }
               value={filters.type}
             >
@@ -177,7 +189,9 @@ export function TransactionsPage({
           <label>
             Account
             <select
-              onChange={(event) => onFilterChange("account", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("account", event.target.value)
+              }
               value={filters.account}
             >
               <option value="all">All accounts</option>
@@ -191,7 +205,9 @@ export function TransactionsPage({
           <label>
             Category
             <select
-              onChange={(event) => onFilterChange("category", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("category", event.target.value)
+              }
               value={filters.category}
             >
               <option value="all">All categories</option>
@@ -205,7 +221,9 @@ export function TransactionsPage({
           <label>
             Expense type
             <select
-              onChange={(event) => onFilterChange("entryKind", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("entryKind", event.target.value)
+              }
               value={filters.entryKind}
             >
               <option value="all">All expense types</option>
@@ -219,7 +237,9 @@ export function TransactionsPage({
           <label>
             From date
             <input
-              onChange={(event) => onFilterChange("fromDate", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("fromDate", event.target.value)
+              }
               type="date"
               value={filters.fromDate}
             />
@@ -236,7 +256,9 @@ export function TransactionsPage({
             Min amount
             <input
               inputMode="decimal"
-              onChange={(event) => onFilterChange("minAmount", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("minAmount", event.target.value)
+              }
               placeholder="0"
               value={filters.minAmount}
             />
@@ -245,7 +267,9 @@ export function TransactionsPage({
             Max amount
             <input
               inputMode="decimal"
-              onChange={(event) => onFilterChange("maxAmount", event.target.value)}
+              onChange={(event) =>
+                onFilterChange("maxAmount", event.target.value)
+              }
               placeholder="No limit"
               value={filters.maxAmount}
             />
@@ -254,7 +278,10 @@ export function TransactionsPage({
             Sort
             <select
               onChange={(event) =>
-                onFilterChange("sort", event.target.value as TransactionsPageFilters["sort"])
+                onFilterChange(
+                  "sort",
+                  event.target.value as TransactionsPageFilters["sort"],
+                )
               }
               value={filters.sort}
             >
@@ -312,24 +339,42 @@ export function TransactionsPage({
                       <span>{entry.entryCode}</span>
                       {entry.notes || entry.comments ? (
                         <span>
-                          {[entry.notes, entry.comments].filter(Boolean).join(" · ")}
+                          {[entry.notes, entry.comments]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
                       ) : null}
                     </td>
                     <td>
-                      <span className={`kind-pill ${entry.type === "income" ? "income" : "expense"}`}>
+                      <span
+                        className={`kind-pill ${entry.type === "income" ? "income" : "expense"}`}
+                      >
                         {entry.type === "income" ? "Income" : "Expense"}
                       </span>
-                      <span>{formatDisplayValue(entry.entryKind, "Regular")}</span>
+                      <span>
+                        {formatDisplayValue(entry.entryKind, "Regular")}
+                      </span>
                     </td>
                     <td>{formatDisplayValue(entry.account, "No account")}</td>
                     <td>
-                      <strong>{formatDisplayValue(entry.category, "Uncategorized")}</strong>
-                      {entry.subcategory ? <span>{entry.subcategory}</span> : null}
-                      {entry.allocationMonths[0] ? <span>{entry.allocationMonths[0]}</span> : null}
+                      <strong>
+                        {formatDisplayValue(entry.category, "Uncategorized")}
+                      </strong>
+                      {entry.subcategory ? (
+                        <span>{entry.subcategory}</span>
+                      ) : null}
+                      {entry.allocationMonths[0] ? (
+                        <span>{entry.allocationMonths[0]}</span>
+                      ) : null}
                     </td>
                     <td>{formatDisplayValue(entry.counterparty, "None")}</td>
-                    <td className={entry.type === "income" ? "amount-income" : "amount-expense"}>
+                    <td
+                      className={
+                        entry.type === "income"
+                          ? "amount-income"
+                          : "amount-expense"
+                      }
+                    >
                       {currency.format(entry.amount)}
                     </td>
                     <td>{formatLongDate(entry.date)}</td>

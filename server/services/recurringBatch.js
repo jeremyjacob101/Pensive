@@ -1,11 +1,7 @@
 import { applyRecurringRules } from "./storeModel.js";
 
 export async function runRecurringForAllUsers(options) {
-  const {
-    repository,
-    now = new Date(),
-    logger = console,
-  } = options;
+  const { repository, now = new Date(), logger = console } = options;
   const startedAt = Date.now();
   const users = await repository.listUserStores();
   const failures = [];
@@ -39,6 +35,8 @@ export async function runRecurringForAllUsers(options) {
     durationMs: Date.now() - startedAt,
   };
 
-  logger.info?.(JSON.stringify({ type: "recurring-batch-summary", ...summary }));
+  logger.info?.(
+    JSON.stringify({ type: "recurring-batch-summary", ...summary }),
+  );
   return summary;
 }

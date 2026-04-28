@@ -2,8 +2,12 @@ import type { DefaultCategory, DefaultsOverview, EntryType } from "../types";
 import { buildImportantDate } from "./dashboard";
 import type { StoredCategory, UserStore } from "./storeTypes";
 
-export function getAccountUsageCount(userStore: UserStore, accountName: string) {
-  return userStore.entries.filter((entry) => entry.account === accountName).length;
+export function getAccountUsageCount(
+  userStore: UserStore,
+  accountName: string,
+) {
+  return userStore.entries.filter((entry) => entry.account === accountName)
+    .length;
 }
 
 export function getCategoryUsageCount(
@@ -30,7 +34,10 @@ export function getSubcategoryUsageCount(
   ).length;
 }
 
-export function getExpenseKindUsageCount(userStore: UserStore, entryKindName: string) {
+export function getExpenseKindUsageCount(
+  userStore: UserStore,
+  entryKindName: string,
+) {
   return userStore.entries.filter(
     (entry) => entry.type === "expense" && entry.entryKind === entryKindName,
   ).length;
@@ -95,8 +102,12 @@ export function buildDefaultsOverview(userStore: UserStore): DefaultsOverview {
     })),
     importantDates: [...userStore.importantDates]
       .map((item) => buildImportantDate(item))
-      .sort((left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil)),
-    bills: [...userStore.bills].sort((left, right) => left.name.localeCompare(right.name)),
+      .sort(
+        (left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil),
+      ),
+    bills: [...userStore.bills].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    ),
     notepad: userStore.notepad,
   };
 }

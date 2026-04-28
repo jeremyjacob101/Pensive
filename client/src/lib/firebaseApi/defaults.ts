@@ -17,7 +17,9 @@ import type {
 import { withUserStoreTransaction } from "./store";
 
 function findAccountIndex(userStore: UserStore, accountId: string) {
-  return userStore.defaults.accounts.findIndex((account) => account.id === accountId);
+  return userStore.defaults.accounts.findIndex(
+    (account) => account.id === accountId,
+  );
 }
 
 function findCategoryIndex(
@@ -25,11 +27,15 @@ function findCategoryIndex(
   type: "expense" | "income",
   categoryId: string,
 ) {
-  return userStore.defaults.categories[type].findIndex((category) => category.id === categoryId);
+  return userStore.defaults.categories[type].findIndex(
+    (category) => category.id === categoryId,
+  );
 }
 
 function findSubcategoryIndex(category: StoredCategory, subcategoryId: string) {
-  return category.subcategories.findIndex((subcategory) => subcategory.id === subcategoryId);
+  return category.subcategories.findIndex(
+    (subcategory) => subcategory.id === subcategoryId,
+  );
 }
 
 export async function createAccountRecord(body: Record<string, unknown>) {
@@ -143,7 +149,10 @@ export async function updateAccountRecord(
   });
 }
 
-export async function deleteAccountRecord(accountId: string, clearEntries: boolean) {
+export async function deleteAccountRecord(
+  accountId: string,
+  clearEntries: boolean,
+) {
   return withUserStoreTransaction((store) => {
     const accountIndex = findAccountIndex(store, accountId);
 

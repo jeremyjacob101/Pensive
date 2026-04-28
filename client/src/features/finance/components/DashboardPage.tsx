@@ -36,7 +36,10 @@ type DashboardPageProps = {
   onEditEvenUp: (record: EvenUpRecord) => void;
   onEditRecurring: (rule: RecurringRule) => void;
   onToggleRecurring: (rule: RecurringRule) => void;
-  onEvenUpDraftChange: <K extends keyof EvenUpDraft>(field: K, value: EvenUpDraft[K]) => void;
+  onEvenUpDraftChange: <K extends keyof EvenUpDraft>(
+    field: K,
+    value: EvenUpDraft[K],
+  ) => void;
   onOpenEvenUp: () => void;
   onOpenRecurring: () => void;
   onRecurringDraftChange: <K extends keyof RecurringRuleDraft>(
@@ -92,8 +95,10 @@ export function DashboardPage({
   onSelectedMonthChange,
   shiftMonth,
 }: DashboardPageProps) {
-  const recurringCategories = referenceData.categories[recurringDraft?.type ?? "expense"];
-  const recurringCounterparties = referenceData.counterparties[recurringDraft?.type ?? "expense"];
+  const recurringCategories =
+    referenceData.categories[recurringDraft?.type ?? "expense"];
+  const recurringCounterparties =
+    referenceData.counterparties[recurringDraft?.type ?? "expense"];
 
   return (
     <>
@@ -103,7 +108,9 @@ export function DashboardPage({
             <button
               aria-label="Previous month"
               className="month-arrow"
-              onClick={() => onSelectedMonthChange((current) => shiftMonth(current, -1))}
+              onClick={() =>
+                onSelectedMonthChange((current) => shiftMonth(current, -1))
+              }
               type="button"
             >
               <ChevronLeftIcon />
@@ -115,21 +122,25 @@ export function DashboardPage({
             <button
               aria-label="Next month"
               className="month-arrow"
-              onClick={() => onSelectedMonthChange((current) => shiftMonth(current, 1))}
+              onClick={() =>
+                onSelectedMonthChange((current) => shiftMonth(current, 1))
+              }
               type="button"
             >
               <ChevronRightIcon />
             </button>
           </div>
 
-            <div className="metric-row metric-row-wide">
+          <div className="metric-row metric-row-wide">
             <div className="metric-card">
               <span>Income</span>
               <strong>{currency.format(dashboard?.totals.income ?? 0)}</strong>
             </div>
             <div className="metric-card">
               <span>Expenses</span>
-              <strong>{currency.format(dashboard?.totals.expenses ?? 0)}</strong>
+              <strong>
+                {currency.format(dashboard?.totals.expenses ?? 0)}
+              </strong>
             </div>
             <div className="metric-card emphasis">
               <span>Net</span>
@@ -147,9 +158,15 @@ export function DashboardPage({
         </div>
       </section>
 
-      {dashboardError ? <div className="status-banner error">{dashboardError}</div> : null}
-      {actionError ? <div className="status-banner error">{actionError}</div> : null}
-      {saveMessage ? <div className="status-banner success">{saveMessage}</div> : null}
+      {dashboardError ? (
+        <div className="status-banner error">{dashboardError}</div>
+      ) : null}
+      {actionError ? (
+        <div className="status-banner error">{actionError}</div>
+      ) : null}
+      {saveMessage ? (
+        <div className="status-banner success">{saveMessage}</div>
+      ) : null}
 
       <section className="dashboard-layout">
         <div className="dashboard-main-column">
@@ -160,17 +177,25 @@ export function DashboardPage({
                 <h3>Recurring rules</h3>
               </div>
               <div className="detail-actions">
-                <button className="ghost-action" onClick={onRunRecurring} type="button">
+                <button
+                  className="ghost-action"
+                  onClick={onRunRecurring}
+                  type="button"
+                >
                   Run now
                 </button>
-                <button className="mini-action" onClick={onOpenRecurring} type="button">
+                <button
+                  className="mini-action"
+                  onClick={onOpenRecurring}
+                  type="button"
+                >
                   New recurring
                 </button>
               </div>
             </div>
             <p className="panel-meta">
-              Nightly automation runs at 3:00 AM Israel time and backfills any missed due
-              recurring entries once.
+              Nightly automation runs at 3:00 AM Israel time and backfills any
+              missed due recurring entries once.
             </p>
 
             {recurringDraft ? (
@@ -194,7 +219,9 @@ export function DashboardPage({
                   <label>
                     Status
                     <select
-                      onChange={(event) => onRecurringDraftChange("status", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("status", event.target.value)
+                      }
                       value={recurringDraft.status}
                     >
                       <option value="add">Active</option>
@@ -204,7 +231,9 @@ export function DashboardPage({
                   <label>
                     Name
                     <input
-                      onChange={(event) => onRecurringDraftChange("name", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("name", event.target.value)
+                      }
                       value={recurringDraft.name}
                     />
                   </label>
@@ -212,14 +241,18 @@ export function DashboardPage({
                     Amount
                     <input
                       inputMode="decimal"
-                      onChange={(event) => onRecurringDraftChange("amount", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("amount", event.target.value)
+                      }
                       value={recurringDraft.amount}
                     />
                   </label>
                   <label>
                     Frequency
                     <select
-                      onChange={(event) => onRecurringDraftChange("frequency", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("frequency", event.target.value)
+                      }
                       value={recurringDraft.frequency}
                     >
                       {RECURRING_FREQUENCY_OPTIONS.map((option) => (
@@ -235,14 +268,18 @@ export function DashboardPage({
                       inputMode="numeric"
                       max="31"
                       min="1"
-                      onChange={(event) => onRecurringDraftChange("dayOfMonth", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("dayOfMonth", event.target.value)
+                      }
                       value={recurringDraft.dayOfMonth}
                     />
                   </label>
                   <label>
                     Start date
                     <input
-                      onChange={(event) => onRecurringDraftChange("startDate", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("startDate", event.target.value)
+                      }
                       type="date"
                       value={recurringDraft.startDate}
                     />
@@ -250,7 +287,9 @@ export function DashboardPage({
                   <label>
                     Account
                     <select
-                      onChange={(event) => onRecurringDraftChange("account", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("account", event.target.value)
+                      }
                       value={recurringDraft.account}
                     >
                       <option value="">No account</option>
@@ -264,7 +303,9 @@ export function DashboardPage({
                   <label>
                     Category
                     <select
-                      onChange={(event) => onRecurringDraftChange("category", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("category", event.target.value)
+                      }
                       value={recurringDraft.category}
                     >
                       <option value="">Uncategorized</option>
@@ -279,7 +320,12 @@ export function DashboardPage({
                     <label>
                       Expense type
                       <select
-                        onChange={(event) => onRecurringDraftChange("entryKind", event.target.value)}
+                        onChange={(event) =>
+                          onRecurringDraftChange(
+                            "entryKind",
+                            event.target.value,
+                          )
+                        }
                         value={recurringDraft.entryKind}
                       >
                         {referenceData.expenseKinds.map((entryKind) => (
@@ -293,11 +339,18 @@ export function DashboardPage({
                   <label>
                     Counterparty
                     <select
-                      onChange={(event) => onRecurringDraftChange("counterparty", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange(
+                          "counterparty",
+                          event.target.value,
+                        )
+                      }
                       value={recurringDraft.counterparty}
                     >
                       <option value="">
-                        {recurringDraft.type === "expense" ? "No payee" : "No payer"}
+                        {recurringDraft.type === "expense"
+                          ? "No payee"
+                          : "No payer"}
                       </option>
                       {recurringCounterparties.map((counterparty) => (
                         <option key={counterparty} value={counterparty}>
@@ -309,7 +362,9 @@ export function DashboardPage({
                   <label className="full-width">
                     Notes
                     <textarea
-                      onChange={(event) => onRecurringDraftChange("notes", event.target.value)}
+                      onChange={(event) =>
+                        onRecurringDraftChange("notes", event.target.value)
+                      }
                       rows={2}
                       value={recurringDraft.notes}
                     />
@@ -317,7 +372,11 @@ export function DashboardPage({
                 </div>
 
                 <div className="inline-form-actions">
-                  <button className="ghost-action" onClick={onCancelRecurring} type="button">
+                  <button
+                    className="ghost-action"
+                    onClick={onCancelRecurring}
+                    type="button"
+                  >
                     Cancel
                   </button>
                   <button
@@ -343,51 +402,80 @@ export function DashboardPage({
                     <div className="detail-copy">
                       <div className="detail-title-row">
                         <strong>{rule.name}</strong>
-                        <span className={`kind-pill ${rule.type === "income" ? "income" : "expense"}`}>
+                        <span
+                          className={`kind-pill ${rule.type === "income" ? "income" : "expense"}`}
+                        >
                           {rule.type === "income" ? "Income" : "Expense"}
                         </span>
-                        <span className={`kind-pill ${rule.status === "add" ? "income" : "expense"}`}>
+                        <span
+                          className={`kind-pill ${rule.status === "add" ? "income" : "expense"}`}
+                        >
                           {rule.status === "add" ? "Active" : "Paused"}
                         </span>
                       </div>
                       <p>
-                        {buildRecurringScheduleLabel(rule)} · {currency.format(rule.amount)} ·{" "}
+                        {buildRecurringScheduleLabel(rule)} ·{" "}
+                        {currency.format(rule.amount)} ·{" "}
                         {formatDisplayValue(rule.account, "No account")}
                       </p>
                       <p>
                         {formatDisplayValue(rule.category, "Uncategorized")} ·{" "}
-                        {formatDisplayValue(rule.counterparty, rule.type === "expense" ? "No payee" : "No payer")}
+                        {formatDisplayValue(
+                          rule.counterparty,
+                          rule.type === "expense" ? "No payee" : "No payer",
+                        )}
                       </p>
                       <p>
                         Start {formatLongDate(rule.startDate)} · Last{" "}
                         {formatDisplayValue(
-                          rule.lastTriggeredAt ? formatLongDate(rule.lastTriggeredAt) : null,
+                          rule.lastTriggeredAt
+                            ? formatLongDate(rule.lastTriggeredAt)
+                            : null,
                           "Never",
                         )}{" "}
                         · Next{" "}
                         {formatDisplayValue(
-                          rule.nextTriggerDate ? formatLongDate(rule.nextTriggerDate) : null,
-                          rule.status === "add" ? "No future trigger" : "Paused",
+                          rule.nextTriggerDate
+                            ? formatLongDate(rule.nextTriggerDate)
+                            : null,
+                          rule.status === "add"
+                            ? "No future trigger"
+                            : "Paused",
                         )}
                       </p>
                       <p>Triggered {rule.triggeredCount} times</p>
                     </div>
 
                     <div className="detail-actions">
-                      <button className="text-action" onClick={() => onToggleRecurring(rule)} type="button">
+                      <button
+                        className="text-action"
+                        onClick={() => onToggleRecurring(rule)}
+                        type="button"
+                      >
                         {rule.status === "add" ? "Pause" : "Activate"}
                       </button>
-                      <button className="text-action" onClick={() => onEditRecurring(rule)} type="button">
+                      <button
+                        className="text-action"
+                        onClick={() => onEditRecurring(rule)}
+                        type="button"
+                      >
                         Edit
                       </button>
-                      <button className="text-action danger" onClick={() => onDeleteRecurring(rule)} type="button">
+                      <button
+                        className="text-action danger"
+                        onClick={() => onDeleteRecurring(rule)}
+                        type="button"
+                      >
                         Delete
                       </button>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="empty-state">No recurring rules yet. Add one to automate future expenses or income.</p>
+                <p className="empty-state">
+                  No recurring rules yet. Add one to automate future expenses or
+                  income.
+                </p>
               )}
             </div>
           </article>
@@ -398,7 +486,11 @@ export function DashboardPage({
                 <p className="eyebrow">Even-Up</p>
                 <h3>Settlements</h3>
               </div>
-              <button className="mini-action" onClick={onOpenEvenUp} type="button">
+              <button
+                className="mini-action"
+                onClick={onOpenEvenUp}
+                type="button"
+              >
                 New settlement
               </button>
             </div>
@@ -409,7 +501,9 @@ export function DashboardPage({
                   <label>
                     Status
                     <select
-                      onChange={(event) => onEvenUpDraftChange("status", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("status", event.target.value)
+                      }
                       value={evenUpDraft.status}
                     >
                       <option value="Open">Open</option>
@@ -420,14 +514,18 @@ export function DashboardPage({
                     Paid
                     <input
                       inputMode="decimal"
-                      onChange={(event) => onEvenUpDraftChange("paid", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("paid", event.target.value)
+                      }
                       value={evenUpDraft.paid}
                     />
                   </label>
                   <label>
                     Start
                     <input
-                      onChange={(event) => onEvenUpDraftChange("startDate", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("startDate", event.target.value)
+                      }
                       type="date"
                       value={evenUpDraft.startDate}
                     />
@@ -435,7 +533,9 @@ export function DashboardPage({
                   <label>
                     End
                     <input
-                      onChange={(event) => onEvenUpDraftChange("endDate", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("endDate", event.target.value)
+                      }
                       type="date"
                       value={evenUpDraft.endDate}
                     />
@@ -443,21 +543,27 @@ export function DashboardPage({
                   <label>
                     From
                     <input
-                      onChange={(event) => onEvenUpDraftChange("from", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("from", event.target.value)
+                      }
                       value={evenUpDraft.from}
                     />
                   </label>
                   <label>
                     To
                     <input
-                      onChange={(event) => onEvenUpDraftChange("to", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("to", event.target.value)
+                      }
                       value={evenUpDraft.to}
                     />
                   </label>
                   <label className="full-width">
                     Notes
                     <textarea
-                      onChange={(event) => onEvenUpDraftChange("notes", event.target.value)}
+                      onChange={(event) =>
+                        onEvenUpDraftChange("notes", event.target.value)
+                      }
                       rows={2}
                       value={evenUpDraft.notes}
                     />
@@ -465,7 +571,11 @@ export function DashboardPage({
                 </div>
 
                 <div className="inline-form-actions">
-                  <button className="ghost-action" onClick={onCancelEvenUp} type="button">
+                  <button
+                    className="ghost-action"
+                    onClick={onCancelEvenUp}
+                    type="button"
+                  >
                     Cancel
                   </button>
                   <button
@@ -474,7 +584,11 @@ export function DashboardPage({
                     onClick={onSaveEvenUp}
                     type="button"
                   >
-                    {isEvenUpSaving ? "Saving..." : evenUpDraft.id ? "Save settlement" : "Add settlement"}
+                    {isEvenUpSaving
+                      ? "Saving..."
+                      : evenUpDraft.id
+                        ? "Save settlement"
+                        : "Add settlement"}
                   </button>
                 </div>
               </div>
@@ -487,7 +601,9 @@ export function DashboardPage({
                     <div className="detail-copy">
                       <div className="detail-title-row">
                         <strong>{record.code}</strong>
-                        <span className={`kind-pill ${record.status === "Completed" ? "income" : "expense"}`}>
+                        <span
+                          className={`kind-pill ${record.status === "Completed" ? "income" : "expense"}`}
+                        >
                           {record.status}
                         </span>
                       </div>
@@ -497,23 +613,36 @@ export function DashboardPage({
                         {formatDisplayValue(record.to, "Unknown")}
                       </p>
                       <p>
-                        {formatLongDate(record.startDate)} to {formatLongDate(record.endDate)} · Amount{" "}
-                        {currency.format(record.amount)} · Remaining {currency.format(record.remaining)}
+                        {formatLongDate(record.startDate)} to{" "}
+                        {formatLongDate(record.endDate)} · Amount{" "}
+                        {currency.format(record.amount)} · Remaining{" "}
+                        {currency.format(record.remaining)}
                       </p>
                     </div>
 
                     <div className="detail-actions">
-                      <button className="text-action" onClick={() => onEditEvenUp(record)} type="button">
+                      <button
+                        className="text-action"
+                        onClick={() => onEditEvenUp(record)}
+                        type="button"
+                      >
                         Edit
                       </button>
-                      <button className="text-action danger" onClick={() => onDeleteEvenUp(record)} type="button">
+                      <button
+                        className="text-action danger"
+                        onClick={() => onDeleteEvenUp(record)}
+                        type="button"
+                      >
                         Delete
                       </button>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="empty-state">Even-up periods calculate from your payback and giveback entries.</p>
+                <p className="empty-state">
+                  Even-up periods calculate from your payback and giveback
+                  entries.
+                </p>
               )}
             </div>
           </article>
@@ -525,7 +654,9 @@ export function DashboardPage({
                 <h3>Month entries</h3>
               </div>
               <span className="panel-meta">
-                {isDashboardLoading ? "Loading..." : `${totalTransactions} entries`}
+                {isDashboardLoading
+                  ? "Loading..."
+                  : `${totalTransactions} entries`}
               </span>
             </div>
 
@@ -554,12 +685,24 @@ export function DashboardPage({
                               <strong>{entry.name}</strong>
                               <span>{entry.entryCode}</span>
                             </td>
-                            <td>{formatDisplayValue(entry.entryKind, "Regular")}</td>
                             <td>
-                              {formatDisplayValue(entry.category, "Uncategorized")}
-                              <span>{formatDisplayValue(entry.counterparty, "No vendor")}</span>
+                              {formatDisplayValue(entry.entryKind, "Regular")}
                             </td>
-                            <td className="amount-expense">{currency.format(entry.amount)}</td>
+                            <td>
+                              {formatDisplayValue(
+                                entry.category,
+                                "Uncategorized",
+                              )}
+                              <span>
+                                {formatDisplayValue(
+                                  entry.counterparty,
+                                  "No vendor",
+                                )}
+                              </span>
+                            </td>
+                            <td className="amount-expense">
+                              {currency.format(entry.amount)}
+                            </td>
                             <td>{formatShortDate(entry.date)}</td>
                           </tr>
                         ))
@@ -599,12 +742,21 @@ export function DashboardPage({
                               <strong>{entry.name}</strong>
                               <span>{entry.entryCode}</span>
                             </td>
-                            <td>{formatDisplayValue(entry.category, "Misc")}</td>
+                            <td>
+                              {formatDisplayValue(entry.category, "Misc")}
+                            </td>
                             <td>
                               {formatDisplayValue(entry.account, "No account")}
-                              <span>{formatDisplayValue(entry.counterparty, "Unknown payer")}</span>
+                              <span>
+                                {formatDisplayValue(
+                                  entry.counterparty,
+                                  "Unknown payer",
+                                )}
+                              </span>
                             </td>
-                            <td className="amount-income">{currency.format(entry.amount)}</td>
+                            <td className="amount-income">
+                              {currency.format(entry.amount)}
+                            </td>
                             <td>{formatShortDate(entry.date)}</td>
                           </tr>
                         ))
@@ -634,26 +786,33 @@ export function DashboardPage({
 
             <div className="category-list">
               {dashboard?.categoryBreakdown.expense.length ? (
-                dashboard.categoryBreakdown.expense.slice(0, 6).map((category) => {
-                  const width =
-                    dashboard.totals.expenses > 0
-                      ? Math.max(10, (category.total / dashboard.totals.expenses) * 100)
-                      : 10;
+                dashboard.categoryBreakdown.expense
+                  .slice(0, 6)
+                  .map((category) => {
+                    const width =
+                      dashboard.totals.expenses > 0
+                        ? Math.max(
+                            10,
+                            (category.total / dashboard.totals.expenses) * 100,
+                          )
+                        : 10;
 
-                  return (
-                    <div className="category-row" key={category.category}>
-                      <div className="category-copy">
-                        <strong>{category.category}</strong>
-                        <span>{currency.format(category.total)}</span>
+                    return (
+                      <div className="category-row" key={category.category}>
+                        <div className="category-copy">
+                          <strong>{category.category}</strong>
+                          <span>{currency.format(category.total)}</span>
+                        </div>
+                        <div className="category-bar">
+                          <div style={{ width: `${width}%` }} />
+                        </div>
                       </div>
-                      <div className="category-bar">
-                        <div style={{ width: `${width}%` }} />
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  })
               ) : (
-                <p className="empty-state">Expense categories will show up here.</p>
+                <p className="empty-state">
+                  Expense categories will show up here.
+                </p>
               )}
             </div>
           </article>
@@ -674,13 +833,17 @@ export function DashboardPage({
                       <strong>{item.name}</strong>
                       <p>{formatLongDate(item.date)}</p>
                     </div>
-                    <span className={`date-chip ${item.isPast ? "past" : "upcoming"}`}>
+                    <span
+                      className={`date-chip ${item.isPast ? "past" : "upcoming"}`}
+                    >
                       {formatDaysUntil(item.daysUntil)}
                     </span>
                   </div>
                 ))
               ) : (
-                <p className="empty-state">Important dates will show up here.</p>
+                <p className="empty-state">
+                  Important dates will show up here.
+                </p>
               )}
             </div>
           </article>
@@ -697,11 +860,16 @@ export function DashboardPage({
               <div className="detail-row compact">
                 <div className="detail-copy">
                   <strong>Next recurring trigger</strong>
-                  <p>{dashboard?.recurringSummary.nextRuleName ?? "Nothing scheduled"}</p>
+                  <p>
+                    {dashboard?.recurringSummary.nextRuleName ??
+                      "Nothing scheduled"}
+                  </p>
                 </div>
                 <span className="date-chip upcoming">
                   {dashboard?.recurringSummary.nextTriggerDate
-                    ? formatShortDate(dashboard.recurringSummary.nextTriggerDate)
+                    ? formatShortDate(
+                        dashboard.recurringSummary.nextTriggerDate,
+                      )
                     : "None"}
                 </span>
               </div>

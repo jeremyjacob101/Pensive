@@ -12,7 +12,14 @@ import {
   type DefaultRecurringTemplate,
 } from "../defaultSeeds";
 import { buildCurrentMonthStartDate, slugifyIdPart } from "./core";
-import { SEED_TIMESTAMP, type StoredAccount, type StoredCategory, type StoredExpenseKind, type StoredImportantDate, type StoredRecurringRule } from "./storeTypes";
+import {
+  SEED_TIMESTAMP,
+  type StoredAccount,
+  type StoredCategory,
+  type StoredExpenseKind,
+  type StoredImportantDate,
+  type StoredRecurringRule,
+} from "./storeTypes";
 
 export function createSeedAccount(name: string): StoredAccount {
   const slug = slugifyIdPart(name);
@@ -99,18 +106,28 @@ export function createSeedDefaults() {
         createSeedCategory("expense", name, DEFAULT_SUBCATEGORIES[name] ?? []),
       ),
       income: DEFAULT_INCOME_CATEGORIES.map((name) =>
-        createSeedCategory("income", name, DEFAULT_INCOME_SUBCATEGORIES[name] ?? []),
+        createSeedCategory(
+          "income",
+          name,
+          DEFAULT_INCOME_SUBCATEGORIES[name] ?? [],
+        ),
       ),
     },
-    expenseKinds: DEFAULT_EXPENSE_KINDS.map((name) => createSeedExpenseKind(name)),
+    expenseKinds: DEFAULT_EXPENSE_KINDS.map((name) =>
+      createSeedExpenseKind(name),
+    ),
     hiddenSeedExpenseKinds: [],
   };
 }
 
 export function createSeedRecurringRules() {
-  return DEFAULT_RECURRING_TEMPLATES.map((template) => createSeedRecurringRule(template));
+  return DEFAULT_RECURRING_TEMPLATES.map((template) =>
+    createSeedRecurringRule(template),
+  );
 }
 
 export function createSeedImportantDates() {
-  return DEFAULT_IMPORTANT_DATES.map((template) => createSeedImportantDate(template));
+  return DEFAULT_IMPORTANT_DATES.map((template) =>
+    createSeedImportantDate(template),
+  );
 }

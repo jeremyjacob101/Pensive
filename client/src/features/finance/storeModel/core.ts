@@ -1,10 +1,15 @@
 import type { EntryType } from "../types";
 
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown,
+): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function hasOwn<T extends object>(obj: T, key: PropertyKey): key is keyof T {
+export function hasOwn<T extends object>(
+  obj: T,
+  key: PropertyKey,
+): key is keyof T {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
@@ -21,7 +26,10 @@ export function cleanRequiredString(value: unknown) {
   return cleanOptionalString(value);
 }
 
-export function normalizeType(value: unknown, fallback: EntryType = "expense"): EntryType {
+export function normalizeType(
+  value: unknown,
+  fallback: EntryType = "expense",
+): EntryType {
   return value === "income" ? "income" : fallback;
 }
 
@@ -82,7 +90,9 @@ export function normalizeTimestamp(
   return parsed.toISOString();
 }
 
-export function inferLegacyTimestamp(entry: Record<string, unknown> | null | undefined) {
+export function inferLegacyTimestamp(
+  entry: Record<string, unknown> | null | undefined,
+) {
   const numericId = Number(entry?.id);
 
   if (!Number.isFinite(numericId) || numericId <= 0) {
@@ -191,9 +201,9 @@ export function normalizeAge(value: unknown) {
 }
 
 export function uniqueSortedStrings(values: Array<string | null | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))].sort((left, right) =>
-    left.localeCompare(right),
-  );
+  return [
+    ...new Set(values.filter((value): value is string => Boolean(value))),
+  ].sort((left, right) => left.localeCompare(right));
 }
 
 export function createId() {
@@ -201,7 +211,10 @@ export function createId() {
 }
 
 export function getMonthLabelFromDate(dateValue: string | Date) {
-  const date = typeof dateValue === "string" ? new Date(`${dateValue}T00:00:00`) : dateValue;
+  const date =
+    typeof dateValue === "string"
+      ? new Date(`${dateValue}T00:00:00`)
+      : dateValue;
   return date.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -230,7 +243,10 @@ export function normalizeMonthLabelToken(value: unknown) {
   return cleaned;
 }
 
-export function normalizeAllocationMonths(value: unknown, fallbackDate: string) {
+export function normalizeAllocationMonths(
+  value: unknown,
+  fallbackDate: string,
+) {
   const rawValues = Array.isArray(value)
     ? value
     : typeof value === "string"
@@ -249,5 +265,7 @@ export function normalizeAllocationMonths(value: unknown, fallbackDate: string) 
 
 export function buildCurrentMonthStartDate() {
   const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+  return new Date(today.getFullYear(), today.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
 }

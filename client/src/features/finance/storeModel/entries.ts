@@ -16,7 +16,11 @@ import {
   normalizeType,
   parseAmount,
 } from "./core";
-import { getNextEntryCode, getNextSplitEntryCode, parseEntryCode } from "./entryCodes";
+import {
+  getNextEntryCode,
+  getNextSplitEntryCode,
+  parseEntryCode,
+} from "./entryCodes";
 
 function sortEntries(entries: Entry[]) {
   return [...entries].sort((left, right) => {
@@ -42,13 +46,13 @@ export function filterEntries(
 }
 
 function getMostRecentEntryCode(existingEntries: Entry[], type: EntryType) {
-  return sortEntries(existingEntries.filter((entry) => entry.type === type))[0]?.entryCode ?? null;
+  return (
+    sortEntries(existingEntries.filter((entry) => entry.type === type))[0]
+      ?.entryCode ?? null
+  );
 }
 
-function applyExpenseShortcut(
-  body: Record<string, unknown>,
-  type: EntryType,
-) {
+function applyExpenseShortcut(body: Record<string, unknown>, type: EntryType) {
   const rawName = String(body.name ?? "").trim();
 
   if (type !== "expense" || !rawName) {
@@ -83,31 +87,51 @@ export function buildEntryFromBody(
   const timestamp = now ?? new Date().toISOString();
   const fallbackDate = existingEntry?.date ?? timestamp.slice(0, 10);
   const fallbackCreatedAt = existingEntry?.createdAt ?? timestamp;
-  const type = forcedType ?? normalizeType(body.type, existingEntry?.type ?? "expense");
+  const type =
+    forcedType ?? normalizeType(body.type, existingEntry?.type ?? "expense");
   const shortcutResult = applyExpenseShortcut(body, type);
   const rawNameValue = getValueFromBody(body, "name", existingEntry?.name);
-  const startingName = shortcutResult.name || cleanOptionalString(rawNameValue) || "";
+  const startingName =
+    shortcutResult.name || cleanOptionalString(rawNameValue) || "";
   const sameGroup = !existingEntry && startingName.startsWith("SAME ");
-  const name = cleanOptionalString(sameGroup ? startingName.slice(5) : startingName);
-  const amount = shortcutResult.amount ?? parseAmount(getValueFromBody(body, "amount", existingEntry?.amount));
-  const date = normalizeDateInput(getValueFromBody(body, "date", existingEntry?.date), fallbackDate);
+  const name = cleanOptionalString(
+    sameGroup ? startingName.slice(5) : startingName,
+  );
+  const amount =
+    shortcutResult.amount ??
+    parseAmount(getValueFromBody(body, "amount", existingEntry?.amount));
+  const date = normalizeDateInput(
+    getValueFromBody(body, "date", existingEntry?.date),
+    fallbackDate,
+  );
   const categoryValue =
     shortcutResult.category ??
-    cleanOptionalString(getValueFromBody(body, "category", existingEntry?.category));
+    cleanOptionalString(
+      getValueFromBody(body, "category", existingEntry?.category),
+    );
   const subcategoryValue = cleanOptionalString(
-    getValueFromBody(body, "subcategory", existingEntry?.subcategory, ["subCategory"]),
+    getValueFromBody(body, "subcategory", existingEntry?.subcategory, [
+      "subCategory",
+    ]),
   );
   const accountValue =
     shortcutResult.account ??
-    cleanOptionalString(getValueFromBody(body, "account", existingEntry?.account));
-  const notesValue = cleanOptionalString(getValueFromBody(body, "notes", existingEntry?.notes));
+    cleanOptionalString(
+      getValueFromBody(body, "account", existingEntry?.account),
+    );
+  const notesValue = cleanOptionalString(
+    getValueFromBody(body, "notes", existingEntry?.notes),
+  );
   const entryKindValue = cleanOptionalString(
     getValueFromBody(body, "entryKind", existingEntry?.entryKind, ["kind"]),
   );
   const counterpartyValue =
     shortcutResult.counterparty ??
     cleanOptionalString(
-      getValueFromBody(body, "counterparty", existingEntry?.counterparty, ["paidTo", "paidBy"]),
+      getValueFromBody(body, "counterparty", existingEntry?.counterparty, [
+        "paidTo",
+        "paidBy",
+      ]),
     );
   let commentsValue = cleanOptionalString(
     getValueFromBody(body, "comments", existingEntry?.comments),
@@ -127,8 +151,8 @@ export function buildEntryFromBody(
 
   const entryKind =
     type === "expense"
-      ? entryKindValue ?? existingEntry?.entryKind ?? "Regular"
-      : entryKindValue ?? null;
+      ? (entryKindValue ?? existingEntry?.entryKind ?? "Regular")
+      : (entryKindValue ?? null);
 
   if (
     type === "expense" &&
@@ -143,11 +167,12 @@ export function buildEntryFromBody(
   const allocationMonths =
     type === "income"
       ? normalizeAllocationMonths(
-          getValueFromBody(body, "allocationMonths", existingEntry?.allocationMonths, [
-            "monthYear",
-            "monthLabel",
-            "allocationMonthsText",
-          ]),
+          getValueFromBody(
+            body,
+            "allocationMonths",
+            existingEntry?.allocationMonths,
+            ["monthYear", "monthLabel", "allocationMonthsText"],
+          ),
           date,
         )
       : [getMonthLabelFromDate(date)];
@@ -164,7 +189,11 @@ export function buildEntryFromBody(
 
           const parsedRecentCode = parseEntryCode(recentEntryCode);
           return parsedRecentCode
-            ? getNextSplitEntryCode(existingEntries, type, parsedRecentCode.canonical)
+            ? getNextSplitEntryCode(
+                existingEntries,
+                type,
+                parsedRecentCode.canonical,
+              )
             : getNextEntryCode(existingEntries, type);
         })()
       : getNextEntryCode(existingEntries, type));
@@ -186,10 +215,18 @@ export function buildEntryFromBody(
       entryCode,
       allocationMonths,
       linkedRecurringRuleId: cleanOptionalString(
-        getValueFromBody(body, "linkedRecurringRuleId", existingEntry?.linkedRecurringRuleId),
+        getValueFromBody(
+          body,
+          "linkedRecurringRuleId",
+          existingEntry?.linkedRecurringRuleId,
+        ),
       ),
       recurringOccurrenceKey: cleanOptionalString(
-        getValueFromBody(body, "recurringOccurrenceKey", existingEntry?.recurringOccurrenceKey),
+        getValueFromBody(
+          body,
+          "recurringOccurrenceKey",
+          existingEntry?.recurringOccurrenceKey,
+        ),
       ),
       createdAt: fallbackCreatedAt,
       updatedAt: timestamp,
@@ -205,10 +242,16 @@ export function buildProfileFromBody(
   body: Record<string, unknown>,
   existingProfile: Profile,
 ) {
-  const fullName = cleanRequiredString(getValueFromBody(body, "fullName", existingProfile.fullName));
-  const email = normalizeEmail(getValueFromBody(body, "email", existingProfile.email));
+  const fullName = cleanRequiredString(
+    getValueFromBody(body, "fullName", existingProfile.fullName),
+  );
+  const email = normalizeEmail(
+    getValueFromBody(body, "email", existingProfile.email),
+  );
   const pictureUrl = cleanOptionalString(
-    getValueFromBody(body, "pictureUrl", existingProfile.pictureUrl, ["picture"]),
+    getValueFromBody(body, "pictureUrl", existingProfile.pictureUrl, [
+      "picture",
+    ]),
   );
 
   if (!fullName) {
@@ -218,7 +261,12 @@ export function buildProfileFromBody(
   const ageInput = getValueFromBody(body, "age", existingProfile.age);
   const age = normalizeAge(ageInput);
 
-  if (ageInput !== undefined && ageInput !== null && ageInput !== "" && age === null) {
+  if (
+    ageInput !== undefined &&
+    ageInput !== null &&
+    ageInput !== "" &&
+    age === null
+  ) {
     return { error: "age must be a whole number between 0 and 130" };
   }
 

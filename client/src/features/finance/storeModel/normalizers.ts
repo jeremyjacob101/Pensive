@@ -65,7 +65,10 @@ function normalizeStoredEntry(
   const name = cleanOptionalString(entry.name);
   const amount = parseAmount(entry.amount);
   const inferredCreatedAt = inferLegacyTimestamp(entry);
-  const createdAt = normalizeTimestamp(entry.createdAt, inferredCreatedAt ?? undefined);
+  const createdAt = normalizeTimestamp(
+    entry.createdAt,
+    inferredCreatedAt ?? undefined,
+  );
   const updatedAt = normalizeTimestamp(entry.updatedAt, createdAt);
   const date = normalizeDateInput(entry.date, createdAt.slice(0, 10));
 
@@ -92,7 +95,9 @@ function normalizeStoredEntry(
     entryKind:
       cleanOptionalString(entry.entryKind ?? entry.kind ?? entry.expenseKind) ??
       (type === "expense" ? "Regular" : null),
-    counterparty: cleanOptionalString(entry.counterparty ?? entry.paidTo ?? entry.paidBy),
+    counterparty: cleanOptionalString(
+      entry.counterparty ?? entry.paidTo ?? entry.paidBy,
+    ),
     comments: cleanOptionalString(entry.comments),
     entryCode,
     allocationMonths: normalizeAllocationMonths(
@@ -223,16 +228,23 @@ export function normalizeStoredCategory(
     subcategories: Array.isArray(category.subcategories)
       ? category.subcategories
           .map((subcategory) =>
-            normalizeStoredSubcategory(subcategory, `${type}-subcategory-${categorySlug}`),
+            normalizeStoredSubcategory(
+              subcategory,
+              `${type}-subcategory-${categorySlug}`,
+            ),
           )
-          .filter((subcategory): subcategory is StoredSubcategory => Boolean(subcategory))
+          .filter((subcategory): subcategory is StoredSubcategory =>
+            Boolean(subcategory),
+          )
       : [],
     createdAt,
     updatedAt: normalizeTimestamp(category.updatedAt, createdAt),
   };
 }
 
-function normalizeStoredRecurringRule(rule: unknown): StoredRecurringRule | null {
+function normalizeStoredRecurringRule(
+  rule: unknown,
+): StoredRecurringRule | null {
   if (!isPlainObject(rule)) {
     return null;
   }
@@ -271,7 +283,9 @@ function normalizeStoredMetadata(value: unknown) {
   return {};
 }
 
-function normalizeStoredImportantDate(value: unknown): StoredImportantDate | null {
+function normalizeStoredImportantDate(
+  value: unknown,
+): StoredImportantDate | null {
   if (!isPlainObject(value)) {
     return null;
   }
@@ -295,7 +309,9 @@ function normalizeStoredImportantDate(value: unknown): StoredImportantDate | nul
   };
 }
 
-function normalizeStoredBillReference(value: unknown): StoredBillReference | null {
+function normalizeStoredBillReference(
+  value: unknown,
+): StoredBillReference | null {
   if (!isPlainObject(value)) {
     return null;
   }
@@ -331,13 +347,21 @@ function normalizeStoredNotepad(value: unknown): StoredNotepadDocument {
   };
 }
 
-function normalizeStoredEvenUpRecord(value: unknown): StoredEvenUpRecord | null {
+function normalizeStoredEvenUpRecord(
+  value: unknown,
+): StoredEvenUpRecord | null {
   if (!isPlainObject(value)) {
     return null;
   }
 
-  const startDate = normalizeDateInput(value.startDate ?? value.start, undefined);
-  const endDate = normalizeDateInput(value.endDate ?? value.end, startDate ?? undefined);
+  const startDate = normalizeDateInput(
+    value.startDate ?? value.start,
+    undefined,
+  );
+  const endDate = normalizeDateInput(
+    value.endDate ?? value.end,
+    startDate ?? undefined,
+  );
 
   if (!startDate || !endDate) {
     return null;
@@ -372,16 +396,20 @@ function normalizeStoredDefaults(defaults: unknown) {
     : seededDefaults.accounts;
 
   const rawExpenseCategories =
-    isPlainObject(parsedDefaults.categories) && Array.isArray(parsedDefaults.categories.expense)
+    isPlainObject(parsedDefaults.categories) &&
+    Array.isArray(parsedDefaults.categories.expense)
       ? parsedDefaults.categories.expense
       : seededDefaults.categories.expense;
 
   const rawIncomeCategories =
-    isPlainObject(parsedDefaults.categories) && Array.isArray(parsedDefaults.categories.income)
+    isPlainObject(parsedDefaults.categories) &&
+    Array.isArray(parsedDefaults.categories.income)
       ? parsedDefaults.categories.income
       : seededDefaults.categories.income;
 
-  const hiddenSeedExpenseKinds = Array.isArray(parsedDefaults.hiddenSeedExpenseKinds)
+  const hiddenSeedExpenseKinds = Array.isArray(
+    parsedDefaults.hiddenSeedExpenseKinds,
+  )
     ? parsedDefaults.hiddenSeedExpenseKinds
         .map((kind) => cleanOptionalString(kind)?.toLowerCase() ?? null)
         .filter((kind): kind is string => Boolean(kind))
@@ -416,13 +444,17 @@ function normalizeStoredDefaults(defaults: unknown) {
         .map((kind) => normalizeStoredExpenseKind(kind))
         .filter((kind): kind is StoredExpenseKind => Boolean(kind)),
     ).sort((left, right) => left.name.localeCompare(right.name)),
-    hiddenSeedExpenseKinds: [...new Set(hiddenSeedExpenseKinds)].sort((left, right) =>
-      left.localeCompare(right),
+    hiddenSeedExpenseKinds: [...new Set(hiddenSeedExpenseKinds)].sort(
+      (left, right) => left.localeCompare(right),
     ),
   };
 }
 
-function normalizeStoredProfile(username: string, profile: unknown, fallbackEmail?: string | null) {
+function normalizeStoredProfile(
+  username: string,
+  profile: unknown,
+  fallbackEmail?: string | null,
+) {
   const parsedProfile = isPlainObject(profile) ? profile : {};
   const createdAt = normalizeTimestamp(parsedProfile.createdAt, SEED_TIMESTAMP);
 
@@ -431,7 +463,9 @@ function normalizeStoredProfile(username: string, profile: unknown, fallbackEmai
     fullName: cleanOptionalString(parsedProfile.fullName) ?? username,
     email: normalizeEmail(parsedProfile.email) ?? normalizeEmail(fallbackEmail),
     age: normalizeAge(parsedProfile.age),
-    pictureUrl: cleanOptionalString(parsedProfile.pictureUrl ?? parsedProfile.picture),
+    pictureUrl: cleanOptionalString(
+      parsedProfile.pictureUrl ?? parsedProfile.picture,
+    ),
     createdAt,
     updatedAt: normalizeTimestamp(parsedProfile.updatedAt, createdAt),
   };
@@ -446,11 +480,20 @@ export function normalizeStoredUserStore(
   const entries = Array.isArray(parsedStore.entries)
     ? parsedStore.entries
         .map((entry, index) => normalizeStoredEntry(entry, "expense", index))
-        .filter((entry): entry is NonNullable<ReturnType<typeof normalizeStoredEntry>> => Boolean(entry))
+        .filter(
+          (
+            entry,
+          ): entry is NonNullable<ReturnType<typeof normalizeStoredEntry>> =>
+            Boolean(entry),
+        )
     : [];
 
   return {
-    profile: normalizeStoredProfile(username, parsedStore.profile, fallbackEmail),
+    profile: normalizeStoredProfile(
+      username,
+      parsedStore.profile,
+      fallbackEmail,
+    ),
     metadata: normalizeStoredMetadata(parsedStore.metadata),
     entries,
     defaults: normalizeStoredDefaults(parsedStore.defaults),

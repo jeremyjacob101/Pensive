@@ -16,38 +16,79 @@ import {
 } from "./constants";
 import { getCurrentMonth, uniqueSortedStrings } from "./core";
 import { filterEntries, sortEntries } from "./entries";
-import type { StoredImportantDate, StoredEvenUpRecord, StoredRecurringRule, UserStore } from "./storeTypes";
+import type {
+  StoredImportantDate,
+  StoredEvenUpRecord,
+  StoredRecurringRule,
+  UserStore,
+} from "./storeTypes";
 
 function getExpenseKindKey(value: string | null | undefined) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function getEvenUpContribution(entry: Entry) {
   const kind = getExpenseKindKey(entry.entryKind);
 
   if (REIMBURSEMENT_TYPES.has(kind)) {
-    return { getBackAmount: entry.amount, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: entry.amount,
+      halfGetBackAmount: 0,
+      giveBackAmount: 0,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (PARTIAL_REIMBURSEMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: entry.amount, giveBackAmount: 0, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: entry.amount,
+      giveBackAmount: 0,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (SHARED_PAYMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: entry.amount, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: 0,
+      giveBackAmount: entry.amount,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (PARTIAL_SHARED_PAYMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: entry.amount };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: 0,
+      giveBackAmount: 0,
+      halfGiveBackAmount: entry.amount,
+    };
   }
 
-  return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: 0 };
+  return {
+    getBackAmount: 0,
+    halfGetBackAmount: 0,
+    giveBackAmount: 0,
+    halfGiveBackAmount: 0,
+  };
 }
 
-export function buildImportantDate(item: StoredImportantDate, today = new Date()): ImportantDate {
-  const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+export function buildImportantDate(
+  item: StoredImportantDate,
+  today = new Date(),
+): ImportantDate {
+  const current = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
   const target = new Date(`${item.date}T00:00:00`);
-  const daysUntil = Math.round((target.getTime() - current.getTime()) / 86400000);
+  const daysUntil = Math.round(
+    (target.getTime() - current.getTime()) / 86400000,
+  );
 
   return {
     ...item,
@@ -71,7 +112,11 @@ function getDaysInMonth(year: number, monthIndex: number) {
   return new Date(year, monthIndex + 1, 0).getDate();
 }
 
-function buildOccurrenceDate(year: number, monthIndex: number, dayOfMonth: number) {
+function buildOccurrenceDate(
+  year: number,
+  monthIndex: number,
+  dayOfMonth: number,
+) {
   const safeDay = Math.min(dayOfMonth, getDaysInMonth(year, monthIndex));
   return new Date(year, monthIndex, safeDay);
 }
@@ -91,8 +136,16 @@ function getNextRecurringOccurrence(
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   for (let offset = 0; offset < 48; offset += intervalMonths) {
-    const month = new Date(startingMonth.getFullYear(), startingMonth.getMonth() + offset, 1);
-    const dueDate = buildOccurrenceDate(month.getFullYear(), month.getMonth(), rule.dayOfMonth);
+    const month = new Date(
+      startingMonth.getFullYear(),
+      startingMonth.getMonth() + offset,
+      1,
+    );
+    const dueDate = buildOccurrenceDate(
+      month.getFullYear(),
+      month.getMonth(),
+      rule.dayOfMonth,
+    );
     const dueDateKey = dueDate.toISOString().slice(0, 10);
 
     if (dueDateKey < rule.startDate) {
@@ -101,7 +154,11 @@ function getNextRecurringOccurrence(
 
     if (
       dueDate >= today &&
-      !existingEntries.some((entry) => entry.recurringOccurrenceKey === buildOccurrenceKey(rule.id, dueDateKey))
+      !existingEntries.some(
+        (entry) =>
+          entry.recurringOccurrenceKey ===
+          buildOccurrenceKey(rule.id, dueDateKey),
+      )
     ) {
       return dueDateKey;
     }
@@ -123,7 +180,11 @@ function getRecurringRuleResponses(userStore: UserStore, now = new Date()) {
         generatedEntries.length > 0
           ? sortEntries(generatedEntries)[0].date
           : null;
-      const nextTriggerDate = getNextRecurringOccurrence(rule, now, existingEntries);
+      const nextTriggerDate = getNextRecurringOccurrence(
+        rule,
+        now,
+        existingEntries,
+      );
 
       return {
         ...rule,
@@ -156,10 +217,16 @@ function getRecurringRuleResponses(userStore: UserStore, now = new Date()) {
 
 export function buildReferenceData(userStore: UserStore): ReferenceData {
   const entryAccounts = userStore.entries.map((entry) => entry.account);
-  const defaultAccounts = userStore.defaults.accounts.map((account) => account.name);
+  const defaultAccounts = userStore.defaults.accounts.map(
+    (account) => account.name,
+  );
   const categoryValues = {
-    expense: new Set(userStore.defaults.categories.expense.map((category) => category.name)),
-    income: new Set(userStore.defaults.categories.income.map((category) => category.name)),
+    expense: new Set(
+      userStore.defaults.categories.expense.map((category) => category.name),
+    ),
+    income: new Set(
+      userStore.defaults.categories.income.map((category) => category.name),
+    ),
   };
   const subcategoryValues: ReferenceData["subcategories"] = {
     expense: {},
@@ -217,8 +284,12 @@ export function buildReferenceData(userStore: UserStore): ReferenceData {
   return {
     accounts: uniqueSortedStrings([...defaultAccounts, ...entryAccounts]),
     categories: {
-      expense: [...categoryValues.expense].sort((left, right) => left.localeCompare(right)),
-      income: [...categoryValues.income].sort((left, right) => left.localeCompare(right)),
+      expense: [...categoryValues.expense].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+      income: [...categoryValues.income].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     },
     subcategories: {
       expense: Object.fromEntries(
@@ -232,10 +303,16 @@ export function buildReferenceData(userStore: UserStore): ReferenceData {
         ),
       ),
     },
-    expenseKinds: [...expenseKindValues].sort((left, right) => left.localeCompare(right)),
+    expenseKinds: [...expenseKindValues].sort((left, right) =>
+      left.localeCompare(right),
+    ),
     counterparties: {
-      expense: [...counterpartyValues.expense].sort((left, right) => left.localeCompare(right)),
-      income: [...counterpartyValues.income].sort((left, right) => left.localeCompare(right)),
+      expense: [...counterpartyValues.expense].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+      income: [...counterpartyValues.income].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     },
   };
 }
@@ -251,7 +328,10 @@ export function applyRecurringRules(userStore: UserStore, now = new Date()) {
   };
 }
 
-function buildEvenUpRecord(record: StoredEvenUpRecord, userStore: UserStore): EvenUpRecord {
+function buildEvenUpRecord(
+  record: StoredEvenUpRecord,
+  userStore: UserStore,
+): EvenUpRecord {
   const periodEntries = userStore.entries.filter(
     (entry) =>
       entry.type === "expense" &&
@@ -309,7 +389,10 @@ export function buildDashboard(
     income: 0,
     expenses: 0,
   };
-  const categoryTotals: Record<"expense" | "income", Record<string, CategoryBreakdownItem>> = {
+  const categoryTotals: Record<
+    "expense" | "income",
+    Record<string, CategoryBreakdownItem>
+  > = {
     expense: {},
     income: {},
   };
@@ -324,12 +407,11 @@ export function buildDashboard(
     }
 
     if (entry.category) {
-      const currentCategory =
-        categoryTotals[entry.type][entry.category] ?? {
-          category: entry.category,
-          total: 0,
-          count: 0,
-        };
+      const currentCategory = categoryTotals[entry.type][entry.category] ?? {
+        category: entry.category,
+        total: 0,
+        count: 0,
+      };
 
       currentCategory.total += entry.amount;
       currentCategory.count += 1;
@@ -347,7 +429,9 @@ export function buildDashboard(
     .sort((left, right) => right.startDate.localeCompare(left.startDate));
   const importantDates = [...userStore.importantDates]
     .map((item) => buildImportantDate(item))
-    .sort((left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil));
+    .sort(
+      (left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil),
+    );
   const outstanding = evenUpRecords.reduce((sum, record) => {
     if (record.status.toLowerCase() === "completed") {
       return sum;
@@ -389,7 +473,9 @@ export function buildDashboard(
       nextTriggerDate: null,
     },
     evenUpSummary: {
-      openCount: evenUpRecords.filter((record) => record.status.toLowerCase() !== "completed").length,
+      openCount: evenUpRecords.filter(
+        (record) => record.status.toLowerCase() !== "completed",
+      ).length,
       outstanding: Number(outstanding.toFixed(2)),
     },
   };

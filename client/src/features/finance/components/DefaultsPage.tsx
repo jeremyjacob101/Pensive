@@ -65,10 +65,18 @@ function NotepadEditor({
         value={draft}
       />
       <div className="inline-form-actions">
-        <button className="ghost-action" onClick={() => setDraft(initialValue)} type="button">
+        <button
+          className="ghost-action"
+          onClick={() => setDraft(initialValue)}
+          type="button"
+        >
           Reset
         </button>
-        <button className="save-action account" onClick={() => onSave(draft)} type="button">
+        <button
+          className="save-action account"
+          onClick={() => onSave(draft)}
+          type="button"
+        >
           Save notepad
         </button>
       </div>
@@ -103,7 +111,8 @@ export function DefaultsPage({
   onRenameSubcategory,
   onSaveNotepad,
 }: DefaultsPageProps) {
-  const visibleDefaultCategories = defaultsOverview.categories[activeDefaultsTab];
+  const visibleDefaultCategories =
+    defaultsOverview.categories[activeDefaultsTab];
 
   return (
     <section className="settings-page">
@@ -117,7 +126,9 @@ export function DefaultsPage({
         </button>
       </div>
 
-      {defaultsError ? <div className="status-banner error">{defaultsError}</div> : null}
+      {defaultsError ? (
+        <div className="status-banner error">{defaultsError}</div>
+      ) : null}
       {defaultsMessage ? (
         <div className="status-banner success">{defaultsMessage}</div>
       ) : null}
@@ -226,13 +237,17 @@ export function DefaultsPage({
                     <div className="manage-row sub-row" key={subcategory.id}>
                       <div className="manage-copy">
                         <strong>{subcategory.name}</strong>
-                        <span>{pluralize("entry", subcategory.usageCount)}</span>
+                        <span>
+                          {pluralize("entry", subcategory.usageCount)}
+                        </span>
                       </div>
                       <div className="manage-actions">
                         <button
                           aria-label={`Edit ${subcategory.name}`}
                           className="icon-action edit"
-                          onClick={() => onRenameSubcategory(category, subcategory)}
+                          onClick={() =>
+                            onRenameSubcategory(category, subcategory)
+                          }
                           type="button"
                         >
                           <EditIcon />
@@ -240,7 +255,9 @@ export function DefaultsPage({
                         <button
                           aria-label={`Delete ${subcategory.name}`}
                           className="icon-action danger"
-                          onClick={() => onDeleteSubcategory(category, subcategory)}
+                          onClick={() =>
+                            onDeleteSubcategory(category, subcategory)
+                          }
                           type="button"
                         >
                           <TrashIcon />
@@ -310,7 +327,11 @@ export function DefaultsPage({
               </div>
             ))}
 
-            <button className="create-row" onClick={onAddExpenseKind} type="button">
+            <button
+              className="create-row"
+              onClick={onAddExpenseKind}
+              type="button"
+            >
               <PlusIcon />
               Add expense kind
             </button>
@@ -332,8 +353,12 @@ export function DefaultsPage({
                   <strong>{bill.name}</strong>
                   <span>
                     {[
-                      bill.customerNumber ? `Customer ${bill.customerNumber}` : null,
-                      bill.consumerNumber ? `Consumer ${bill.consumerNumber}` : null,
+                      bill.customerNumber
+                        ? `Customer ${bill.customerNumber}`
+                        : null,
+                      bill.consumerNumber
+                        ? `Consumer ${bill.consumerNumber}`
+                        : null,
                       bill.meterNumber ? `Meter ${bill.meterNumber}` : null,
                     ]
                       .filter(Boolean)
@@ -342,8 +367,12 @@ export function DefaultsPage({
                   {bill.contractAccount || bill.identityNumber || bill.notes ? (
                     <span>
                       {[
-                        bill.contractAccount ? `Contract ${bill.contractAccount}` : null,
-                        bill.identityNumber ? `ID ${bill.identityNumber}` : null,
+                        bill.contractAccount
+                          ? `Contract ${bill.contractAccount}`
+                          : null,
+                        bill.identityNumber
+                          ? `ID ${bill.identityNumber}`
+                          : null,
                         bill.notes,
                       ]
                         .filter(Boolean)
@@ -417,7 +446,11 @@ export function DefaultsPage({
               </div>
             ))}
 
-            <button className="create-row" onClick={onAddImportantDate} type="button">
+            <button
+              className="create-row"
+              onClick={onAddImportantDate}
+              type="button"
+            >
               <PlusIcon />
               Add important date
             </button>
@@ -440,7 +473,10 @@ export function DefaultsPage({
 
         <NotepadEditor
           initialValue={defaultsOverview.notepad.content}
-          key={defaultsOverview.notepad.updatedAt ?? defaultsOverview.notepad.content}
+          key={
+            defaultsOverview.notepad.updatedAt ??
+            defaultsOverview.notepad.content
+          }
           onSave={onSaveNotepad}
         />
       </section>

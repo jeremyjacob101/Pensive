@@ -16,7 +16,9 @@ function getNextEvenUpCode(store: UserStore) {
   const maxNumber = store.evenUpRecords.reduce((currentMax, record) => {
     const match = record.code.match(/(\d+)$/);
     const numeric = Number(match?.[1]);
-    return Number.isFinite(numeric) ? Math.max(currentMax, numeric) : currentMax;
+    return Number.isFinite(numeric)
+      ? Math.max(currentMax, numeric)
+      : currentMax;
   }, 0);
 
   return `EVN${String(maxNumber + 1).padStart(9, "0")}`;
@@ -27,7 +29,10 @@ export async function createRecurringRuleRecord(body: Record<string, unknown>) {
   throw new Error("Recurring rules are display-only right now.");
 }
 
-export async function updateRecurringRuleRecord(ruleId: string, body: Record<string, unknown>) {
+export async function updateRecurringRuleRecord(
+  ruleId: string,
+  body: Record<string, unknown>,
+) {
   void ruleId;
   void body;
   throw new Error("Recurring rules are display-only right now.");
@@ -74,7 +79,10 @@ export async function createEvenUpRecord(body: Record<string, unknown>) {
   });
 }
 
-export async function updateEvenUpRecord(recordId: string, body: Record<string, unknown>) {
+export async function updateEvenUpRecord(
+  recordId: string,
+  body: Record<string, unknown>,
+) {
   return withUserStoreTransaction((store) => {
     const index = findEvenUpRecordIndex(store, recordId);
 

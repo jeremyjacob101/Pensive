@@ -120,7 +120,9 @@ export function useDefaultsActions({
       return;
     }
 
-    if (!window.confirm(`Delete "${account.name}" from your account defaults?`)) {
+    if (
+      !window.confirm(`Delete "${account.name}" from your account defaults?`)
+    ) {
       return;
     }
 
@@ -213,7 +215,11 @@ export function useDefaultsActions({
       return;
     }
 
-    if (!window.confirm(`Delete "${category.name}" from ${category.type} defaults?`)) {
+    if (
+      !window.confirm(
+        `Delete "${category.name}" from ${category.type} defaults?`,
+      )
+    ) {
       return;
     }
 
@@ -504,14 +510,19 @@ export function useDefaultsActions({
     return {
       name: name.trim(),
       customerNumber:
-        window.prompt("Customer number", initialBill?.customerNumber ?? "") ?? "",
+        window.prompt("Customer number", initialBill?.customerNumber ?? "") ??
+        "",
       consumerNumber:
-        window.prompt("Consumer number", initialBill?.consumerNumber ?? "") ?? "",
-      meterNumber: window.prompt("Meter number", initialBill?.meterNumber ?? "") ?? "",
+        window.prompt("Consumer number", initialBill?.consumerNumber ?? "") ??
+        "",
+      meterNumber:
+        window.prompt("Meter number", initialBill?.meterNumber ?? "") ?? "",
       contractAccount:
-        window.prompt("Contract account", initialBill?.contractAccount ?? "") ?? "",
+        window.prompt("Contract account", initialBill?.contractAccount ?? "") ??
+        "",
       identityNumber:
-        window.prompt("Identity number", initialBill?.identityNumber ?? "") ?? "",
+        window.prompt("Identity number", initialBill?.identityNumber ?? "") ??
+        "",
       notes: window.prompt("Notes", initialBill?.notes ?? "") ?? "",
     };
   }
@@ -611,13 +622,18 @@ export function useDefaultsActions({
     setIsDefaultsBusy(true);
 
     try {
-      const [entries, defaults, profile, recurringRules, evenUpRecords] = await Promise.all([
-        requestJson<Entry[]>("/entries", undefined, activeUsername),
-        requestJson<DefaultsOverview>("/defaults", undefined, activeUsername),
-        requestJson<AuthUser>("/profile", undefined, activeUsername),
-        requestJson<RecurringRule[]>("/recurring-rules", undefined, activeUsername),
-        requestJson<EvenUpRecord[]>("/even-up", undefined, activeUsername),
-      ]);
+      const [entries, defaults, profile, recurringRules, evenUpRecords] =
+        await Promise.all([
+          requestJson<Entry[]>("/entries", undefined, activeUsername),
+          requestJson<DefaultsOverview>("/defaults", undefined, activeUsername),
+          requestJson<AuthUser>("/profile", undefined, activeUsername),
+          requestJson<RecurringRule[]>(
+            "/recurring-rules",
+            undefined,
+            activeUsername,
+          ),
+          requestJson<EvenUpRecord[]>("/even-up", undefined, activeUsername),
+        ]);
       const blob = new Blob(
         [
           JSON.stringify(

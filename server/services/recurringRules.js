@@ -9,7 +9,10 @@ import {
 export const RECURRING_ACTIVE_STATUS = "add";
 export const RECURRING_PAUSED_STATUS = "paused";
 
-export function normalizeRecurringStatus(value, fallback = RECURRING_ACTIVE_STATUS) {
+export function normalizeRecurringStatus(
+  value,
+  fallback = RECURRING_ACTIVE_STATUS,
+) {
   const cleaned = cleanOptionalString(value);
 
   if (!cleaned) {
@@ -28,7 +31,9 @@ export function isRecurringRuleActive(ruleOrStatus) {
 }
 
 export function parseRecurringIntervalMonths(frequency) {
-  const normalized = String(frequency ?? "").trim().toLowerCase();
+  const normalized = String(frequency ?? "")
+    .trim()
+    .toLowerCase();
   const match = normalized.match(/(\d+)/);
 
   if (normalized.includes("month")) {
@@ -80,15 +85,20 @@ export function buildRecurringRuleFromBody(body, options = {}) {
       status: normalizeRecurringStatus(body.status, existingRule?.status),
       name,
       amount,
-      frequency: cleanOptionalString(body.frequency ?? existingRule?.frequency) ?? "Monthly",
+      frequency:
+        cleanOptionalString(body.frequency ?? existingRule?.frequency) ??
+        "Monthly",
       dayOfMonth: Math.max(1, Math.min(31, Math.round(dayOfMonth))),
       account: cleanOptionalString(body.account ?? existingRule?.account),
       category: cleanOptionalString(body.category ?? existingRule?.category),
       entryKind:
         type === "income"
           ? null
-          : cleanOptionalString(body.entryKind ?? existingRule?.entryKind) ?? "Regular",
-      counterparty: cleanOptionalString(body.counterparty ?? existingRule?.counterparty),
+          : (cleanOptionalString(body.entryKind ?? existingRule?.entryKind) ??
+            "Regular"),
+      counterparty: cleanOptionalString(
+        body.counterparty ?? existingRule?.counterparty,
+      ),
       notes: cleanOptionalString(body.notes ?? existingRule?.notes),
       startDate,
       createdAt,

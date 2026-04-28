@@ -13,9 +13,12 @@ export function getAdminUserStoreRepository() {
       return snapshot.docs.map((doc) => {
         const rawStore = doc.data();
         const fallbackEmail =
-          typeof rawStore?.profile?.email === "string" ? rawStore.profile.email : null;
+          typeof rawStore?.profile?.email === "string"
+            ? rawStore.profile.email
+            : null;
         const username =
-          typeof rawStore?.profile?.username === "string" && rawStore.profile.username.trim()
+          typeof rawStore?.profile?.username === "string" &&
+          rawStore.profile.username.trim()
             ? rawStore.profile.username
             : doc.id;
 

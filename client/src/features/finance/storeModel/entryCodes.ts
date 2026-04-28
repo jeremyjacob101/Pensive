@@ -23,7 +23,11 @@ function padSuffix(suffix: number) {
   return String(suffix).padStart(SUFFIX_PAD_LENGTH, "0");
 }
 
-export function formatEntryCode(prefix: "EXP" | "INC", serial: number, suffix = 0) {
+export function formatEntryCode(
+  prefix: "EXP" | "INC",
+  serial: number,
+  suffix = 0,
+) {
   return `${prefix}${padSerial(Math.max(1, serial))}-${padSuffix(Math.max(0, suffix))}`;
 }
 
@@ -39,7 +43,12 @@ export function parseEntryCode(value: unknown): ParsedEntryCode | null {
   const serial = Number.parseInt(match[2], 10);
   const suffix = Number.parseInt(match[3] ?? "0", 10);
 
-  if (!Number.isInteger(serial) || serial <= 0 || !Number.isInteger(suffix) || suffix < 0) {
+  if (
+    !Number.isInteger(serial) ||
+    serial <= 0 ||
+    !Number.isInteger(suffix) ||
+    suffix < 0
+  ) {
     return null;
   }
 
@@ -96,7 +105,11 @@ export function getNextSplitEntryCode(
   const maxSuffix = existingEntries.reduce((currentMax, entry) => {
     const parsed = parseEntryCode(entry.entryCode);
 
-    if (!parsed || parsed.prefix !== prefix || parsed.serial !== anchor.serial) {
+    if (
+      !parsed ||
+      parsed.prefix !== prefix ||
+      parsed.serial !== anchor.serial
+    ) {
       return currentMax;
     }
 

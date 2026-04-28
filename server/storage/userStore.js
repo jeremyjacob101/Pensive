@@ -1,9 +1,6 @@
 import { getFirebaseAdminDb } from "../firebaseAdmin.js";
 import { normalizeStoredUserStore } from "../services/normalizers.js";
-import {
-  cleanOptionalString,
-  getUsernameFromEmail,
-} from "../utils/common.js";
+import { cleanOptionalString, getUsernameFromEmail } from "../utils/common.js";
 
 const USER_COLLECTION = "financeUsers";
 

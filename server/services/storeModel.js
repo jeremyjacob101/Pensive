@@ -1,6 +1,4 @@
-import {
-  DEFAULT_COUNTERPARTY_SUGGESTIONS,
-} from "../config/defaultSeeds.js";
+import { DEFAULT_COUNTERPARTY_SUGGESTIONS } from "../config/defaultSeeds.js";
 import {
   cleanOptionalString,
   cleanRequiredString,
@@ -31,7 +29,10 @@ export const PARTIAL_REIMBURSEMENT_TYPES = new Set([
   "split reimbursement",
 ]);
 export const REIMBURSEMENT_TYPES = new Set(["reimbursement", "refund"]);
-export const SHARED_PAYMENT_TYPES = new Set(["shared payment", "split payment"]);
+export const SHARED_PAYMENT_TYPES = new Set([
+  "shared payment",
+  "split payment",
+]);
 export const PARTIAL_SHARED_PAYMENT_TYPES = new Set([
   "partial shared payment",
   "split cost",
@@ -69,7 +70,12 @@ export function parseEntryCode(value) {
   const serial = Number.parseInt(match[2], 10);
   const suffix = Number.parseInt(match[3] ?? "0", 10);
 
-  if (!Number.isInteger(serial) || serial <= 0 || !Number.isInteger(suffix) || suffix < 0) {
+  if (
+    !Number.isInteger(serial) ||
+    serial <= 0 ||
+    !Number.isInteger(suffix) ||
+    suffix < 0
+  ) {
     return null;
   }
 
@@ -81,7 +87,12 @@ export function parseEntryCode(value) {
   };
 }
 
-export function normalizeEntryCode(value, type, fallbackSerial, fallbackSuffix = 0) {
+export function normalizeEntryCode(
+  value,
+  type,
+  fallbackSerial,
+  fallbackSuffix = 0,
+) {
   const parsed = parseEntryCode(value);
 
   if (parsed && parsed.prefix === getPrefix(type)) {
@@ -117,7 +128,11 @@ export function getNextSplitEntryCode(existingEntries, type, anchorEntryCode) {
   const maxSuffix = existingEntries.reduce((currentMax, entry) => {
     const parsed = parseEntryCode(entry.entryCode);
 
-    if (!parsed || parsed.prefix !== prefix || parsed.serial !== anchor.serial) {
+    if (
+      !parsed ||
+      parsed.prefix !== prefix ||
+      parsed.serial !== anchor.serial
+    ) {
       return currentMax;
     }
 
@@ -148,23 +163,28 @@ export function filterEntries(userStore, filters = {}) {
 }
 
 function getMostRecentEntryCode(existingEntries, type) {
-  return sortEntries(existingEntries.filter((entry) => entry.type === type))[0]?.entryCode ?? null;
+  return (
+    sortEntries(existingEntries.filter((entry) => entry.type === type))[0]
+      ?.entryCode ?? null
+  );
 }
 
-export function buildEntryFromBody(
-  body,
-  options = {},
-) {
+export function buildEntryFromBody(body, options = {}) {
   const { forcedType, existingEntry, existingEntries = [], now } = options;
   const timestamp = now ?? new Date().toISOString();
   const fallbackDate = existingEntry?.date ?? timestamp.slice(0, 10);
   const fallbackCreatedAt = existingEntry?.createdAt ?? timestamp;
-  const type = forcedType ?? normalizeType(body.type, existingEntry?.type ?? "expense");
+  const type =
+    forcedType ?? normalizeType(body.type, existingEntry?.type ?? "expense");
   const rawNameValue = getValueFromBody(body, "name", existingEntry?.name);
   const startingName = cleanOptionalString(rawNameValue) || "";
   const sameGroup = !existingEntry && startingName.startsWith("SAME ");
-  const name = cleanOptionalString(sameGroup ? startingName.slice(5) : startingName);
-  const amount = parseAmount(getValueFromBody(body, "amount", existingEntry?.amount));
+  const name = cleanOptionalString(
+    sameGroup ? startingName.slice(5) : startingName,
+  );
+  const amount = parseAmount(
+    getValueFromBody(body, "amount", existingEntry?.amount),
+  );
   const date = normalizeDateInput(
     getValueFromBody(body, "date", existingEntry?.date),
     fallbackDate,
@@ -173,7 +193,9 @@ export function buildEntryFromBody(
     getValueFromBody(body, "category", existingEntry?.category),
   );
   const subcategoryValue = cleanOptionalString(
-    getValueFromBody(body, "subcategory", existingEntry?.subcategory, ["subCategory"]),
+    getValueFromBody(body, "subcategory", existingEntry?.subcategory, [
+      "subCategory",
+    ]),
   );
   const accountValue = cleanOptionalString(
     getValueFromBody(body, "account", existingEntry?.account),
@@ -185,7 +207,10 @@ export function buildEntryFromBody(
     getValueFromBody(body, "entryKind", existingEntry?.entryKind, ["kind"]),
   );
   const counterpartyValue = cleanOptionalString(
-    getValueFromBody(body, "counterparty", existingEntry?.counterparty, ["paidTo", "paidBy"]),
+    getValueFromBody(body, "counterparty", existingEntry?.counterparty, [
+      "paidTo",
+      "paidBy",
+    ]),
   );
   let commentsValue = cleanOptionalString(
     getValueFromBody(body, "comments", existingEntry?.comments),
@@ -205,8 +230,8 @@ export function buildEntryFromBody(
 
   const entryKind =
     type === "expense"
-      ? entryKindValue ?? existingEntry?.entryKind ?? "Regular"
-      : entryKindValue ?? null;
+      ? (entryKindValue ?? existingEntry?.entryKind ?? "Regular")
+      : (entryKindValue ?? null);
 
   if (
     type === "expense" &&
@@ -221,11 +246,12 @@ export function buildEntryFromBody(
   const allocationMonths =
     type === "income"
       ? normalizeAllocationMonths(
-          getValueFromBody(body, "allocationMonths", existingEntry?.allocationMonths, [
-            "monthYear",
-            "monthLabel",
-            "allocationMonthsText",
-          ]),
+          getValueFromBody(
+            body,
+            "allocationMonths",
+            existingEntry?.allocationMonths,
+            ["monthYear", "monthLabel", "allocationMonthsText"],
+          ),
           date,
         )
       : [getMonthLabelFromDate(date)];
@@ -243,7 +269,11 @@ export function buildEntryFromBody(
           const parsedRecentCode = parseEntryCode(recentEntryCode);
 
           return parsedRecentCode
-            ? getNextSplitEntryCode(existingEntries, type, parsedRecentCode.canonical)
+            ? getNextSplitEntryCode(
+                existingEntries,
+                type,
+                parsedRecentCode.canonical,
+              )
             : getNextEntryCode(existingEntries, type);
         })()
       : getNextEntryCode(existingEntries, type));
@@ -265,10 +295,18 @@ export function buildEntryFromBody(
       entryCode,
       allocationMonths,
       linkedRecurringRuleId: cleanOptionalString(
-        getValueFromBody(body, "linkedRecurringRuleId", existingEntry?.linkedRecurringRuleId),
+        getValueFromBody(
+          body,
+          "linkedRecurringRuleId",
+          existingEntry?.linkedRecurringRuleId,
+        ),
       ),
       recurringOccurrenceKey: cleanOptionalString(
-        getValueFromBody(body, "recurringOccurrenceKey", existingEntry?.recurringOccurrenceKey),
+        getValueFromBody(
+          body,
+          "recurringOccurrenceKey",
+          existingEntry?.recurringOccurrenceKey,
+        ),
       ),
       createdAt: fallbackCreatedAt,
       updatedAt: timestamp,
@@ -281,10 +319,16 @@ export function validateMonth(month) {
 }
 
 export function buildProfileFromBody(body, existingProfile) {
-  const fullName = cleanRequiredString(getValueFromBody(body, "fullName", existingProfile.fullName));
-  const email = normalizeEmail(getValueFromBody(body, "email", existingProfile.email));
+  const fullName = cleanRequiredString(
+    getValueFromBody(body, "fullName", existingProfile.fullName),
+  );
+  const email = normalizeEmail(
+    getValueFromBody(body, "email", existingProfile.email),
+  );
   const pictureUrl = cleanOptionalString(
-    getValueFromBody(body, "pictureUrl", existingProfile.pictureUrl, ["picture"]),
+    getValueFromBody(body, "pictureUrl", existingProfile.pictureUrl, [
+      "picture",
+    ]),
   );
 
   if (!fullName) {
@@ -294,7 +338,12 @@ export function buildProfileFromBody(body, existingProfile) {
   const ageInput = getValueFromBody(body, "age", existingProfile.age);
   const age = normalizeAge(ageInput);
 
-  if (ageInput !== undefined && ageInput !== null && ageInput !== "" && age === null) {
+  if (
+    ageInput !== undefined &&
+    ageInput !== null &&
+    ageInput !== "" &&
+    age === null
+  ) {
     return { error: "age must be a whole number between 0 and 130" };
   }
 
@@ -310,15 +359,27 @@ export function buildProfileFromBody(body, existingProfile) {
   };
 }
 
-function getNextRecurringOccurrence(rule, now = new Date(), existingEntries = []) {
+function getNextRecurringOccurrence(
+  rule,
+  now = new Date(),
+  existingEntries = [],
+) {
   const intervalMonths = parseRecurringIntervalMonths(rule.frequency);
   const start = new Date(`${rule.startDate}T00:00:00`);
   const startingMonth = new Date(start.getFullYear(), start.getMonth(), 1);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   for (let offset = 0; offset < 48; offset += intervalMonths) {
-    const month = new Date(startingMonth.getFullYear(), startingMonth.getMonth() + offset, 1);
-    const dueDate = buildOccurrenceDate(month.getFullYear(), month.getMonth(), rule.dayOfMonth);
+    const month = new Date(
+      startingMonth.getFullYear(),
+      startingMonth.getMonth() + offset,
+      1,
+    );
+    const dueDate = buildOccurrenceDate(
+      month.getFullYear(),
+      month.getMonth(),
+      rule.dayOfMonth,
+    );
     const dueDateKey = formatLocalDateKey(dueDate);
 
     if (dueDateKey < rule.startDate) {
@@ -327,7 +388,11 @@ function getNextRecurringOccurrence(rule, now = new Date(), existingEntries = []
 
     if (
       dueDate >= today &&
-      !existingEntries.some((entry) => entry.recurringOccurrenceKey === buildOccurrenceKey(rule.id, dueDateKey))
+      !existingEntries.some(
+        (entry) =>
+          entry.recurringOccurrenceKey ===
+          buildOccurrenceKey(rule.id, dueDateKey),
+      )
     ) {
       return dueDateKey;
     }
@@ -387,10 +452,16 @@ function getRecurringRuleResponses(userStore, now = new Date()) {
 
 export function buildReferenceData(userStore) {
   const entryAccounts = userStore.entries.map((entry) => entry.account);
-  const defaultAccounts = userStore.defaults.accounts.map((account) => account.name);
+  const defaultAccounts = userStore.defaults.accounts.map(
+    (account) => account.name,
+  );
   const categoryValues = {
-    expense: new Set(userStore.defaults.categories.expense.map((category) => category.name)),
-    income: new Set(userStore.defaults.categories.income.map((category) => category.name)),
+    expense: new Set(
+      userStore.defaults.categories.expense.map((category) => category.name),
+    ),
+    income: new Set(
+      userStore.defaults.categories.income.map((category) => category.name),
+    ),
   };
   const subcategoryValues = {
     expense: {},
@@ -448,8 +519,12 @@ export function buildReferenceData(userStore) {
   return {
     accounts: uniqueSortedStrings([...defaultAccounts, ...entryAccounts]),
     categories: {
-      expense: [...categoryValues.expense].sort((left, right) => left.localeCompare(right)),
-      income: [...categoryValues.income].sort((left, right) => left.localeCompare(right)),
+      expense: [...categoryValues.expense].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+      income: [...categoryValues.income].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     },
     subcategories: {
       expense: Object.fromEntries(
@@ -463,10 +538,16 @@ export function buildReferenceData(userStore) {
         ),
       ),
     },
-    expenseKinds: [...expenseKindValues].sort((left, right) => left.localeCompare(right)),
+    expenseKinds: [...expenseKindValues].sort((left, right) =>
+      left.localeCompare(right),
+    ),
     counterparties: {
-      expense: [...counterpartyValues.expense].sort((left, right) => left.localeCompare(right)),
-      income: [...counterpartyValues.income].sort((left, right) => left.localeCompare(right)),
+      expense: [...counterpartyValues.expense].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+      income: [...counterpartyValues.income].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     },
   };
 }
@@ -490,8 +571,16 @@ export function applyRecurringRules(userStore, now = new Date()) {
     const startingMonth = new Date(start.getFullYear(), start.getMonth(), 1);
 
     for (let offset = 0; offset < 36; offset += intervalMonths) {
-      const month = new Date(startingMonth.getFullYear(), startingMonth.getMonth() + offset, 1);
-      const dueDate = buildOccurrenceDate(month.getFullYear(), month.getMonth(), rule.dayOfMonth);
+      const month = new Date(
+        startingMonth.getFullYear(),
+        startingMonth.getMonth() + offset,
+        1,
+      );
+      const dueDate = buildOccurrenceDate(
+        month.getFullYear(),
+        month.getMonth(),
+        rule.dayOfMonth,
+      );
 
       if (dueDate > today) {
         break;
@@ -548,7 +637,11 @@ export function applyRecurringRules(userStore, now = new Date()) {
     changed: createdEntries.length > 0,
     createdEntries,
     triggeredRuleIds: [
-      ...new Set(createdEntries.map((entry) => entry.linkedRecurringRuleId).filter(Boolean)),
+      ...new Set(
+        createdEntries
+          .map((entry) => entry.linkedRecurringRuleId)
+          .filter(Boolean),
+      ),
     ],
   };
 }
@@ -562,35 +655,68 @@ export function buildRecurringRunResponse(recurringResult) {
 }
 
 function getExpenseKindKey(value) {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function getEvenUpContribution(entry) {
   const kind = getExpenseKindKey(entry.entryKind);
 
   if (REIMBURSEMENT_TYPES.has(kind)) {
-    return { getBackAmount: entry.amount, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: entry.amount,
+      halfGetBackAmount: 0,
+      giveBackAmount: 0,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (PARTIAL_REIMBURSEMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: entry.amount, giveBackAmount: 0, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: entry.amount,
+      giveBackAmount: 0,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (SHARED_PAYMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: entry.amount, halfGiveBackAmount: 0 };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: 0,
+      giveBackAmount: entry.amount,
+      halfGiveBackAmount: 0,
+    };
   }
 
   if (PARTIAL_SHARED_PAYMENT_TYPES.has(kind)) {
-    return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: entry.amount };
+    return {
+      getBackAmount: 0,
+      halfGetBackAmount: 0,
+      giveBackAmount: 0,
+      halfGiveBackAmount: entry.amount,
+    };
   }
 
-  return { getBackAmount: 0, halfGetBackAmount: 0, giveBackAmount: 0, halfGiveBackAmount: 0 };
+  return {
+    getBackAmount: 0,
+    halfGetBackAmount: 0,
+    giveBackAmount: 0,
+    halfGiveBackAmount: 0,
+  };
 }
 
 function buildImportantDate(item, today = new Date()) {
-  const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const current = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
   const target = new Date(`${item.date}T00:00:00`);
-  const daysUntil = Math.round((target.getTime() - current.getTime()) / 86400000);
+  const daysUntil = Math.round(
+    (target.getTime() - current.getTime()) / 86400000,
+  );
 
   return {
     ...item,
@@ -644,7 +770,8 @@ function buildEvenUpRecord(record, userStore) {
 }
 
 export function getAccountUsageCount(userStore, accountName) {
-  return userStore.entries.filter((entry) => entry.account === accountName).length;
+  return userStore.entries.filter((entry) => entry.account === accountName)
+    .length;
 }
 
 function getCategoryUsageCount(userStore, type, categoryName) {
@@ -653,7 +780,12 @@ function getCategoryUsageCount(userStore, type, categoryName) {
   ).length;
 }
 
-export function getSubcategoryUsageCount(userStore, type, categoryName, subcategoryName) {
+export function getSubcategoryUsageCount(
+  userStore,
+  type,
+  categoryName,
+  subcategoryName,
+) {
   return userStore.entries.filter(
     (entry) =>
       entry.type === type &&
@@ -724,8 +856,12 @@ export function buildDefaultsOverview(userStore) {
     })),
     importantDates: [...userStore.importantDates]
       .map((item) => buildImportantDate(item))
-      .sort((left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil)),
-    bills: [...userStore.bills].sort((left, right) => left.name.localeCompare(right.name)),
+      .sort(
+        (left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil),
+      ),
+    bills: [...userStore.bills].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    ),
     notepad: userStore.notepad,
   };
 }
@@ -756,12 +892,11 @@ export function buildDashboard(userStore, month = getCurrentMonth()) {
     }
 
     if (entry.category) {
-      const currentCategory =
-        categoryTotals[entry.type][entry.category] ?? {
-          category: entry.category,
-          total: 0,
-          count: 0,
-        };
+      const currentCategory = categoryTotals[entry.type][entry.category] ?? {
+        category: entry.category,
+        total: 0,
+        count: 0,
+      };
 
       currentCategory.total += entry.amount;
       currentCategory.count += 1;
@@ -779,9 +914,12 @@ export function buildDashboard(userStore, month = getCurrentMonth()) {
     .sort((left, right) => right.startDate.localeCompare(left.startDate));
   const importantDates = [...userStore.importantDates]
     .map((item) => buildImportantDate(item))
-    .sort((left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil));
+    .sort(
+      (left, right) => Math.abs(left.daysUntil) - Math.abs(right.daysUntil),
+    );
   const generatedThisMonth = userStore.entries.filter(
-    (entry) => entry.linkedRecurringRuleId && entry.date.startsWith(`${month}-`),
+    (entry) =>
+      entry.linkedRecurringRuleId && entry.date.startsWith(`${month}-`),
   ).length;
   const nextRule = recurringRules.find((rule) => rule.nextTriggerDate);
   const upcomingCount = recurringRules.filter((rule) => {
@@ -827,14 +965,17 @@ export function buildDashboard(userStore, month = getCurrentMonth()) {
     evenUpRecords,
     importantDates,
     recurringSummary: {
-      activeCount: recurringRules.filter((rule) => isRecurringRuleActive(rule)).length,
+      activeCount: recurringRules.filter((rule) => isRecurringRuleActive(rule))
+        .length,
       upcomingCount,
       generatedThisMonth,
       nextRuleName: nextRule?.name ?? null,
       nextTriggerDate: nextRule?.nextTriggerDate ?? null,
     },
     evenUpSummary: {
-      openCount: evenUpRecords.filter((record) => record.status.toLowerCase() !== "completed").length,
+      openCount: evenUpRecords.filter(
+        (record) => record.status.toLowerCase() !== "completed",
+      ).length,
       outstanding: Number(outstanding.toFixed(2)),
     },
   };

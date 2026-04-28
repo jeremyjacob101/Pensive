@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { requestJson } from "../../../lib/firebaseApi";
 import {
   dedupe,
@@ -34,7 +40,7 @@ function toDraft(entry: Entry, referenceData: ReferenceData): Draft {
     allocationMonthsText:
       entry.type === "income"
         ? entry.allocationMonths.join(", ")
-        : entry.allocationMonths[0] ?? "",
+        : (entry.allocationMonths[0] ?? ""),
   };
 }
 
@@ -51,7 +57,9 @@ export function useEntryComposer({
     getInitialDraft("expense", fallbackReferenceData),
   );
   const [activeComposer, setActiveComposer] = useState<EntryType | null>(null);
-  const [closingComposer, setClosingComposer] = useState<EntryType | null>(null);
+  const [closingComposer, setClosingComposer] = useState<EntryType | null>(
+    null,
+  );
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [isEntrySaving, setIsEntrySaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -72,8 +80,12 @@ export function useEntryComposer({
         ...fallbackReferenceData.expenseKinds,
       ]);
       const nextSubcategories = dedupe([
-        ...(referenceData.subcategories[currentDraft.type][currentDraft.category] ?? []),
-        ...(fallbackReferenceData.subcategories[currentDraft.type][currentDraft.category] ?? []),
+        ...(referenceData.subcategories[currentDraft.type][
+          currentDraft.category
+        ] ?? []),
+        ...(fallbackReferenceData.subcategories[currentDraft.type][
+          currentDraft.category
+        ] ?? []),
       ]);
 
       return {
@@ -89,9 +101,9 @@ export function useEntryComposer({
           : getDefaultAccount(referenceData),
         entryKind: nextExpenseKinds.includes(currentDraft.entryKind)
           ? currentDraft.entryKind
-          : referenceData.expenseKinds[0] ??
+          : (referenceData.expenseKinds[0] ??
             fallbackReferenceData.expenseKinds[0] ??
-            "Regular",
+            "Regular"),
       };
     });
   }, [referenceData]);
@@ -219,7 +231,8 @@ export function useEntryComposer({
             date: draft.date,
             account: draft.account || null,
             notes: draft.notes.trim() || null,
-            entryKind: draft.type === "expense" ? draft.entryKind || null : null,
+            entryKind:
+              draft.type === "expense" ? draft.entryKind || null : null,
             counterparty: draft.counterparty.trim() || null,
             comments: draft.comments.trim() || null,
             allocationMonths:

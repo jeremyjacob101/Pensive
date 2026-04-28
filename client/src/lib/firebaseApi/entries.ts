@@ -1,4 +1,7 @@
-import { buildEntryFromBody, sortEntries } from "../../features/finance/storeModel";
+import {
+  buildEntryFromBody,
+  sortEntries,
+} from "../../features/finance/storeModel";
 import { withUserStoreTransaction } from "./store";
 
 export async function createEntryRecord(body: Record<string, unknown>) {

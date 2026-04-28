@@ -1,0 +1,11 @@
+{
+  "name": "pensive-react-node",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.7.4"
+  }
+}

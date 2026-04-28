@@ -25,7 +25,11 @@ export function TopBar({
     <header className="topbar">
       <div>
         <p className="eyebrow">Finance system</p>
-        <h1>{currentUser ? "Household finance system" : "Household finance system"}</h1>
+        <h1>
+          {currentUser
+            ? "Household finance system"
+            : "Household finance system"}
+        </h1>
       </div>
 
       <div className="topbar-actions">

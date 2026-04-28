@@ -22,7 +22,10 @@ type UseRecurringManagerOptions = {
   onRequireAuth: () => void;
 };
 
-function toRecurringDraft(rule: RecurringRule, availableExpenseKinds: string[]): RecurringRuleDraft {
+function toRecurringDraft(
+  rule: RecurringRule,
+  availableExpenseKinds: string[],
+): RecurringRuleDraft {
   return {
     id: rule.id,
     type: rule.type,
@@ -35,7 +38,7 @@ function toRecurringDraft(rule: RecurringRule, availableExpenseKinds: string[]):
     category: rule.category ?? "",
     entryKind:
       rule.type === "expense"
-        ? rule.entryKind ?? availableExpenseKinds[0] ?? "Regular"
+        ? (rule.entryKind ?? availableExpenseKinds[0] ?? "Regular")
         : "",
     counterparty: rule.counterparty ?? "",
     notes: rule.notes ?? "",
@@ -50,7 +53,8 @@ export function useRecurringManager({
   onRefresh,
   onRequireAuth,
 }: UseRecurringManagerOptions) {
-  const [recurringDraft, setRecurringDraft] = useState<RecurringRuleDraft | null>(null);
+  const [recurringDraft, setRecurringDraft] =
+    useState<RecurringRuleDraft | null>(null);
   const [isRecurringSaving, setIsRecurringSaving] = useState(false);
   const [evenUpDraft, setEvenUpDraft] = useState<EvenUpDraft | null>(null);
   const [isEvenUpSaving, setIsEvenUpSaving] = useState(false);
@@ -86,7 +90,9 @@ export function useRecurringManager({
           type: nextType,
           category: getDefaultCategory(nextType, referenceData),
           entryKind:
-            nextType === "expense" ? availableExpenseKinds[0] ?? "Regular" : "",
+            nextType === "expense"
+              ? (availableExpenseKinds[0] ?? "Regular")
+              : "",
         };
       }
 
@@ -154,7 +160,9 @@ export function useRecurringManager({
         account: recurringDraft.account.trim() || null,
         category: recurringDraft.category.trim() || null,
         entryKind:
-          recurringDraft.type === "expense" ? recurringDraft.entryKind.trim() || null : null,
+          recurringDraft.type === "expense"
+            ? recurringDraft.entryKind.trim() || null
+            : null,
         counterparty: recurringDraft.counterparty.trim() || null,
         notes: recurringDraft.notes.trim() || null,
         startDate: recurringDraft.startDate,
@@ -179,7 +187,9 @@ export function useRecurringManager({
       onRefresh();
     } catch (error) {
       setActionError(
-        error instanceof Error ? error.message : "Unable to save recurring rule.",
+        error instanceof Error
+          ? error.message
+          : "Unable to save recurring rule.",
       );
     } finally {
       setIsRecurringSaving(false);
@@ -212,7 +222,9 @@ export function useRecurringManager({
         onRefresh();
       } catch (error) {
         setActionError(
-          error instanceof Error ? error.message : "Unable to delete recurring rule.",
+          error instanceof Error
+            ? error.message
+            : "Unable to delete recurring rule.",
         );
       }
     })();
@@ -242,7 +254,9 @@ export function useRecurringManager({
         );
         if (recurringDraft?.id === rule.id) {
           setRecurringDraft((currentDraft) =>
-            currentDraft ? { ...currentDraft, status: nextStatus } : currentDraft,
+            currentDraft
+              ? { ...currentDraft, status: nextStatus }
+              : currentDraft,
           );
         }
         setSaveMessage(
@@ -251,7 +265,9 @@ export function useRecurringManager({
         onRefresh();
       } catch (error) {
         setActionError(
-          error instanceof Error ? error.message : "Unable to update recurring rule.",
+          error instanceof Error
+            ? error.message
+            : "Unable to update recurring rule.",
         );
       }
     })();
@@ -283,7 +299,9 @@ export function useRecurringManager({
       onRefresh();
     } catch (error) {
       setActionError(
-        error instanceof Error ? error.message : "Unable to run recurring rules.",
+        error instanceof Error
+          ? error.message
+          : "Unable to run recurring rules.",
       );
     } finally {
       setIsRecurringSaving(false);
@@ -389,7 +407,9 @@ export function useRecurringManager({
         onRefresh();
       } catch (error) {
         setActionError(
-          error instanceof Error ? error.message : "Unable to delete settlement.",
+          error instanceof Error
+            ? error.message
+            : "Unable to delete settlement.",
         );
       }
     })();

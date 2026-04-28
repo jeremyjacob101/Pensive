@@ -95,6 +95,9 @@ export function getUserInitials(user: AuthUser | null) {
     .join("");
 }
 
-export function getFallbackSubcategories(type: "expense" | "income", category: string) {
+export function getFallbackSubcategories(
+  type: "expense" | "income",
+  category: string,
+) {
   return fallbackReferenceData.subcategories[type][category] ?? [];
 }

@@ -7,10 +7,7 @@ import { FloatingActions } from "./features/finance/components/FloatingActions";
 import { PageNav } from "./features/finance/components/PageNav";
 import { TopBar } from "./features/finance/components/TopBar";
 import { TransactionsPage } from "./features/finance/components/TransactionsPage";
-import {
-  dedupe,
-  fallbackReferenceData,
-} from "./features/finance/fallbacks";
+import { dedupe, fallbackReferenceData } from "./features/finance/fallbacks";
 import { useDefaultsActions } from "./features/finance/app/useDefaultsActions";
 import { useEntryComposer } from "./features/finance/app/useEntryComposer";
 import { useFinanceAuth } from "./features/finance/app/useFinanceAuth";
@@ -187,7 +184,9 @@ export default function App() {
           }
         }}
         onToggleDefaults={
-          activePageRoute === "categories" ? closeDefaultsManager : openDefaultsManager
+          activePageRoute === "categories"
+            ? closeDefaultsManager
+            : openDefaultsManager
         }
       />
 
@@ -283,8 +282,8 @@ export default function App() {
             <p className="eyebrow">Sign in required</p>
             <h2>Your dashboard is tied to your username</h2>
             <p className="auth-helper">
-              Create an account or sign in to load your own entries,
-              categories, and account profile.
+              Create an account or sign in to load your own entries, categories,
+              and account profile.
             </p>
             <button
               className="primary-inline-button"

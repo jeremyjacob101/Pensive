@@ -1,11 +1,21 @@
-import { getDoc, runTransaction, setDoc, type Transaction } from "firebase/firestore";
+import {
+  getDoc,
+  runTransaction,
+  setDoc,
+  type Transaction,
+} from "firebase/firestore";
 import {
   cleanOptionalString,
   normalizeStoredUserStore,
   type UserStore,
 } from "../../features/finance/storeModel";
 import { db } from "../../firebase";
-import { getUserRef, getUsernameFromEmail, requireAuthenticatedUser, type FirebaseUser } from "./shared";
+import {
+  getUserRef,
+  getUsernameFromEmail,
+  requireAuthenticatedUser,
+  type FirebaseUser,
+} from "./shared";
 
 export async function getUserStoreForUser(user: FirebaseUser) {
   const snap = await getDoc(getUserRef(user.uid));

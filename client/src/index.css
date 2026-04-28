@@ -187,7 +187,11 @@ h3 {
 }
 
 .summary-card {
-  background: linear-gradient(180deg, rgba(43, 138, 91, 0.05), rgba(204, 108, 47, 0.04));
+  background: linear-gradient(
+    180deg,
+    rgba(43, 138, 91, 0.05),
+    rgba(204, 108, 47, 0.04)
+  );
 }
 
 .summary-card {
@@ -592,7 +596,11 @@ h3 {
 .avatar-fallback {
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(255, 145, 82, 0.24), rgba(255, 111, 159, 0.22));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 145, 82, 0.24),
+    rgba(255, 111, 159, 0.22)
+  );
   color: var(--text-main);
   font-size: 1.5rem;
   font-weight: 800;
@@ -1515,7 +1523,6 @@ h3 {
     width: calc(100% - 16px);
     max-height: calc(100vh - 16px);
   }
-
 }
 
 @keyframes button-return-mobile {

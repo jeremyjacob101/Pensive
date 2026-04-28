@@ -7,12 +7,17 @@ import {
   type StoredImportantDate,
   type UserStore,
 } from "../../features/finance/storeModel";
-import type { DefaultExpenseKind, ImportantDate } from "../../features/finance/types";
+import type {
+  DefaultExpenseKind,
+  ImportantDate,
+} from "../../features/finance/types";
 import { DEFAULT_EXPENSE_KINDS } from "../../features/finance/defaultSeeds";
 import { withUserStoreTransaction } from "./store";
 
 function findExpenseKindIndex(userStore: UserStore, kindId: string) {
-  return userStore.defaults.expenseKinds.findIndex((kind) => kind.id === kindId);
+  return userStore.defaults.expenseKinds.findIndex(
+    (kind) => kind.id === kindId,
+  );
 }
 
 function findImportantDateIndex(userStore: UserStore, dateId: string) {
@@ -24,9 +29,10 @@ const SEEDED_EXPENSE_KIND_NAMES = new Set(
 );
 
 function removeHiddenSeedExpenseKind(userStore: UserStore, kindName: string) {
-  userStore.defaults.hiddenSeedExpenseKinds = userStore.defaults.hiddenSeedExpenseKinds.filter(
-    (hiddenName) => hiddenName !== kindName.toLowerCase(),
-  );
+  userStore.defaults.hiddenSeedExpenseKinds =
+    userStore.defaults.hiddenSeedExpenseKinds.filter(
+      (hiddenName) => hiddenName !== kindName.toLowerCase(),
+    );
 }
 
 export async function createExpenseKindRecord(body: Record<string, unknown>) {
@@ -54,7 +60,9 @@ export async function createExpenseKindRecord(body: Record<string, unknown>) {
     };
 
     store.defaults.expenseKinds.push(kind);
-    store.defaults.expenseKinds.sort((left, right) => left.name.localeCompare(right.name));
+    store.defaults.expenseKinds.sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
     removeHiddenSeedExpenseKind(store, kind.name);
 
     return {
@@ -64,7 +72,10 @@ export async function createExpenseKindRecord(body: Record<string, unknown>) {
   });
 }
 
-export async function updateExpenseKindRecord(kindId: string, body: Record<string, unknown>) {
+export async function updateExpenseKindRecord(
+  kindId: string,
+  body: Record<string, unknown>,
+) {
   return withUserStoreTransaction((store) => {
     const kindIndex = findExpenseKindIndex(store, kindId);
 
@@ -80,7 +91,8 @@ export async function updateExpenseKindRecord(kindId: string, body: Record<strin
 
     const duplicate = store.defaults.expenseKinds.find(
       (kind, index) =>
-        index !== kindIndex && kind.name.toLowerCase() === nextName.toLowerCase(),
+        index !== kindIndex &&
+        kind.name.toLowerCase() === nextName.toLowerCase(),
     );
 
     if (duplicate) {
@@ -96,7 +108,9 @@ export async function updateExpenseKindRecord(kindId: string, body: Record<strin
       name: nextName,
       updatedAt: now,
     };
-    store.defaults.expenseKinds.sort((left, right) => left.name.localeCompare(right.name));
+    store.defaults.expenseKinds.sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
     removeHiddenSeedExpenseKind(store, previousName);
     removeHiddenSeedExpenseKind(store, nextName);
     store.entries = store.entries.map((entry) =>
@@ -118,7 +132,9 @@ export async function updateExpenseKindRecord(kindId: string, body: Record<strin
         : rule,
     );
 
-    const updated = store.defaults.expenseKinds.find((kind) => kind.id === kindId);
+    const updated = store.defaults.expenseKinds.find(
+      (kind) => kind.id === kindId,
+    );
 
     if (!updated) {
       throw new Error("expense kind not found");
@@ -131,7 +147,10 @@ export async function updateExpenseKindRecord(kindId: string, body: Record<strin
   });
 }
 
-export async function deleteExpenseKindRecord(kindId: string, clearEntries: boolean) {
+export async function deleteExpenseKindRecord(
+  kindId: string,
+  clearEntries: boolean,
+) {
   return withUserStoreTransaction((store) => {
     const kindIndex = findExpenseKindIndex(store, kindId);
 
@@ -215,7 +234,10 @@ export async function createImportantDateRecord(body: Record<string, unknown>) {
   });
 }
 
-export async function updateImportantDateRecord(dateId: string, body: Record<string, unknown>) {
+export async function updateImportantDateRecord(
+  dateId: string,
+  body: Record<string, unknown>,
+) {
   return withUserStoreTransaction((store) => {
     const index = findImportantDateIndex(store, dateId);
 
@@ -233,7 +255,8 @@ export async function updateImportantDateRecord(dateId: string, body: Record<str
 
     const duplicate = store.importantDates.find(
       (item, candidateIndex) =>
-        candidateIndex !== index && item.name.toLowerCase() === nextName.toLowerCase(),
+        candidateIndex !== index &&
+        item.name.toLowerCase() === nextName.toLowerCase(),
     );
 
     if (duplicate) {

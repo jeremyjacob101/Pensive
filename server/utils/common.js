@@ -138,7 +138,12 @@ export function getDateFromDateKey(dateKey) {
   return new Date(`${dateKey}T12:00:00.000Z`);
 }
 
-export function getValueFromBody(body, primaryKey, fallbackValue, aliases = []) {
+export function getValueFromBody(
+  body,
+  primaryKey,
+  fallbackValue,
+  aliases = [],
+) {
   if (hasOwn(body, primaryKey)) {
     return body[primaryKey];
   }

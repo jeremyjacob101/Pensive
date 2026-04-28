@@ -56,15 +56,15 @@ export const fallbackDefaultsOverview: DefaultsOverview = {
       createdAt: "",
       updatedAt: "",
       usageCount: 0,
-      subcategories: (fallbackReferenceData.subcategories.expense[name] ?? []).map(
-        (subcategory) => ({
-          id: toFallbackId("fallback-expense-sub", subcategory),
-          name: subcategory,
-          createdAt: "",
-          updatedAt: "",
-          usageCount: 0,
-        }),
-      ),
+      subcategories: (
+        fallbackReferenceData.subcategories.expense[name] ?? []
+      ).map((subcategory) => ({
+        id: toFallbackId("fallback-expense-sub", subcategory),
+        name: subcategory,
+        createdAt: "",
+        updatedAt: "",
+        usageCount: 0,
+      })),
     })),
     income: fallbackReferenceData.categories.income.map((name) => ({
       id: toFallbackId("fallback-income", name),
@@ -73,15 +73,15 @@ export const fallbackDefaultsOverview: DefaultsOverview = {
       createdAt: "",
       updatedAt: "",
       usageCount: 0,
-      subcategories: (fallbackReferenceData.subcategories.income[name] ?? []).map(
-        (subcategory) => ({
-          id: toFallbackId("fallback-income-sub", subcategory),
-          name: subcategory,
-          createdAt: "",
-          updatedAt: "",
-          usageCount: 0,
-        }),
-      ),
+      subcategories: (
+        fallbackReferenceData.subcategories.income[name] ?? []
+      ).map((subcategory) => ({
+        id: toFallbackId("fallback-income-sub", subcategory),
+        name: subcategory,
+        createdAt: "",
+        updatedAt: "",
+        usageCount: 0,
+      })),
     })),
   },
   expenseKinds: fallbackReferenceData.expenseKinds.map((name) => ({
@@ -112,15 +112,24 @@ export function dedupe(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
-export function getDefaultCategory(type: EntryType, referenceData: ReferenceData) {
-  return referenceData.categories[type][0] ?? fallbackReferenceData.categories[type][0];
+export function getDefaultCategory(
+  type: EntryType,
+  referenceData: ReferenceData,
+) {
+  return (
+    referenceData.categories[type][0] ??
+    fallbackReferenceData.categories[type][0]
+  );
 }
 
 export function getDefaultAccount(referenceData: ReferenceData) {
   return referenceData.accounts[0] ?? fallbackReferenceData.accounts[0];
 }
 
-export function getInitialDraft(type: EntryType, referenceData: ReferenceData): Draft {
+export function getInitialDraft(
+  type: EntryType,
+  referenceData: ReferenceData,
+): Draft {
   const today = new Date();
   const monthLabel = today.toLocaleDateString("en-US", {
     month: "long",
@@ -136,7 +145,8 @@ export function getInitialDraft(type: EntryType, referenceData: ReferenceData): 
     date: new Date().toISOString().slice(0, 10),
     account: getDefaultAccount(referenceData),
     notes: "",
-    entryKind: type === "expense" ? referenceData.expenseKinds[0] ?? "Regular" : "",
+    entryKind:
+      type === "expense" ? (referenceData.expenseKinds[0] ?? "Regular") : "",
     counterparty: "",
     comments: "",
     allocationMonthsText: monthLabel,

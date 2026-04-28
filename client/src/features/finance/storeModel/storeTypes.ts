@@ -39,7 +39,10 @@ export type StoredSubcategory = {
   createdAt: string;
   updatedAt: string;
 };
-export type StoredCategory = Omit<DefaultCategory, "usageCount" | "subcategories"> & {
+export type StoredCategory = Omit<
+  DefaultCategory,
+  "usageCount" | "subcategories"
+> & {
   subcategories: StoredSubcategory[];
 };
 export type StoredRecurringRule = Omit<
@@ -51,7 +54,12 @@ export type StoredBillReference = BillReference;
 export type StoredNotepadDocument = NotepadDocument;
 export type StoredEvenUpRecord = Omit<
   EvenUpRecord,
-  "getBackAmount" | "halfGetBackAmount" | "giveBackAmount" | "halfGiveBackAmount" | "amount" | "remaining"
+  | "getBackAmount"
+  | "halfGetBackAmount"
+  | "giveBackAmount"
+  | "halfGiveBackAmount"
+  | "amount"
+  | "remaining"
 >;
 
 export const SEED_TIMESTAMP = "2026-04-05T00:00:00.000Z";

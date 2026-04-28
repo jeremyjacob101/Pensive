@@ -74,7 +74,9 @@ function buildBreakdown(
 
   const items = [...breakdownMap.values()].sort(
     (left, right) =>
-      right.total - left.total || right.count - left.count || left.label.localeCompare(right.label),
+      right.total - left.total ||
+      right.count - left.count ||
+      left.label.localeCompare(right.label),
   );
 
   return typeof limit === "number" ? items.slice(0, limit) : items;
@@ -111,7 +113,10 @@ export function useTransactionsData({
         );
         setEntries(allEntries);
       } catch (currentError) {
-        if (currentError instanceof DOMException && currentError.name === "AbortError") {
+        if (
+          currentError instanceof DOMException &&
+          currentError.name === "AbortError"
+        ) {
           return;
         }
 
@@ -134,15 +139,19 @@ export function useTransactionsData({
 
   const availableMonths = useMemo(
     () =>
-      [...new Set(entries.map((entry) => entry.date.slice(0, 7)))]
-        .sort((left, right) => right.localeCompare(left)),
+      [...new Set(entries.map((entry) => entry.date.slice(0, 7)))].sort(
+        (left, right) => right.localeCompare(left),
+      ),
     [entries],
   );
 
   const availableAccounts = useMemo(
     () =>
-      [...new Set(entries.map((entry) => entry.account).filter(Boolean) as string[])]
-        .sort((left, right) => left.localeCompare(right)),
+      [
+        ...new Set(
+          entries.map((entry) => entry.account).filter(Boolean) as string[],
+        ),
+      ].sort((left, right) => left.localeCompare(right)),
     [entries],
   );
 
@@ -153,18 +162,24 @@ export function useTransactionsData({
         : entries.filter((entry) => entry.type === filters.type);
 
     return [
-      ...new Set(matchingEntries.map((entry) => entry.category).filter(Boolean) as string[]),
+      ...new Set(
+        matchingEntries
+          .map((entry) => entry.category)
+          .filter(Boolean) as string[],
+      ),
     ].sort((left, right) => left.localeCompare(right));
   }, [entries, filters.type]);
 
   const availableExpenseKinds = useMemo(
     () =>
-      [...new Set(
-        entries
-          .filter((entry) => entry.type === "expense")
-          .map((entry) => entry.entryKind)
-          .filter(Boolean) as string[],
-      )].sort((left, right) => left.localeCompare(right)),
+      [
+        ...new Set(
+          entries
+            .filter((entry) => entry.type === "expense")
+            .map((entry) => entry.entryKind)
+            .filter(Boolean) as string[],
+        ),
+      ].sort((left, right) => left.localeCompare(right)),
     [entries],
   );
 
@@ -174,7 +189,10 @@ export function useTransactionsData({
     const maxAmount = Number(filters.maxAmount);
 
     const nextEntries = entries.filter((entry) => {
-      if (filters.month !== "all" && !entry.date.startsWith(`${filters.month}-`)) {
+      if (
+        filters.month !== "all" &&
+        !entry.date.startsWith(`${filters.month}-`)
+      ) {
         return false;
       }
 
@@ -190,7 +208,10 @@ export function useTransactionsData({
         return false;
       }
 
-      if (filters.entryKind !== "all" && entry.entryKind !== filters.entryKind) {
+      if (
+        filters.entryKind !== "all" &&
+        entry.entryKind !== filters.entryKind
+      ) {
         return false;
       }
 
@@ -202,11 +223,19 @@ export function useTransactionsData({
         return false;
       }
 
-      if (filters.minAmount && Number.isFinite(minAmount) && entry.amount < minAmount) {
+      if (
+        filters.minAmount &&
+        Number.isFinite(minAmount) &&
+        entry.amount < minAmount
+      ) {
         return false;
       }
 
-      if (filters.maxAmount && Number.isFinite(maxAmount) && entry.amount > maxAmount) {
+      if (
+        filters.maxAmount &&
+        Number.isFinite(maxAmount) &&
+        entry.amount > maxAmount
+      ) {
         return false;
       }
 
@@ -236,11 +265,18 @@ export function useTransactionsData({
             `${right.date}-${right.updatedAt}`,
           );
         case "amount-desc":
-          return right.amount - left.amount || right.date.localeCompare(left.date);
+          return (
+            right.amount - left.amount || right.date.localeCompare(left.date)
+          );
         case "amount-asc":
-          return left.amount - right.amount || right.date.localeCompare(left.date);
+          return (
+            left.amount - right.amount || right.date.localeCompare(left.date)
+          );
         case "name-asc":
-          return left.name.localeCompare(right.name) || right.date.localeCompare(left.date);
+          return (
+            left.name.localeCompare(right.name) ||
+            right.date.localeCompare(left.date)
+          );
         case "date-desc":
         default:
           return `${right.date}-${right.updatedAt}`.localeCompare(
@@ -251,11 +287,21 @@ export function useTransactionsData({
   }, [entries, filters]);
 
   const categoryBreakdown = useMemo(
-    () => buildBreakdown(filteredEntries, (entry) => entry.category ?? "Uncategorized", 8),
+    () =>
+      buildBreakdown(
+        filteredEntries,
+        (entry) => entry.category ?? "Uncategorized",
+        8,
+      ),
     [filteredEntries],
   );
   const accountBreakdown = useMemo(
-    () => buildBreakdown(filteredEntries, (entry) => entry.account ?? "No account", 8),
+    () =>
+      buildBreakdown(
+        filteredEntries,
+        (entry) => entry.account ?? "No account",
+        8,
+      ),
     [filteredEntries],
   );
   const monthBreakdown = useMemo(

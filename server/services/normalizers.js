@@ -127,7 +127,9 @@ export function createSeedDefaults() {
         ),
       ),
     },
-    expenseKinds: DEFAULT_EXPENSE_KINDS.map((name) => createSeedExpenseKind(name)),
+    expenseKinds: DEFAULT_EXPENSE_KINDS.map((name) =>
+      createSeedExpenseKind(name),
+    ),
     hiddenSeedExpenseKinds: [],
   };
 }
@@ -144,7 +146,11 @@ export function createSeedImportantDates() {
   );
 }
 
-function normalizeStoredEntry(entry, fallbackType = "expense", fallbackIndex = 0) {
+function normalizeStoredEntry(
+  entry,
+  fallbackType = "expense",
+  fallbackIndex = 0,
+) {
   if (!isPlainObject(entry)) {
     return null;
   }
@@ -153,7 +159,10 @@ function normalizeStoredEntry(entry, fallbackType = "expense", fallbackIndex = 0
   const name = cleanOptionalString(entry.name);
   const amount = parseAmount(entry.amount);
   const inferredCreatedAt = inferLegacyTimestamp(entry);
-  const createdAt = normalizeTimestamp(entry.createdAt, inferredCreatedAt ?? undefined);
+  const createdAt = normalizeTimestamp(
+    entry.createdAt,
+    inferredCreatedAt ?? undefined,
+  );
   const updatedAt = normalizeTimestamp(entry.updatedAt, createdAt);
   const date = normalizeDateInput(entry.date, createdAt.slice(0, 10));
 
@@ -180,7 +189,9 @@ function normalizeStoredEntry(entry, fallbackType = "expense", fallbackIndex = 0
     entryKind:
       cleanOptionalString(entry.entryKind ?? entry.kind ?? entry.expenseKind) ??
       (type === "expense" ? "Regular" : null),
-    counterparty: cleanOptionalString(entry.counterparty ?? entry.paidTo ?? entry.paidBy),
+    counterparty: cleanOptionalString(
+      entry.counterparty ?? entry.paidTo ?? entry.paidBy,
+    ),
     comments: cleanOptionalString(entry.comments),
     entryCode,
     allocationMonths: Array.isArray(entry.allocationMonths)
@@ -304,7 +315,10 @@ export function normalizeStoredCategory(category, fallbackType) {
     subcategories: Array.isArray(category.subcategories)
       ? category.subcategories
           .map((subcategory) =>
-            normalizeStoredSubcategory(subcategory, `${type}-subcategory-${categorySlug}`),
+            normalizeStoredSubcategory(
+              subcategory,
+              `${type}-subcategory-${categorySlug}`,
+            ),
           )
           .filter(Boolean)
       : [],
@@ -341,7 +355,7 @@ function normalizeStoredRecurringRule(rule) {
     entryKind:
       normalizeType(rule.type, "expense") === "income"
         ? null
-        : cleanOptionalString(rule.entryKind) ?? "Regular",
+        : (cleanOptionalString(rule.entryKind) ?? "Regular"),
     counterparty: cleanOptionalString(rule.counterparty),
     notes: cleanOptionalString(rule.notes),
     startDate,
@@ -420,8 +434,14 @@ function normalizeStoredEvenUpRecord(value) {
     return null;
   }
 
-  const startDate = normalizeDateInput(value.startDate ?? value.start, undefined);
-  const endDate = normalizeDateInput(value.endDate ?? value.end, startDate ?? undefined);
+  const startDate = normalizeDateInput(
+    value.startDate ?? value.start,
+    undefined,
+  );
+  const endDate = normalizeDateInput(
+    value.endDate ?? value.end,
+    startDate ?? undefined,
+  );
 
   if (!startDate || !endDate) {
     return null;
@@ -455,14 +475,18 @@ function normalizeStoredDefaults(defaults) {
     ? parsedDefaults.accounts
     : seededDefaults.accounts;
   const rawExpenseCategories =
-    isPlainObject(parsedDefaults.categories) && Array.isArray(parsedDefaults.categories.expense)
+    isPlainObject(parsedDefaults.categories) &&
+    Array.isArray(parsedDefaults.categories.expense)
       ? parsedDefaults.categories.expense
       : seededDefaults.categories.expense;
   const rawIncomeCategories =
-    isPlainObject(parsedDefaults.categories) && Array.isArray(parsedDefaults.categories.income)
+    isPlainObject(parsedDefaults.categories) &&
+    Array.isArray(parsedDefaults.categories.income)
       ? parsedDefaults.categories.income
       : seededDefaults.categories.income;
-  const hiddenSeedExpenseKinds = Array.isArray(parsedDefaults.hiddenSeedExpenseKinds)
+  const hiddenSeedExpenseKinds = Array.isArray(
+    parsedDefaults.hiddenSeedExpenseKinds,
+  )
     ? parsedDefaults.hiddenSeedExpenseKinds
         .map((kind) => cleanOptionalString(kind)?.toLowerCase() ?? null)
         .filter(Boolean)
@@ -474,22 +498,26 @@ function normalizeStoredDefaults(defaults) {
       );
 
   return {
-    accounts: dedupeByName(rawAccounts.map(normalizeStoredAccount).filter(Boolean)).sort(
-      (left, right) => left.name.localeCompare(right.name),
-    ),
+    accounts: dedupeByName(
+      rawAccounts.map(normalizeStoredAccount).filter(Boolean),
+    ).sort((left, right) => left.name.localeCompare(right.name)),
     categories: {
       expense: dedupeByName(
-        rawExpenseCategories.map((category) => normalizeStoredCategory(category, "expense")).filter(Boolean),
+        rawExpenseCategories
+          .map((category) => normalizeStoredCategory(category, "expense"))
+          .filter(Boolean),
       ).sort((left, right) => left.name.localeCompare(right.name)),
       income: dedupeByName(
-        rawIncomeCategories.map((category) => normalizeStoredCategory(category, "income")).filter(Boolean),
+        rawIncomeCategories
+          .map((category) => normalizeStoredCategory(category, "income"))
+          .filter(Boolean),
       ).sort((left, right) => left.name.localeCompare(right.name)),
     },
     expenseKinds: dedupeByName(
       rawExpenseKinds.map(normalizeStoredExpenseKind).filter(Boolean),
     ).sort((left, right) => left.name.localeCompare(right.name)),
-    hiddenSeedExpenseKinds: [...new Set(hiddenSeedExpenseKinds)].sort((left, right) =>
-      left.localeCompare(right),
+    hiddenSeedExpenseKinds: [...new Set(hiddenSeedExpenseKinds)].sort(
+      (left, right) => left.localeCompare(right),
     ),
   };
 }
@@ -503,7 +531,9 @@ function normalizeStoredProfile(username, profile, fallbackEmail) {
     fullName: cleanOptionalString(parsedProfile.fullName) ?? username,
     email: normalizeEmail(parsedProfile.email) ?? normalizeEmail(fallbackEmail),
     age: normalizeAge(parsedProfile.age),
-    pictureUrl: cleanOptionalString(parsedProfile.pictureUrl ?? parsedProfile.picture),
+    pictureUrl: cleanOptionalString(
+      parsedProfile.pictureUrl ?? parsedProfile.picture,
+    ),
     createdAt,
     updatedAt: normalizeTimestamp(parsedProfile.updatedAt, createdAt),
   };
@@ -518,22 +548,38 @@ export function normalizeStoredUserStore(username, rawStore, fallbackEmail) {
     : [];
 
   return {
-    profile: normalizeStoredProfile(username, parsedStore.profile, fallbackEmail),
+    profile: normalizeStoredProfile(
+      username,
+      parsedStore.profile,
+      fallbackEmail,
+    ),
     metadata: normalizeStoredMetadata(parsedStore.metadata),
     entries,
     defaults: normalizeStoredDefaults(parsedStore.defaults),
     recurringRules: Array.isArray(parsedStore.recurringRules)
-      ? dedupeByName(parsedStore.recurringRules.map(normalizeStoredRecurringRule).filter(Boolean))
+      ? dedupeByName(
+          parsedStore.recurringRules
+            .map(normalizeStoredRecurringRule)
+            .filter(Boolean),
+        )
       : createSeedRecurringRules(),
     importantDates: Array.isArray(parsedStore.importantDates)
-      ? dedupeByName(parsedStore.importantDates.map(normalizeStoredImportantDate).filter(Boolean))
+      ? dedupeByName(
+          parsedStore.importantDates
+            .map(normalizeStoredImportantDate)
+            .filter(Boolean),
+        )
       : createSeedImportantDates(),
     bills: Array.isArray(parsedStore.bills)
-      ? dedupeByName(parsedStore.bills.map(normalizeStoredBillReference).filter(Boolean))
+      ? dedupeByName(
+          parsedStore.bills.map(normalizeStoredBillReference).filter(Boolean),
+        )
       : [],
     notepad: normalizeStoredNotepad(parsedStore.notepad),
     evenUpRecords: Array.isArray(parsedStore.evenUpRecords)
-      ? parsedStore.evenUpRecords.map(normalizeStoredEvenUpRecord).filter(Boolean)
+      ? parsedStore.evenUpRecords
+          .map(normalizeStoredEvenUpRecord)
+          .filter(Boolean)
       : [],
   };
 }

@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { CloseIcon } from "../../../components/icons";
 import { getUserInitials } from "../utils";
-import type {
-  AuthForm,
-  AuthMode,
-  AuthUser,
-  ProfileForm,
-} from "../types";
+import type { AuthForm, AuthMode, AuthUser, ProfileForm } from "../types";
 
 type AccountDialogProps = {
   accountError: string | null;
@@ -84,9 +79,13 @@ export function AccountDialog({
               </button>
             </div>
 
-            {accountError ? <div className="status-banner error inline">{accountError}</div> : null}
+            {accountError ? (
+              <div className="status-banner error inline">{accountError}</div>
+            ) : null}
             {accountMessage ? (
-              <div className="status-banner success inline">{accountMessage}</div>
+              <div className="status-banner success inline">
+                {accountMessage}
+              </div>
             ) : null}
 
             <div className="account-layout">
@@ -98,7 +97,9 @@ export function AccountDialog({
                     src={currentUser.profile.pictureUrl}
                   />
                 ) : (
-                  <div className="avatar-fallback">{getUserInitials(currentUser)}</div>
+                  <div className="avatar-fallback">
+                    {getUserInitials(currentUser)}
+                  </div>
                 )}
                 <strong>{currentUser.profile.fullName}</strong>
                 <span>@{currentUser.username}</span>
@@ -112,14 +113,18 @@ export function AccountDialog({
                 <label>
                   Full name
                   <input
-                    onChange={(event) => onProfileFormChange("fullName", event.target.value)}
+                    onChange={(event) =>
+                      onProfileFormChange("fullName", event.target.value)
+                    }
                     value={profileForm.fullName}
                   />
                 </label>
                 <label>
                   Email
                   <input
-                    onChange={(event) => onProfileFormChange("email", event.target.value)}
+                    onChange={(event) =>
+                      onProfileFormChange("email", event.target.value)
+                    }
                     placeholder="name@example.com"
                     value={profileForm.email}
                   />
@@ -128,7 +133,9 @@ export function AccountDialog({
                   Age
                   <input
                     inputMode="numeric"
-                    onChange={(event) => onProfileFormChange("age", event.target.value)}
+                    onChange={(event) =>
+                      onProfileFormChange("age", event.target.value)
+                    }
                     placeholder="Optional"
                     value={profileForm.age}
                   />
@@ -136,7 +143,9 @@ export function AccountDialog({
                 <label className="full-width">
                   Picture URL
                   <input
-                    onChange={(event) => onProfileFormChange("pictureUrl", event.target.value)}
+                    onChange={(event) =>
+                      onProfileFormChange("pictureUrl", event.target.value)
+                    }
                     placeholder="https://..."
                     value={profileForm.pictureUrl}
                   />
@@ -155,7 +164,9 @@ export function AccountDialog({
                 <label>
                   New password
                   <input
-                    onChange={(event) => onProfileFormChange("newPassword", event.target.value)}
+                    onChange={(event) =>
+                      onProfileFormChange("newPassword", event.target.value)
+                    }
                     placeholder="Leave blank to keep current"
                     type="password"
                     value={profileForm.newPassword}
@@ -165,7 +176,11 @@ export function AccountDialog({
             </div>
 
             <div className="composer-actions">
-              <button className="ghost-action danger" onClick={onSignOut} type="button">
+              <button
+                className="ghost-action danger"
+                onClick={onSignOut}
+                type="button"
+              >
                 Sign out
               </button>
               <button
@@ -207,16 +222,22 @@ export function AccountDialog({
               </button>
             </div>
 
-            {accountError ? <div className="status-banner error inline">{accountError}</div> : null}
+            {accountError ? (
+              <div className="status-banner error inline">{accountError}</div>
+            ) : null}
             {accountMessage ? (
-              <div className="status-banner success inline">{accountMessage}</div>
+              <div className="status-banner success inline">
+                {accountMessage}
+              </div>
             ) : null}
 
             <div className="account-form auth-form">
               <label>
                 Username
                 <input
-                  onChange={(event) => onAuthFormChange("username", event.target.value)}
+                  onChange={(event) =>
+                    onAuthFormChange("username", event.target.value)
+                  }
                   placeholder="Choose your username"
                   value={authForm.username}
                 />
@@ -224,7 +245,9 @@ export function AccountDialog({
               <label>
                 Password
                 <input
-                  onChange={(event) => onAuthFormChange("password", event.target.value)}
+                  onChange={(event) =>
+                    onAuthFormChange("password", event.target.value)
+                  }
                   placeholder="Enter your password"
                   type="password"
                   value={authForm.password}
@@ -235,7 +258,9 @@ export function AccountDialog({
                   <label>
                     Full name
                     <input
-                      onChange={(event) => onAuthFormChange("fullName", event.target.value)}
+                      onChange={(event) =>
+                        onAuthFormChange("fullName", event.target.value)
+                      }
                       placeholder="Full name"
                       value={authForm.fullName}
                     />
@@ -243,7 +268,9 @@ export function AccountDialog({
                   <label>
                     Email
                     <input
-                      onChange={(event) => onAuthFormChange("email", event.target.value)}
+                      onChange={(event) =>
+                        onAuthFormChange("email", event.target.value)
+                      }
                       placeholder="Optional profile email"
                       value={authForm.email}
                     />
@@ -252,7 +279,9 @@ export function AccountDialog({
                     Age
                     <input
                       inputMode="numeric"
-                      onChange={(event) => onAuthFormChange("age", event.target.value)}
+                      onChange={(event) =>
+                        onAuthFormChange("age", event.target.value)
+                      }
                       placeholder="Optional"
                       value={authForm.age}
                     />
@@ -260,7 +289,9 @@ export function AccountDialog({
                   <label className="full-width">
                     Picture URL
                     <input
-                      onChange={(event) => onAuthFormChange("pictureUrl", event.target.value)}
+                      onChange={(event) =>
+                        onAuthFormChange("pictureUrl", event.target.value)
+                      }
                       placeholder="https://..."
                       value={authForm.pictureUrl}
                     />
@@ -276,7 +307,11 @@ export function AccountDialog({
                 onClick={onAuthSubmit}
                 type="button"
               >
-                {isAuthBusy ? "Working..." : authMode === "login" ? "Sign in" : "Create account"}
+                {isAuthBusy
+                  ? "Working..."
+                  : authMode === "login"
+                    ? "Sign in"
+                    : "Create account"}
               </button>
             </div>
           </>
