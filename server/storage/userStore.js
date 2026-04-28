@@ -35,7 +35,9 @@ export function getUserStoreRepository() {
   }
 
   async function readUserStore(authUser, options = {}) {
-    const documentRef = db.collection(USER_COLLECTION).doc(authUser.uid);
+    const documentRef = db
+      .collection(USER_COLLECTION)
+      .doc(authUser.storeId ?? authUser.uid);
     const snapshot = await documentRef.get();
     const rawStore = snapshot.exists ? snapshot.data() : null;
     const store = rawStore
@@ -56,7 +58,9 @@ export function getUserStoreRepository() {
   }
 
   async function updateUserStore(authUser, updater, options = {}) {
-    const documentRef = db.collection(USER_COLLECTION).doc(authUser.uid);
+    const documentRef = db
+      .collection(USER_COLLECTION)
+      .doc(authUser.storeId ?? authUser.uid);
     const snapshot = await documentRef.get();
     const rawStore = snapshot.exists ? snapshot.data() : null;
     const store = rawStore

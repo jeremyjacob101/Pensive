@@ -29,6 +29,7 @@ function buildAuthUserFromToken(decodedToken) {
 
   return {
     uid: decodedToken.uid,
+    storeId: decodedToken.email ?? decodedToken.uid,
     email: decodedToken.email ?? null,
     displayName: username,
     photoURL: decodedToken.picture ?? null,
