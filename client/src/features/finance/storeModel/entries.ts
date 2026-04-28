@@ -217,7 +217,7 @@ export function buildEntryFromBody(
       linkedRecurringRuleId: cleanOptionalString(
         getValueFromBody(
           body,
-          "recurringRuleId",
+          "linkedRecurringRuleId",
           existingEntry?.linkedRecurringRuleId,
         ),
       ),

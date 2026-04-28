@@ -610,7 +610,7 @@ export function applyRecurringRules(userStore, now = new Date()) {
           entryKind: rule.type === "expense" ? rule.entryKind : null,
           counterparty: rule.counterparty,
           comments: `Triggered automatically on ${now.toISOString().slice(0, 10)}`,
-          recurringRuleId: rule.id,
+          linkedRecurringRuleId: rule.id,
           recurringOccurrenceKey: occurrenceKey,
         },
         {
