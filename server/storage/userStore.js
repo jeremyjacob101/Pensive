@@ -1,4 +1,4 @@
-import { getDocument, setDocument } from "../firebaseRest.js";
+import { getFirebaseAdminDb } from "../firebaseAdmin.js";
 import { normalizeStoredUserStore } from "../services/normalizers.js";
 import {
   cleanOptionalString,
@@ -8,6 +8,8 @@ import {
 const USER_COLLECTION = "financeUsers";
 
 export function getUserStoreRepository() {
+  const db = getFirebaseAdminDb();
+
   function deriveUsername(authUser) {
     return (
       cleanOptionalString(authUser.displayName) ??
@@ -36,8 +38,9 @@ export function getUserStoreRepository() {
   }
 
   async function readUserStore(authUser, options = {}) {
-    const documentPath = `${USER_COLLECTION}/${authUser.uid}`;
-    const rawStore = await getDocument(documentPath, authUser.idToken);
+    const documentRef = db.collection(USER_COLLECTION).doc(authUser.uid);
+    const snapshot = await documentRef.get();
+    const rawStore = snapshot.exists ? snapshot.data() : null;
     const store = rawStore
       ? normalizeStoredUserStore(
           deriveUsername(authUser),
@@ -49,15 +52,16 @@ export function getUserStoreRepository() {
     void options;
 
     if (shouldPersist) {
-      await setDocument(documentPath, authUser.idToken, store);
+      await documentRef.set(store);
     }
 
     return store;
   }
 
   async function updateUserStore(authUser, updater, options = {}) {
-    const documentPath = `${USER_COLLECTION}/${authUser.uid}`;
-    const rawStore = await getDocument(documentPath, authUser.idToken);
+    const documentRef = db.collection(USER_COLLECTION).doc(authUser.uid);
+    const snapshot = await documentRef.get();
+    const rawStore = snapshot.exists ? snapshot.data() : null;
     const store = rawStore
       ? normalizeStoredUserStore(
           deriveUsername(authUser),
@@ -68,7 +72,7 @@ export function getUserStoreRepository() {
     void options;
 
     const result = await updater(store, { authUser });
-    await setDocument(documentPath, authUser.idToken, store);
+    await documentRef.set(store);
     return result;
   }
 

@@ -1,10 +1,28 @@
 import { auth } from "../../firebase";
 import { assertFirebaseConfigured, throwIfAborted } from "./shared";
 
-const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH ?? "/api";
+const API_BASE_PATH = import.meta.env.VITE_API_BASE_PATH;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+function trimTrailingSlashes(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function getApiBase() {
+  if (API_BASE_PATH) {
+    return trimTrailingSlashes(API_BASE_PATH);
+  }
+
+  if (API_BASE_URL) {
+    return `${trimTrailingSlashes(API_BASE_URL)}/api`;
+  }
+
+  return "/api";
+}
 
 function buildApiUrl(path: string) {
-  return `${API_BASE_PATH}${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${getApiBase()}${normalizedPath}`;
 }
 
 function mergeHeaders(init?: RequestInit) {
@@ -53,7 +71,7 @@ export async function requestServerJson<T>(
 
     if (error instanceof Error) {
       throw new Error(
-        "Node backend unavailable. Start the server on port 3001 and try again.",
+        "Backend unavailable. Check VITE_API_BASE_URL and the server deployment.",
       );
     }
 
@@ -80,7 +98,7 @@ export async function requestServerJson<T>(
       typeof payload.error === "string"
         ? payload.error
         : response.status >= 502
-          ? "Node backend unavailable. Start the server on port 3001 and try again."
+          ? "Backend unavailable. Check VITE_API_BASE_URL and the server deployment."
           : response.status === 401
             ? "Please sign in first."
             : "Request failed.";

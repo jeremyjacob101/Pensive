@@ -1,75 +1,55 @@
-import { createServer } from "http";
+import cors from "cors";
+import express from "express";
 import { fileURLToPath } from "url";
 import { PORT } from "./config/constants.js";
+import { errorHandler } from "./http/errors.js";
 import apiRoutes from "./routes/api.js";
-import { getUserStoreRepository } from "./storage/userStore.js";
 
-function setCorsHeaders(response) {
-  response.setHeader("Access-Control-Allow-Origin", "*");
-  response.setHeader(
-    "Access-Control-Allow-Headers",
-    "Authorization, Content-Type",
-  );
-  response.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-  );
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://pensivefinancial.site",
+  "https://www.pensivefinancial.site",
+];
+
+function normalizeOrigin(origin) {
+  const trimmed = origin.trim().replace(/\/+$/, "");
+
+  if (!trimmed || trimmed === "*") {
+    return trimmed;
+  }
+
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-function sendJson(response, statusCode, payload) {
-  response.statusCode = statusCode;
-  response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.end(JSON.stringify(payload));
+function getAllowedOrigins() {
+  const configuredOrigins = process.env.CORS_ORIGIN ?? process.env.FRONTEND_ORIGIN;
+  const rawOrigins = configuredOrigins
+    ? configuredOrigins.split(",")
+    : DEFAULT_ALLOWED_ORIGINS;
+
+  return rawOrigins
+    .map(normalizeOrigin)
+    .filter(Boolean);
 }
 
 export function createApp(dependencies = {}) {
-  const app = {
-    locals: {},
-    async handle(request, response) {
-      setCorsHeaders(response);
+  const app = express();
+  const allowedOrigins = getAllowedOrigins();
 
-      if (request.method === "OPTIONS") {
-        response.statusCode = 204;
-        response.end();
-        return;
-      }
+  app.use(
+    cors({
+      origin:
+        allowedOrigins.includes("*") || allowedOrigins.length === 0
+          ? true
+          : allowedOrigins,
+      allowedHeaders: ["Authorization", "Content-Type"],
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    }),
+  );
+  app.use(express.json({ limit: "1mb" }));
 
-      const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
-      const isApiRequest =
-        requestUrl.pathname === "/api" ||
-        requestUrl.pathname.startsWith("/api/");
-
-      if (requestUrl.pathname === "/health") {
-        sendJson(response, 200, { ok: true });
-        return;
-      }
-
-      if (isApiRequest) {
-        await apiRoutes.handle(request, response, app, { basePath: "/api" });
-        return;
-      }
-
-      sendJson(response, 404, { error: "Not found." });
-    },
-    listen(port, callback) {
-      const server = createServer((request, response) => {
-        Promise.resolve(app.handle(request, response)).catch((error) => {
-          console.error(error);
-
-          if (!response.headersSent) {
-            setCorsHeaders(response);
-            sendJson(response, 500, { error: "Internal server error." });
-          } else if (!response.writableEnded) {
-            response.end();
-          }
-        });
-      });
-
-      return server.listen(port, callback);
-    },
-  };
-  app.locals.userStoreRepository =
-    dependencies.userStoreRepository ?? getUserStoreRepository();
+  if (dependencies.userStoreRepository) {
+    app.locals.userStoreRepository = dependencies.userStoreRepository;
+  }
 
   if (dependencies.verifyIdToken) {
     app.locals.verifyIdToken = dependencies.verifyIdToken;
@@ -78,6 +58,15 @@ export function createApp(dependencies = {}) {
   if (dependencies.syncAuthProfile) {
     app.locals.syncAuthProfile = dependencies.syncAuthProfile;
   }
+
+  app.get(["/", "/health"], (_req, res) => {
+    res.json({ ok: true });
+  });
+  app.use("/api", apiRoutes);
+  app.use((_req, res) => {
+    res.status(404).json({ error: "Not found." });
+  });
+  app.use(errorHandler);
 
   return app;
 }
@@ -93,3 +82,5 @@ export function startServer(port = PORT, dependencies) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   startServer();
 }
+
+export default createApp();

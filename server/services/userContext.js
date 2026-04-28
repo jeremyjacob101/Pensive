@@ -1,9 +1,9 @@
-import { verifyIdTokenWithRest } from "../firebaseRest.js";
+import { verifyFirebaseIdToken } from "../firebaseAdmin.js";
 import { getUserStoreRepository } from "../storage/userStore.js";
 import { getUsernameFromEmail, validateUsername } from "../utils/common.js";
 
 function getVerifier(req) {
-  return req.app.locals.verifyIdToken ?? verifyIdTokenWithRest;
+  return req.app.locals.verifyIdToken ?? verifyFirebaseIdToken;
 }
 
 function getRepository(req) {

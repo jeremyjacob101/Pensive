@@ -23,17 +23,22 @@ function inferStatus(error) {
     return 409;
   }
 
-  return 400;
+  return 500;
 }
 
 export function errorHandler(error, _req, res, _next) {
   const status = inferStatus(error);
+  const safeStatus = status >= 400 && status < 600 ? status : 500;
   const message =
-    error instanceof Error && error.message
+    safeStatus < 500 && error instanceof Error && error.message
       ? error.message
       : "Internal server error.";
 
-  res.status(status >= 400 && status < 600 ? status : 500).json({ error: message });
+  if (safeStatus >= 500) {
+    console.error(error);
+  }
+
+  res.status(safeStatus).json({ error: message });
 }
 
 export function asyncHandler(handler) {
