@@ -19,7 +19,7 @@ export async function requestJson<T>(
 
   const url = new URL(path, "https://local.app");
   const method = (init?.method ?? "GET").toUpperCase();
-  const pathnameWithSearch = `${url.pathname}${url.search}`;
+  const pathnameWithSearch = url.pathname;
 
   if (url.pathname === "/auth/signup" && method === "POST") {
     const body = JSON.parse(String(init?.body ?? "{}")) as Record<
