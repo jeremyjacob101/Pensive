@@ -50,6 +50,20 @@ export function ExportIcon() {
   );
 }
 
+export function ImportIcon() {
+  return (
+    <Svg>
+      <path
+        d="M12 4v10m0 0 4-4m-4 4-4-4M5 18h14"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </Svg>
+  );
+}
+
 export function ChevronLeftIcon() {
   return (
     <Svg>

@@ -175,6 +175,7 @@ export default function App() {
         isAccountOpen={isAccountOpen}
         isDefaultsBusy={defaults.isDefaultsBusy}
         onExport={() => void defaults.exportData()}
+        onImport={(file) => void defaults.importData(file)}
         onToggleAccount={() => {
           auth.clearAccountStatus();
           if (isAccountOpen) {

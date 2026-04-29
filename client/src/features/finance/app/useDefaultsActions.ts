@@ -22,6 +22,20 @@ type UseDefaultsActionsOptions = {
   onRequireAuth: () => void;
 };
 
+type ImportSummary = {
+  imported: {
+    entries: number;
+    accounts: number;
+    categories: number;
+    expenseKinds: number;
+    recurringRules: number;
+    importantDates: number;
+    bills: number;
+    evenUpRecords: number;
+    notepad: number;
+  };
+};
+
 export function useDefaultsActions({
   activeUsername,
   onRefresh,
@@ -672,8 +686,92 @@ export function useDefaultsActions({
 
   function handleImportClick() {
     setDefaultsMessage(
-      "Import is still a placeholder, but auth and per-user storage are wired now.",
+      "Use the Import button in the top bar to choose a JSON backup.",
     );
+  }
+
+  async function importData(file: File) {
+    if (!requireAuthOrReturn()) {
+      return;
+    }
+
+    setDefaultsError(null);
+    setDefaultsMessage(null);
+    setIsDefaultsBusy(true);
+
+    try {
+      const parsed = JSON.parse(await file.text()) as {
+        entries?: unknown[];
+        defaults?: {
+          accounts?: unknown[];
+          categories?: {
+            expense?: unknown[];
+            income?: unknown[];
+          };
+          expenseKinds?: unknown[];
+          importantDates?: unknown[];
+          bills?: unknown[];
+        };
+        recurringRules?: unknown[];
+        evenUpRecords?: unknown[];
+      };
+      const summary = {
+        entries: parsed.entries?.length ?? 0,
+        accounts: parsed.defaults?.accounts?.length ?? 0,
+        categories:
+          (parsed.defaults?.categories?.expense?.length ?? 0) +
+          (parsed.defaults?.categories?.income?.length ?? 0),
+        expenseKinds: parsed.defaults?.expenseKinds?.length ?? 0,
+        recurringRules: parsed.recurringRules?.length ?? 0,
+        importantDates: parsed.defaults?.importantDates?.length ?? 0,
+        bills: parsed.defaults?.bills?.length ?? 0,
+        evenUpRecords: parsed.evenUpRecords?.length ?? 0,
+      };
+      const confirmed = window.confirm(
+        [
+          "Import this finance backup?",
+          "",
+          `${summary.entries} entries`,
+          `${summary.accounts} accounts`,
+          `${summary.categories} categories`,
+          `${summary.expenseKinds} expense kinds`,
+          `${summary.recurringRules} recurring rules`,
+          `${summary.importantDates} important dates`,
+          `${summary.bills} bills`,
+          `${summary.evenUpRecords} even-up records`,
+          "",
+          "Existing matching data will be kept.",
+        ].join("\n"),
+      );
+
+      if (!confirmed) {
+        setDefaultsMessage("Import cancelled.");
+        return;
+      }
+
+      const result = await requestJson<ImportSummary>(
+        "/import",
+        {
+          method: "POST",
+          body: JSON.stringify(parsed),
+        },
+        activeUsername,
+      );
+      setDefaultsMessage(
+        `Imported ${result.imported.entries} entries, ${result.imported.accounts} accounts, ${result.imported.categories} categories, and ${result.imported.recurringRules} recurring rules.`,
+      );
+      onRefresh();
+    } catch (error) {
+      setDefaultsError(
+        error instanceof SyntaxError
+          ? "Choose a valid JSON backup file."
+          : error instanceof Error
+            ? error.message
+            : "Unable to import data.",
+      );
+    } finally {
+      setIsDefaultsBusy(false);
+    }
   }
 
   return {
@@ -704,6 +802,7 @@ export function useDefaultsActions({
     handleDeleteBill,
     handleSaveNotepad,
     exportData,
+    importData,
     handleImportClick,
   };
 }

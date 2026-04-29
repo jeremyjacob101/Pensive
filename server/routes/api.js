@@ -19,6 +19,7 @@ import {
 } from "../services/storeModel.js";
 import { DEFAULT_EXPENSE_KINDS } from "../config/defaultSeeds.js";
 import { asyncHandler, HttpError } from "../http/errors.js";
+import { importFinanceData } from "../services/importData.js";
 import { buildRecurringRuleFromBody } from "../services/recurringRules.js";
 import {
   cleanOptionalString,
@@ -167,6 +168,17 @@ router.put(
       () => undefined,
     );
     res.json(user);
+  }),
+);
+
+router.post(
+  "/import",
+  asyncHandler(async (req, res) => {
+    const summary = await updateUserStore(req, (store, { authUser }) =>
+      importFinanceData(store, req.body, authUser),
+    );
+
+    res.json(summary);
   }),
 );
 

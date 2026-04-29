@@ -1,4 +1,10 @@
-import { ExportIcon, SettingsIcon, UserIcon } from "../../../components/icons";
+import { useRef } from "react";
+import {
+  ExportIcon,
+  ImportIcon,
+  SettingsIcon,
+  UserIcon,
+} from "../../../components/icons";
 import type { AppPageRouteId } from "../../../router";
 import type { AuthUser } from "../types";
 
@@ -8,6 +14,7 @@ type TopBarProps = {
   isAccountOpen: boolean;
   isDefaultsBusy: boolean;
   onExport: () => void;
+  onImport: (file: File) => void;
   onToggleAccount: () => void;
   onToggleDefaults: () => void;
 };
@@ -18,9 +25,12 @@ export function TopBar({
   isAccountOpen,
   isDefaultsBusy,
   onExport,
+  onImport,
   onToggleAccount,
   onToggleDefaults,
 }: TopBarProps) {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <header className="topbar">
       <div>
@@ -33,6 +43,29 @@ export function TopBar({
       </div>
 
       <div className="topbar-actions">
+        <input
+          ref={importInputRef}
+          accept="application/json,.json"
+          className="hidden-input"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+
+            if (file) {
+              onImport(file);
+            }
+          }}
+          type="file"
+        />
+        <button
+          aria-label="Import"
+          className="icon-button"
+          disabled={!currentUser || isDefaultsBusy}
+          onClick={() => importInputRef.current?.click()}
+          type="button"
+        >
+          <ImportIcon />
+        </button>
         <button
           aria-label="Export"
           className="icon-button"
