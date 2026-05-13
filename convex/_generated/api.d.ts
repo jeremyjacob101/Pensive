@@ -10,6 +10,7 @@
 
 import type * as expenses from "../expenses.js";
 import type * as incomings from "../incomings.js";
+import type * as recurrings from "../recurrings.js";
 
 import type {
   ApiFromModules,
@@ -20,6 +21,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   incomings: typeof incomings;
+  recurrings: typeof recurrings;
 }>;
 
 /**
