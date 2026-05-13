@@ -21,14 +21,15 @@ function normalizeDate(value: string) {
 
 export const list = query({
   args: {
-    paginationOpts: paginationOptsValidator,
+    paginationOpts: v.optional(paginationOptsValidator),
   },
   handler: async (ctx, { paginationOpts }) => {
-    const numItems = Math.min(paginationOpts.numItems, 50);
+    const safePaginationOpts = paginationOpts ?? { cursor: null, numItems: 25 };
+    const numItems = Math.min(safePaginationOpts.numItems, 50);
     return await ctx.db
       .query("incomings")
       .order("desc")
-      .paginate({ ...paginationOpts, numItems });
+      .paginate({ ...safePaginationOpts, numItems });
   },
 });
 
