@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import type { Doc } from "../convex/_generated/dataModel";
 
@@ -82,17 +82,21 @@ function App() {
   const deleteExpense = useMutation(api.expenses.remove);
   const deleteIncoming = useMutation(api.incomings.remove);
   const deleteRecurring = useMutation(api.recurrings.remove);
-  const expenses = useQuery(api.expenses.list) as
-    | Array<Doc<"expenses">>
-    | undefined;
-  const incomings = useQuery(api.incomings.list) as
-    | Array<Doc<"incomings">>
-    | undefined;
+  const {
+    results: expenses,
+    status: expensesStatus,
+    loadMore: loadMoreExpenses,
+  } = usePaginatedQuery(api.expenses.list, {}, { initialNumItems: 25 });
+  const {
+    results: incomings,
+    status: incomingsStatus,
+    loadMore: loadMoreIncomings,
+  } = usePaginatedQuery(api.incomings.list, {}, { initialNumItems: 25 });
   const recurrings = useQuery(api.recurrings.list) as
     | Array<Doc<"recurrings">>
     | undefined;
 
-  if (expenses === undefined || incomings === undefined || recurrings === undefined) {
+  if (recurrings === undefined) {
     return <main className="page">Loading...</main>;
   }
 
@@ -319,6 +323,7 @@ function App() {
       </div>
 
       {activeTab === "expenses" ? (
+        <>
         <table>
           <thead>
             <tr>
@@ -421,7 +426,14 @@ function App() {
             )}
           </tbody>
         </table>
+        {expensesStatus === "CanLoadMore" ? (
+          <button type="button" onClick={() => loadMoreExpenses(25)}>
+            Load More Expenses
+          </button>
+        ) : null}
+        </>
       ) : activeTab === "incomings" ? (
+        <>
         <table>
           <thead>
             <tr>
@@ -513,6 +525,12 @@ function App() {
             )}
           </tbody>
         </table>
+        {incomingsStatus === "CanLoadMore" ? (
+          <button type="button" onClick={() => loadMoreIncomings(25)}>
+            Load More Incomings
+          </button>
+        ) : null}
+        </>
       ) : (
         <table>
           <thead>

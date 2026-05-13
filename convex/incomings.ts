@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
@@ -19,9 +20,15 @@ function normalizeDate(value: string) {
 }
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("incomings").collect();
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { paginationOpts }) => {
+    const numItems = Math.min(paginationOpts.numItems, 50);
+    return await ctx.db
+      .query("incomings")
+      .order("desc")
+      .paginate({ ...paginationOpts, numItems });
   },
 });
 
@@ -114,22 +121,5 @@ export const remove = mutation({
   handler: async (ctx, { id }) => {
     await ctx.db.delete(id as Id<"incomings">);
     return id;
-  },
-});
-
-export const normalizeDates = mutation({
-  args: { batchSize: v.optional(v.number()) },
-  handler: async (ctx, { batchSize }) => {
-    const limit = batchSize ?? 200;
-    const docs = await ctx.db.query("incomings").take(limit);
-    let updated = 0;
-    for (const doc of docs) {
-      const next = normalizeDate(doc.date);
-      if (next !== doc.date) {
-        await ctx.db.patch(doc._id, { date: next });
-        updated++;
-      }
-    }
-    return { scanned: docs.length, updated, done: docs.length < limit };
   },
 });
