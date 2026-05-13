@@ -96,24 +96,6 @@ export const bulkCreate = mutation({
   },
 });
 
-export const claimLegacyRows = mutation({
-  args: { batchSize: v.optional(v.number()) },
-  handler: async (ctx, { batchSize }) => {
-    const userId = await requireUserId(ctx);
-    const limit = Math.min(batchSize ?? 200, 500);
-    const docs = await ctx.db
-      .query("incomings")
-      .withIndex("by_user_id", (q) => q.eq("userId", undefined))
-      .take(limit);
-
-    for (const doc of docs) {
-      await ctx.db.patch(doc._id, { userId });
-    }
-
-    return { claimed: docs.length, done: docs.length < limit };
-  },
-});
-
 export const clearAll = mutation({
   args: { batchSize: v.optional(v.number()) },
   handler: async (ctx, { batchSize }) => {
