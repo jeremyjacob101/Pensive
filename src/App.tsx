@@ -1,9 +1,9 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useMutation, usePaginatedQuery } from "convex/react";
-import { api } from "../convex/_generated/api";
 import type { Doc } from "../convex/_generated/dataModel";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { api } from "../convex/_generated/api";
+import type { FormEvent } from "react";
+import { useState } from "react";
 
 const headers = [
   "Expense",
@@ -106,13 +106,21 @@ function SignInForm() {
           required
         />
         <button type="submit" disabled={loading}>
-          {loading ? "Please wait..." : mode === "signIn" ? "Sign In" : "Create Account"}
+          {loading
+            ? "Please wait..."
+            : mode === "signIn"
+              ? "Sign In"
+              : "Create Account"}
         </button>
         <button
           type="button"
-          onClick={() => setMode((prev) => (prev === "signIn" ? "signUp" : "signIn"))}
+          onClick={() =>
+            setMode((prev) => (prev === "signIn" ? "signUp" : "signIn"))
+          }
         >
-          {mode === "signIn" ? "Need an account? Sign up" : "Already have an account? Sign in"}
+          {mode === "signIn"
+            ? "Need an account? Sign up"
+            : "Already have an account? Sign in"}
         </button>
         {error ? <p>{error}</p> : null}
       </form>
@@ -124,15 +132,17 @@ function DataApp() {
   const { signOut } = useAuthActions();
   const [activeTab, setActiveTab] = useState<
     "expenses" | "incomings" | "recurrings"
-  >(
-    "expenses",
-  );
+  >("expenses");
   const [formType, setFormType] = useState<
     "expense" | "incoming" | "recurring" | null
   >(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [editingIncomingId, setEditingIncomingId] = useState<string | null>(null);
-  const [editingRecurringId, setEditingRecurringId] = useState<string | null>(null);
+  const [editingIncomingId, setEditingIncomingId] = useState<string | null>(
+    null,
+  );
+  const [editingRecurringId, setEditingRecurringId] = useState<string | null>(
+    null,
+  );
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const createExpense = useMutation(api.expenses.create);
@@ -292,13 +302,25 @@ function DataApp() {
       </div>
 
       <div className="tabs">
-        <button type="button" className="tab" onClick={() => setFormType("expense")}>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setFormType("expense")}
+        >
           Add Expense
         </button>
-        <button type="button" className="tab" onClick={() => setFormType("incoming")}>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setFormType("incoming")}
+        >
           Add Incoming
         </button>
-        <button type="button" className="tab" onClick={() => setFormType("recurring")}>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setFormType("recurring")}
+        >
           Add Recurring
         </button>
       </div>
@@ -390,311 +412,741 @@ function DataApp() {
 
       {activeTab === "expenses" ? (
         <>
-        <table>
-          <thead>
-            <tr>
-              {headers.map((header) => (
-                <th key={header}>{header}</th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {expenses.length === 0 ? (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={headers.length}>No expenses yet.</td>
+                {headers.map((header) => (
+                  <th key={header}>{header}</th>
+                ))}
+                <th>Actions</th>
               </tr>
-            ) : (
-              expenses.map((row) => {
-                const isEditing = editingExpenseId === row._id;
-                return (
-                  <tr key={row._id}>
-                    <td>
-                      {isEditing ? (
-                        <input
-                          value={editValues.expense ?? ""}
-                          onChange={(e) =>
-                            setEditValues((v) => ({ ...v, expense: e.target.value }))
-                          }
-                        />
-                      ) : (
-                        row.expense
-                      )}
-                    </td>
-                    <td>{isEditing ? <input value={editValues.type ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, type: e.target.value }))} /> : row.type}</td>
-                    <td>{isEditing ? <input value={editValues.account ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, account: e.target.value }))} /> : row.account}</td>
-                    <td>{isEditing ? <input value={editValues.category ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, category: e.target.value }))} /> : row.category}</td>
-                    <td>{isEditing ? <input value={editValues.amount ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, amount: e.target.value }))} /> : row.amount}</td>
-                    <td>{isEditing ? <input type="date" value={editValues.date ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, date: e.target.value }))} /> : row.date}</td>
-                    <td>{isEditing ? <input value={editValues.paidTo ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, paidTo: e.target.value }))} /> : row.paidTo}</td>
-                    <td>{isEditing ? <input value={editValues.notes ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, notes: e.target.value }))} /> : row.notes ?? ""}</td>
-                    <td>{isEditing ? <input value={editValues.comments ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, comments: e.target.value }))} /> : row.comments ?? ""}</td>
-                    <td>{isEditing ? <input value={editValues.expenseId ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, expenseId: e.target.value }))} /> : row.expenseId}</td>
-                    <td className="actions">
-                      {isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await updateExpense({
-                                  id: row._id,
-                                  expense: editValues.expense ?? "",
-                                  type: editValues.type ?? "",
-                                  account: editValues.account ?? "",
-                                  category: editValues.category ?? "",
-                                  amount: toAmount(editValues.amount ?? ""),
-                                  date: editValues.date ?? "",
-                                  paidTo: editValues.paidTo ?? "",
-                                  notes: editValues.notes || undefined,
-                                  comments: editValues.comments || undefined,
-                                  expenseId: editValues.expenseId ?? "",
-                                });
-                                setEditingExpenseId(null);
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Save
-                          </button>
-                          <button type="button" onClick={() => setEditingExpenseId(null)}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => startEditExpense(row)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await deleteExpense({ id: row._id });
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        {expensesStatus === "CanLoadMore" ? (
-          <button type="button" onClick={() => loadMoreExpenses(25)}>
-            Load More Expenses
-          </button>
-        ) : null}
+            </thead>
+            <tbody>
+              {expenses.length === 0 ? (
+                <tr>
+                  <td colSpan={headers.length}>No expenses yet.</td>
+                </tr>
+              ) : (
+                expenses.map((row) => {
+                  const isEditing = editingExpenseId === row._id;
+                  return (
+                    <tr key={row._id}>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.expense ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                expense: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.expense
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.type ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                type: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.type
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.account ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                account: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.account
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.category ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                category: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.category
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.amount ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                amount: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.amount
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={editValues.date ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                date: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.date
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.paidTo ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                paidTo: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.paidTo
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.notes ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                notes: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          (row.notes ?? "")
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.comments ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                comments: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          (row.comments ?? "")
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.expenseId ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                expenseId: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.expenseId
+                        )}
+                      </td>
+                      <td className="actions">
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await updateExpense({
+                                    id: row._id,
+                                    expense: editValues.expense ?? "",
+                                    type: editValues.type ?? "",
+                                    account: editValues.account ?? "",
+                                    category: editValues.category ?? "",
+                                    amount: toAmount(editValues.amount ?? ""),
+                                    date: editValues.date ?? "",
+                                    paidTo: editValues.paidTo ?? "",
+                                    notes: editValues.notes || undefined,
+                                    comments: editValues.comments || undefined,
+                                    expenseId: editValues.expenseId ?? "",
+                                  });
+                                  setEditingExpenseId(null);
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingExpenseId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditExpense(row)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await deleteExpense({ id: row._id });
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          {expensesStatus === "CanLoadMore" ? (
+            <button type="button" onClick={() => loadMoreExpenses(25)}>
+              Load More Expenses
+            </button>
+          ) : null}
         </>
       ) : activeTab === "incomings" ? (
         <>
-        <table>
-          <thead>
-            <tr>
-              {incomingHeaders.map((header) => (
-                <th key={header}>{header}</th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incomings.length === 0 ? (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={incomingHeaders.length}>No incomings yet.</td>
+                {incomingHeaders.map((header) => (
+                  <th key={header}>{header}</th>
+                ))}
+                <th>Actions</th>
               </tr>
-            ) : (
-              incomings.map((row) => {
-                const isEditing = editingIncomingId === row._id;
-                return (
-                  <tr key={row._id}>
-                    <td>{isEditing ? <input value={editValues.incoming ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, incoming: e.target.value }))} /> : row.incoming}</td>
-                    <td>{isEditing ? <input value={editValues.paidBy ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, paidBy: e.target.value }))} /> : row.paidBy}</td>
-                    <td>{isEditing ? <input value={editValues.incomeType ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, incomeType: e.target.value }))} /> : row.incomeType}</td>
-                    <td>{isEditing ? <input value={editValues.account ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, account: e.target.value }))} /> : row.account}</td>
-                    <td>{isEditing ? <input value={editValues.amount ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, amount: e.target.value }))} /> : row.amount}</td>
-                    <td>{isEditing ? <input type="date" value={editValues.date ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, date: e.target.value }))} /> : row.date}</td>
-                    <td>{isEditing ? <input value={editValues.monthYear ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, monthYear: e.target.value }))} /> : row.monthYear}</td>
-                    <td>{isEditing ? <input value={editValues.notes ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, notes: e.target.value }))} /> : row.notes ?? ""}</td>
-                    <td>{isEditing ? <input value={editValues.comments ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, comments: e.target.value }))} /> : row.comments ?? ""}</td>
-                    <td>{isEditing ? <input value={editValues.incomingId ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, incomingId: e.target.value }))} /> : row.incomingId}</td>
-                    <td className="actions">
-                      {isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await updateIncoming({
-                                  id: row._id,
-                                  incoming: editValues.incoming ?? "",
-                                  paidBy: editValues.paidBy ?? "",
-                                  incomeType: editValues.incomeType ?? "",
-                                  account: editValues.account ?? "",
-                                  amount: toAmount(editValues.amount ?? ""),
-                                  date: editValues.date ?? "",
-                                  monthYear: editValues.monthYear ?? "",
-                                  notes: editValues.notes || undefined,
-                                  comments: editValues.comments || undefined,
-                                  incomingId: editValues.incomingId ?? "",
-                                });
-                                setEditingIncomingId(null);
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Save
-                          </button>
-                          <button type="button" onClick={() => setEditingIncomingId(null)}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => startEditIncoming(row)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await deleteIncoming({ id: row._id });
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        {incomingsStatus === "CanLoadMore" ? (
-          <button type="button" onClick={() => loadMoreIncomings(25)}>
-            Load More Incomings
-          </button>
-        ) : null}
+            </thead>
+            <tbody>
+              {incomings.length === 0 ? (
+                <tr>
+                  <td colSpan={incomingHeaders.length}>No incomings yet.</td>
+                </tr>
+              ) : (
+                incomings.map((row) => {
+                  const isEditing = editingIncomingId === row._id;
+                  return (
+                    <tr key={row._id}>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.incoming ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                incoming: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.incoming
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.paidBy ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                paidBy: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.paidBy
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.incomeType ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                incomeType: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.incomeType
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.account ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                account: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.account
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.amount ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                amount: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.amount
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            type="date"
+                            value={editValues.date ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                date: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.date
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.monthYear ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                monthYear: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.monthYear
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.notes ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                notes: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          (row.notes ?? "")
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.comments ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                comments: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          (row.comments ?? "")
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.incomingId ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                incomingId: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.incomingId
+                        )}
+                      </td>
+                      <td className="actions">
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await updateIncoming({
+                                    id: row._id,
+                                    incoming: editValues.incoming ?? "",
+                                    paidBy: editValues.paidBy ?? "",
+                                    incomeType: editValues.incomeType ?? "",
+                                    account: editValues.account ?? "",
+                                    amount: toAmount(editValues.amount ?? ""),
+                                    date: editValues.date ?? "",
+                                    monthYear: editValues.monthYear ?? "",
+                                    notes: editValues.notes || undefined,
+                                    comments: editValues.comments || undefined,
+                                    incomingId: editValues.incomingId ?? "",
+                                  });
+                                  setEditingIncomingId(null);
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingIncomingId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditIncoming(row)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await deleteIncoming({ id: row._id });
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          {incomingsStatus === "CanLoadMore" ? (
+            <button type="button" onClick={() => loadMoreIncomings(25)}>
+              Load More Incomings
+            </button>
+          ) : null}
         </>
       ) : (
         <>
-        <table>
-          <thead>
-            <tr>
-              {recurringHeaders.map((header) => (
-                <th key={header}>{header}</th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recurrings.length === 0 ? (
+          <table>
+            <thead>
               <tr>
-                <td colSpan={recurringHeaders.length}>No recurrings yet.</td>
+                {recurringHeaders.map((header) => (
+                  <th key={header}>{header}</th>
+                ))}
+                <th>Actions</th>
               </tr>
-            ) : (
-              recurrings.map((row) => {
-                const isEditing = editingRecurringId === row._id;
-                return (
-                  <tr key={row._id}>
-                    <td>{isEditing ? <input value={editValues.status ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, status: e.target.value }))} /> : row.status}</td>
-                    <td>{isEditing ? <input value={editValues.name ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, name: e.target.value }))} /> : row.name}</td>
-                    <td>{isEditing ? <input value={editValues.type ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, type: e.target.value }))} /> : row.type}</td>
-                    <td>{isEditing ? <input value={editValues.price ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, price: e.target.value }))} /> : row.price}</td>
-                    <td>{isEditing ? <input value={editValues.frequency ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, frequency: e.target.value }))} /> : row.frequency}</td>
-                    <td>{isEditing ? <input value={editValues.dayOfMonth ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, dayOfMonth: e.target.value }))} /> : row.dayOfMonth}</td>
-                    <td>{isEditing ? <input value={editValues.paidBy ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, paidBy: e.target.value }))} /> : row.paidBy}</td>
-                    <td>{isEditing ? <input value={editValues.category ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, category: e.target.value }))} /> : row.category}</td>
-                    <td>{isEditing ? <input value={editValues.paidTo ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, paidTo: e.target.value }))} /> : row.paidTo}</td>
-                    <td>{isEditing ? <input value={editValues.notes ?? ""} onChange={(e) => setEditValues((v) => ({ ...v, notes: e.target.value }))} /> : row.notes ?? ""}</td>
-                    <td className="actions">
-                      {isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await updateRecurring({
-                                  id: row._id,
-                                  status: editValues.status ?? "",
-                                  name: editValues.name ?? "",
-                                  type: editValues.type ?? "",
-                                  price: toAmount(editValues.price ?? ""),
-                                  frequency: editValues.frequency ?? "",
-                                  dayOfMonth: Number(editValues.dayOfMonth ?? "0") || 0,
-                                  paidBy: editValues.paidBy ?? "",
-                                  category: editValues.category ?? "",
-                                  paidTo: editValues.paidTo ?? "",
-                                  notes: editValues.notes || undefined,
-                                });
-                                setEditingRecurringId(null);
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Save
-                          </button>
-                          <button type="button" onClick={() => setEditingRecurringId(null)}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" onClick={() => startEditRecurring(row)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              setSaving(true);
-                              try {
-                                await deleteRecurring({ id: row._id });
-                              } finally {
-                                setSaving(false);
-                              }
-                            }}
-                            disabled={saving}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        {recurringsStatus === "CanLoadMore" ? (
-          <button type="button" onClick={() => loadMoreRecurrings(25)}>
-            Load More Recurrings
-          </button>
-        ) : null}
+            </thead>
+            <tbody>
+              {recurrings.length === 0 ? (
+                <tr>
+                  <td colSpan={recurringHeaders.length}>No recurrings yet.</td>
+                </tr>
+              ) : (
+                recurrings.map((row) => {
+                  const isEditing = editingRecurringId === row._id;
+                  return (
+                    <tr key={row._id}>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.status ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                status: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.status
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.name ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                name: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.name
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.type ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                type: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.type
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.price ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                price: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.price
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.frequency ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                frequency: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.frequency
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.dayOfMonth ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                dayOfMonth: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.dayOfMonth
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.paidBy ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                paidBy: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.paidBy
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.category ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                category: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.category
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.paidTo ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                paidTo: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          row.paidTo
+                        )}
+                      </td>
+                      <td>
+                        {isEditing ? (
+                          <input
+                            value={editValues.notes ?? ""}
+                            onChange={(e) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                notes: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          (row.notes ?? "")
+                        )}
+                      </td>
+                      <td className="actions">
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await updateRecurring({
+                                    id: row._id,
+                                    status: editValues.status ?? "",
+                                    name: editValues.name ?? "",
+                                    type: editValues.type ?? "",
+                                    price: toAmount(editValues.price ?? ""),
+                                    frequency: editValues.frequency ?? "",
+                                    dayOfMonth:
+                                      Number(editValues.dayOfMonth ?? "0") || 0,
+                                    paidBy: editValues.paidBy ?? "",
+                                    category: editValues.category ?? "",
+                                    paidTo: editValues.paidTo ?? "",
+                                    notes: editValues.notes || undefined,
+                                  });
+                                  setEditingRecurringId(null);
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingRecurringId(null)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEditRecurring(row)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSaving(true);
+                                try {
+                                  await deleteRecurring({ id: row._id });
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }}
+                              disabled={saving}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          {recurringsStatus === "CanLoadMore" ? (
+            <button type="button" onClick={() => loadMoreRecurrings(25)}>
+              Load More Recurrings
+            </button>
+          ) : null}
         </>
       )}
     </main>

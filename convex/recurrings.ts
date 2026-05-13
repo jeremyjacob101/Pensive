@@ -166,8 +166,7 @@ export const materializeDueExpenses = mutation({
     const due = await ctx.db
       .query("recurrings")
       .withIndex("by_user_id_day_of_month", (q) =>
-        q.eq("userId", userId).eq("dayOfMonth", day),
-      )
+        q.eq("userId", userId).eq("dayOfMonth", day))
       .collect();
 
     let created = 0;
@@ -182,8 +181,7 @@ export const materializeDueExpenses = mutation({
       const already = await ctx.db
         .query("expenses")
         .withIndex("by_user_id_automation_key", (q) =>
-          q.eq("userId", userId).eq("automationKey", automationKey),
-        )
+          q.eq("userId", userId).eq("automationKey", automationKey))
         .first();
       if (already) {
         skipped++;
