@@ -8,13 +8,18 @@
  * @module
  */
 
-import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
-import type * as recurrings from "../recurrings.js";
-import type * as incomings from "../incomings.js";
+import type * as auth from "../auth.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
-import type * as auth from "../auth.js";
+import type * as incomings from "../incomings.js";
+import type * as recurrings from "../recurrings.js";
+import type * as userOptions from "../userOptions.js";
 
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
@@ -22,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   incomings: typeof incomings;
   recurrings: typeof recurrings;
+  userOptions: typeof userOptions;
 }>;
 
 /**

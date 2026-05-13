@@ -41,6 +41,18 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_incoming_id", ["incomingId"])
     .index("by_date", ["date"]),
+  userOptions: defineTable({
+    userId: v.optional(v.id("users")),
+    kind: v.union(
+      v.literal("expenseType"),
+      v.literal("account"),
+      v.literal("category"),
+      v.literal("incomeType"),
+    ),
+    value: v.string(),
+  })
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_value", ["userId", "kind", "value"]),
   recurrings: defineTable({
     userId: v.optional(v.id("users")),
     status: v.string(),

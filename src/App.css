@@ -2,11 +2,37 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #ffffff;
+  --text: #111827;
+  --border: #d1d5db;
+  --surface: #ffffff;
+  --surface-muted: #f3f4f6;
+  --tab-active-bg: #111827;
+  --tab-active-text: #ffffff;
+}
+
+.theme-dark {
+  --bg: #000000;
+  --text: #e5e7eb;
+  --border: #334155;
+  --surface: #111827;
+  --surface-muted: #1f2937;
+  --tab-active-bg: #e5e7eb;
+  --tab-active-text: #111827;
+}
+
+html,
+body,
+#root {
+  background: #000000;
+}
+
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color: #111827;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--bg);
 }
 
 #root {
@@ -16,6 +42,115 @@ body {
 .page {
   padding: 16px;
   overflow-x: auto;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.loading-screen {
+  background: #000000;
+  color: #ffffff;
+}
+
+.app-shell {
+  position: relative;
+}
+
+.app-content {
+  margin-left: 76px;
+  min-width: 0;
+}
+
+.left-menu {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 62px;
+  min-width: 62px;
+  height: calc(100vh - 32px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: width 180ms ease, min-width 180ms ease;
+  overflow: hidden;
+}
+
+.left-menu:hover {
+  width: 220px;
+  min-width: 220px;
+}
+
+.left-menu-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.left-menu-item,
+.left-menu-user {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  height: 38px;
+  width: 100%;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.left-menu-icon {
+  width: 20px;
+  min-width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.left-menu-label {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.left-menu:hover .left-menu-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.left-menu-item.active {
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
+  border-color: var(--tab-active-bg);
+}
+
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
 }
 
 .tabs {
@@ -25,9 +160,9 @@ body {
 }
 
 .tab {
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #111827;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 14px;
@@ -35,9 +170,9 @@ body {
 }
 
 .tab.active {
-  background: #111827;
-  color: #ffffff;
-  border-color: #111827;
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
+  border-color: var(--tab-active-bg);
 }
 
 .entry-form {
@@ -49,14 +184,15 @@ body {
 
 .entry-form input,
 .entry-form button {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
   border-radius: 8px;
   padding: 8px;
   font-size: 14px;
 }
 
 .entry-form button {
-  background: #ffffff;
   cursor: pointer;
 }
 
@@ -67,16 +203,20 @@ table {
 
 th,
 td {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   padding: 8px;
   text-align: left;
   font-size: 14px;
   white-space: nowrap;
+  color: var(--text);
+  background: var(--surface);
 }
 
 td input {
   width: 100%;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface);
   border-radius: 6px;
   padding: 6px;
   font-size: 13px;
@@ -88,8 +228,9 @@ td.actions {
 
 td.actions button {
   margin-right: 6px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -97,6 +238,51 @@ td.actions button {
 }
 
 thead th {
-  background: #f3f4f6;
+  background: var(--surface-muted);
   font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    position: static;
+  }
+
+  .left-menu,
+  .left-menu:hover {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .left-menu {
+    position: static;
+    top: auto;
+    left: auto;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .left-menu-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .left-menu-label,
+  .left-menu:hover .left-menu-label {
+    opacity: 1;
+    transform: none;
+  }
+
+  .left-menu-item,
+  .left-menu-user {
+    width: auto;
+    min-width: 120px;
+  }
+
+  .app-content {
+    margin-left: 0;
+  }
 }

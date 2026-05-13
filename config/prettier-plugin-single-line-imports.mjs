@@ -3,7 +3,7 @@ import * as prettierPluginEstree from "prettier/plugins/estree";
 import * as prettierPluginBabel from "prettier/plugins/babel";
 import * as prettier from "prettier";
 
-const { group } = prettier.doc.builders;
+const { group, hardline } = prettier.doc.builders;
 const basePrinter = prettierPluginEstree.printers.estree;
 
 function hasComments(value, seen = new WeakSet()) {
@@ -290,14 +290,6 @@ function renderSingleLineImportDoc(node, options) {
   return text ? group([text]) : null;
 }
 
-function isConsecutiveImport(previousNode, nextNode) {
-  if (!previousNode?.loc || !nextNode?.loc) {
-    return false;
-  }
-
-  return nextNode.loc.start.line === previousNode.loc.end.line + 1;
-}
-
 function reorderTopImportsByLength(ast, options) {
   if (
     !ast ||
@@ -317,20 +309,15 @@ function reorderTopImportsByLength(ast, options) {
       break;
     }
 
-    if (index > 0 && !isConsecutiveImport(ast.body[index - 1], node)) {
-      break;
-    }
-
     const rendered = renderSingleLineImport(node, options);
 
     if (!rendered) {
-      break;
+      return ast;
     }
 
     topImports.push({
       node,
       length: rendered.length,
-      originalIndex: topImports.length,
     });
   }
 
@@ -338,25 +325,140 @@ function reorderTopImportsByLength(ast, options) {
     return ast;
   }
 
-  const sortedImports = [...topImports].sort((left, right) => {
-    if (right.length !== left.length) {
-      return right.length - left.length;
-    }
+  const sortedImports = [...topImports]
+    .map((entry, entryIndex) => ({
+      ...entry,
+      originalIndex: entryIndex,
+    }))
+    .sort((left, right) => {
+      if (right.length !== left.length) {
+        return right.length - left.length;
+      }
 
-    return left.originalIndex - right.originalIndex;
-  });
+      return left.originalIndex - right.originalIndex;
+    });
 
   const reorderedBody = [...ast.body];
+  let offsetCursor =
+    typeof sortedImports[0].node?.start === "number"
+      ? sortedImports[0].node.start
+      : null;
+  let lineCursor = sortedImports[0].node?.loc?.start?.line ?? null;
 
   for (let index = 0; index < sortedImports.length; index += 1) {
-    reorderedBody[index] = sortedImports[index].node;
+    const sourceNode = sortedImports[index].node;
+    let nextNode = sourceNode;
+
+    if (offsetCursor !== null || lineCursor !== null) {
+      nextNode = { ...sourceNode };
+
+      if (
+        offsetCursor !== null &&
+        typeof sourceNode.start === "number" &&
+        typeof sourceNode.end === "number" &&
+        sourceNode.end >= sourceNode.start
+      ) {
+        const spanLength = sourceNode.end - sourceNode.start;
+        nextNode.start = offsetCursor;
+        nextNode.end = offsetCursor + spanLength;
+        offsetCursor = nextNode.end + 1;
+
+        if (Array.isArray(sourceNode.range) && sourceNode.range.length === 2) {
+          nextNode.range = [nextNode.start, nextNode.end];
+        }
+      }
+
+      if (lineCursor !== null && sourceNode.loc?.start && sourceNode.loc?.end) {
+        const lineSpan = Math.max(
+          sourceNode.loc.end.line - sourceNode.loc.start.line,
+          0,
+        );
+        nextNode.loc = {
+          ...sourceNode.loc,
+          start: { ...sourceNode.loc.start, line: lineCursor },
+          end: { ...sourceNode.loc.end, line: lineCursor + lineSpan },
+        };
+        lineCursor = nextNode.loc.end.line + 1;
+      }
+    }
+
+    reorderedBody[index] = nextNode;
   }
 
   return { ...ast, body: reorderedBody };
 }
 
+function hasBlankLineBetween(previousNode, nextNode) {
+  if (!previousNode?.loc || !nextNode?.loc) {
+    return false;
+  }
+
+  return nextNode.loc.start.line > previousNode.loc.end.line + 1;
+}
+
 function print(path, options, print) {
   const node = path.node;
+
+  if (
+    options.singleLineImports &&
+    node?.type === "Program" &&
+    Array.isArray(node.body)
+  ) {
+    let topImportCount = 0;
+    const forcedTopImports = [];
+
+    for (const bodyNode of node.body) {
+      if (bodyNode?.type !== "ImportDeclaration") {
+        break;
+      }
+
+      const forcedImport = renderSingleLineImportDoc(bodyNode, options);
+
+      if (!forcedImport) {
+        return basePrinter.print.call(this, path, options, print);
+      }
+
+      forcedTopImports.push(forcedImport);
+      topImportCount += 1;
+    }
+
+    if (topImportCount > 0) {
+      const docs = [];
+
+      for (let index = 0; index < node.body.length; index += 1) {
+        const currentNode = node.body[index];
+        const nextNode = node.body[index + 1];
+        const currentDoc =
+          index < topImportCount
+            ? forcedTopImports[index]
+            : path.call(print, "body", index);
+
+        docs.push(currentDoc);
+
+        if (!nextNode) {
+          continue;
+        }
+
+        let separatorCount = 1;
+
+        if (index === topImportCount - 1) {
+          separatorCount = 2;
+        } else if (index >= topImportCount) {
+          separatorCount = hasBlankLineBetween(currentNode, nextNode) ? 2 : 1;
+        }
+
+        for (
+          let separatorIndex = 0;
+          separatorIndex < separatorCount;
+          separatorIndex += 1
+        ) {
+          docs.push(hardline);
+        }
+      }
+
+      return docs;
+    }
+  }
 
   if (options.singleLineImports && node?.type === "ImportDeclaration") {
     const forcedImport = renderSingleLineImportDoc(node, options);

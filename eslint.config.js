@@ -6,7 +6,7 @@ import globals from "globals";
 import js from "@eslint/js";
 
 export default defineConfig([
-  globalIgnores(["dist"]),
+  globalIgnores(["dist", "convex/_generated"]),
   {
     files: ["**/*.{ts,tsx}"],
     extends: [
