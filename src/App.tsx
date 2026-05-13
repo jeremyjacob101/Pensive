@@ -135,7 +135,6 @@ function DataApp() {
   const [editingRecurringId, setEditingRecurringId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [claimingLegacy, setClaimingLegacy] = useState(false);
   const createExpense = useMutation(api.expenses.create);
   const createIncoming = useMutation(api.incomings.create);
   const createRecurring = useMutation(api.recurrings.create);
@@ -145,9 +144,6 @@ function DataApp() {
   const deleteExpense = useMutation(api.expenses.remove);
   const deleteIncoming = useMutation(api.incomings.remove);
   const deleteRecurring = useMutation(api.recurrings.remove);
-  const claimLegacyExpenses = useMutation(api.expenses.claimLegacyRows);
-  const claimLegacyIncomings = useMutation(api.incomings.claimLegacyRows);
-  const claimLegacyRecurrings = useMutation(api.recurrings.claimLegacyRows);
   const {
     results: expenses,
     status: expensesStatus,
@@ -163,27 +159,6 @@ function DataApp() {
     status: recurringsStatus,
     loadMore: loadMoreRecurrings,
   } = usePaginatedQuery(api.recurrings.list, {}, { initialNumItems: 25 });
-
-  async function claimUntilDone(
-    claimFn: (args: { batchSize?: number }) => Promise<{ done: boolean; claimed: number }>,
-  ) {
-    let done = false;
-    while (!done) {
-      const result = await claimFn({ batchSize: 200 });
-      done = result.done;
-    }
-  }
-
-  async function claimLegacyData() {
-    setClaimingLegacy(true);
-    try {
-      await claimUntilDone(claimLegacyExpenses);
-      await claimUntilDone(claimLegacyIncomings);
-      await claimUntilDone(claimLegacyRecurrings);
-    } finally {
-      setClaimingLegacy(false);
-    }
-  }
 
   async function onAddExpense(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -311,9 +286,6 @@ function DataApp() {
   return (
     <main className="page">
       <div className="tabs">
-        <button type="button" className="tab" onClick={claimLegacyData} disabled={claimingLegacy}>
-          {claimingLegacy ? "Claiming Legacy Data..." : "Claim Legacy Data"}
-        </button>
         <button type="button" className="tab" onClick={() => void signOut()}>
           Sign Out
         </button>
