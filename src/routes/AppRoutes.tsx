@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { getRedirectTarget } from "../helpers/authRedirect";
 import { Recurrings } from "../pages/Recurrings";
 import { AppLayout } from "../pages/AppLayout";
 import { LoginPage } from "../pages/LoginPage";
@@ -39,7 +40,19 @@ export function ProtectedRoute() {
   }
 
   if (status === "unauthenticated") {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: {
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+          },
+        }}
+      />
+    );
   }
 
   return <Outlet />;
@@ -54,8 +67,7 @@ export function PublicOnlyRoute() {
   }
 
   if (status === "authenticated") {
-    const from = (location.state as { from?: { pathname?: string } } | null)
-      ?.from?.pathname;
+    const from = getRedirectTarget(location.state);
     return <Navigate to={from || "/expenses"} replace />;
   }
 

@@ -1,5 +1,6 @@
 import { type SyntheticEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { getRedirectTarget } from "../helpers/authRedirect";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { THEME_STORAGE_KEY } from "../keys/localStorage";
 import { ThemeToggle } from "../components/ThemeToggle";
@@ -31,8 +32,7 @@ export function LoginPage() {
     setError(null);
     try {
       await signInPassword({ email: username, password, flow: mode });
-      const from = (location.state as { from?: { pathname?: string } } | null)
-        ?.from?.pathname;
+      const from = getRedirectTarget(location.state);
       navigate(from || "/expenses", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");

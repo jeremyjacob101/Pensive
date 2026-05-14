@@ -8,6 +8,12 @@ type SignInPasswordInput = {
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+export type RedirectLocation = {
+  pathname?: string;
+  search?: string;
+  hash?: string;
+};
+
 export type AuthContextValue = {
   status: AuthStatus;
   isAuthenticated: boolean;
