@@ -10,13 +10,9 @@ import { OptionPicker } from "../components/OptionPicker";
 import type { EditValues } from "../types/workspace";
 import { api } from "../../convex/_generated/api";
 import { useMemo, useRef, useState } from "react";
+import { parseSubId } from "../helpers/subId";
 import { CreditCard } from "lucide-react";
 import { saveOption } from "./actions";
-
-function parseSubId(subExpenseId?: string) {
-  const parsed = Number.parseInt((subExpenseId ?? "").trim(), 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
 export function Expenses() {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -25,10 +21,6 @@ export function Expenses() {
   );
   const [partnerPickAnchorId, setPartnerPickAnchorId] =
     useState<Id<"expenses"> | null>(null);
-  const [linkMode, setLinkMode] = useState(false);
-  const [selectedExpenseIds, setSelectedExpenseIds] = useState<
-    Array<Id<"expenses">>
-  >([]);
   const [editValues, setEditValues] = useState<EditValues>({});
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +30,6 @@ export function Expenses() {
   const unlinkExpenseFromPartners = useMutation(
     api.expenses.unlinkExpenseFromPartners,
   );
-  const linkExistingExpenses = useMutation(api.expenses.linkExistingExpenses);
   const renameBaseExpense = useMutation(api.expenses.renameBaseExpense);
   const removeBaseExpense = useMutation(api.expenses.removeBaseExpense);
   const addUserOption = useMutation(api.userOptions.add);
@@ -139,46 +130,6 @@ export function Expenses() {
   const monthText = formatMonthLabel(activeDate);
   const yearText = formatYearLabel(activeDate);
   const labelKey = `${monthText}-${yearText}`;
-  const selectedIdsSet = useMemo(
-    () => new Set(selectedExpenseIds),
-    [selectedExpenseIds],
-  );
-
-  const toggleSelectedExpense = (expenseDocId: Id<"expenses">) => {
-    setSelectedExpenseIds((current) =>
-      current.includes(expenseDocId)
-        ? current.filter((id) => id !== expenseDocId)
-        : [...current, expenseDocId]);
-  };
-
-  const handleLinkSelectedExpenses = async () => {
-    if (selectedExpenseIds.length < 2) {
-      window.alert("Select at least two expenses to link.");
-      return;
-    }
-
-    const firstSelected = expenses.find((row) => selectedIdsSet.has(row._id));
-    const nextLabel = window
-      .prompt(
-        "Grouped expense title",
-        firstSelected?.baseExpenseLabel || firstSelected?.expense || "",
-      )
-      ?.trim();
-    if (!nextLabel) return;
-
-    setSaving(true);
-    try {
-      await linkExistingExpenses({
-        expenseIds: selectedExpenseIds,
-        baseExpenseLabel: nextLabel,
-      });
-      setSelectedExpenseIds([]);
-      setLinkMode(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handlePickPartner = async (partnerId: Id<"expenses">) => {
     if (!partnerPickAnchorId || partnerPickAnchorId === partnerId) return;
     setSaving(true);
@@ -287,40 +238,6 @@ export function Expenses() {
                   </button>
                 </>
               ) : null}
-              {!linkMode ? (
-                <button
-                  type="button"
-                  className="split-entry-launcher"
-                  onClick={() => {
-                    setLinkMode(true);
-                    setSelectedExpenseIds([]);
-                  }}
-                >
-                  Link Existing
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="save-plus-btn split-create-btn"
-                    disabled={saving || selectedExpenseIds.length < 2}
-                    onClick={() => void handleLinkSelectedExpenses()}
-                  >
-                    Link Selected ({selectedExpenseIds.length})
-                  </button>
-                  <button
-                    type="button"
-                    className="split-entry-launcher"
-                    disabled={saving}
-                    onClick={() => {
-                      setLinkMode(false);
-                      setSelectedExpenseIds([]);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
             </div>
 
             {displayItems.map((item) => {
@@ -452,18 +369,6 @@ export function Expenses() {
                                 : undefined
                             }
                           >
-                            {linkMode ? (
-                              <label className="link-select-check">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedIdsSet.has(row._id)}
-                                  onChange={() =>
-                                    toggleSelectedExpense(row._id)
-                                  }
-                                />
-                                <span>Link</span>
-                              </label>
-                            ) : null}
                             <div className="grouped-expense-row-main">
                               <div className="grouped-expense-row-title-wrap">
                                 <span className="grouped-expense-row-title">
@@ -699,16 +604,6 @@ export function Expenses() {
                   }
                 >
                   <div className="entry-card-main">
-                    {linkMode ? (
-                      <label className="link-select-check">
-                        <input
-                          type="checkbox"
-                          checked={selectedIdsSet.has(row._id)}
-                          onChange={() => toggleSelectedExpense(row._id)}
-                        />
-                        <span>Link</span>
-                      </label>
-                    ) : null}
                     <div className="entry-card-primary">
                       <div className="entry-card-amount">
                         <CreditCard

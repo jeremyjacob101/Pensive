@@ -1,6 +1,6 @@
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
@@ -46,6 +46,51 @@ async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
     throw new Error("Unauthenticated");
   }
   return userId;
+}
+
+async function listRowsByBaseIncomingId(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  baseIncomingId: string,
+) {
+  return await ctx.db
+    .query("incomings")
+    .withIndex("by_user_base_incoming_id", (q) =>
+      q.eq("userId", userId).eq("baseIncomingId", baseIncomingId))
+    .collect();
+}
+
+async function normalizeIncomingGroup(
+  ctx: MutationCtx,
+  rows: Array<{
+    _id: Id<"incomings">;
+    _creationTime: number;
+    baseIncomingId?: string;
+  }>,
+  baseIncomingId: string | undefined,
+) {
+  if (!baseIncomingId || rows.length <= 1) {
+    for (const row of rows) {
+      await ctx.db.patch(row._id, {
+        baseIncomingId: undefined,
+        subIncomingId: undefined,
+      });
+    }
+    return;
+  }
+
+  const sorted = rows
+    .slice()
+    .sort((a, b) =>
+      a._creationTime === b._creationTime
+        ? a._id.localeCompare(b._id)
+        : a._creationTime - b._creationTime);
+  for (let index = 0; index < sorted.length; index += 1) {
+    await ctx.db.patch(sorted[index]._id, {
+      baseIncomingId,
+      subIncomingId: String(index + 1).padStart(3, "0"),
+    });
+  }
 }
 
 export const list = query({
@@ -179,6 +224,89 @@ export const update = mutation({
       date: normalizeDate(rest.date),
     });
     return id;
+  },
+});
+
+export const addPartnerIncoming = mutation({
+  args: {
+    anchorIncomingId: v.id("incomings"),
+    partnerIncomingId: v.id("incomings"),
+  },
+  handler: async (ctx, { anchorIncomingId, partnerIncomingId }) => {
+    const userId = await requireUserId(ctx);
+    if (anchorIncomingId === partnerIncomingId) {
+      throw new Error("Cannot partner an incoming with itself");
+    }
+
+    const anchor = await ctx.db.get(anchorIncomingId);
+    const partner = await ctx.db.get(partnerIncomingId);
+    if (
+      !anchor ||
+      !partner ||
+      anchor.userId !== userId ||
+      partner.userId !== userId
+    ) {
+      throw new Error("One or more selected incomings were not found");
+    }
+
+    const anchorBaseId = anchor.baseIncomingId?.trim() || anchor.incomingId;
+    const anchorRows = anchor.baseIncomingId
+      ? await listRowsByBaseIncomingId(ctx, userId, anchor.baseIncomingId)
+      : [anchor];
+
+    const partnerBaseId = partner.baseIncomingId?.trim() || "";
+    if (partnerBaseId && partnerBaseId === anchorBaseId) {
+      return { linked: anchorRows.length, baseIncomingId: anchorBaseId };
+    }
+
+    const oldPartnerGroupRows = partnerBaseId
+      ? await listRowsByBaseIncomingId(ctx, userId, partnerBaseId)
+      : [];
+    const oldPartnerGroupWithoutTarget = oldPartnerGroupRows.filter(
+      (row) => row._id !== partner._id,
+    );
+    await normalizeIncomingGroup(
+      ctx,
+      oldPartnerGroupWithoutTarget,
+      partnerBaseId || undefined,
+    );
+
+    const mergedRows = [
+      ...anchorRows.filter((row) => row._id !== partner._id),
+      partner,
+    ];
+    await normalizeIncomingGroup(ctx, mergedRows, anchorBaseId);
+
+    return { linked: mergedRows.length, baseIncomingId: anchorBaseId };
+  },
+});
+
+export const unlinkIncomingFromPartners = mutation({
+  args: {
+    incomingId: v.id("incomings"),
+  },
+  handler: async (ctx, { incomingId }) => {
+    const userId = await requireUserId(ctx);
+    const target = await ctx.db.get(incomingId);
+    if (!target || target.userId !== userId) {
+      throw new Error("Incoming not found");
+    }
+
+    const baseId = target.baseIncomingId?.trim();
+    if (!baseId) {
+      return { unlinked: 0, remainingLinked: 0 };
+    }
+
+    const groupRows = await listRowsByBaseIncomingId(ctx, userId, baseId);
+    const remaining = groupRows.filter((row) => row._id !== target._id);
+
+    await ctx.db.patch(target._id, {
+      baseIncomingId: undefined,
+      subIncomingId: undefined,
+    });
+    await normalizeIncomingGroup(ctx, remaining, baseId);
+
+    return { unlinked: 1, remainingLinked: Math.max(remaining.length, 0) };
   },
 });
 

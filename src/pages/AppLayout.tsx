@@ -22,6 +22,7 @@ export function AppLayout() {
   const createExpense = useMutation(api.expenses.create);
   const bulkCreateExpenses = useMutation(api.expenses.bulkCreate);
   const createIncoming = useMutation(api.incomings.create);
+  const bulkCreateIncomings = useMutation(api.incomings.bulkCreate);
   const createRecurring = useMutation(api.recurrings.create);
   const addUserOption = useMutation(api.userOptions.add);
 
@@ -71,6 +72,7 @@ export function AppLayout() {
                 })
               }
               bulkCreateExpenses={bulkCreateExpenses}
+              bulkCreateIncomings={bulkCreateIncomings}
               onAddIncoming={(e) =>
                 handleAddIncoming(e, {
                   createIncoming,

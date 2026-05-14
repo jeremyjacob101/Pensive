@@ -1,3 +1,5 @@
+import { buildEmptySplitExpenseDraft, buildEmptySplitIncomingDraft } from "../helpers/splitDrafts";
+import type { SplitExpenseDraft, SplitIncomingDraft } from "../types/splitDrafts";
 import { getDefaultOptionValue, toOptionValues } from "../helpers/options";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormType, UserOptions } from "../types/workspace";
@@ -10,33 +12,7 @@ import { saveOption } from "../pages/actions";
 import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
 
-type SplitExpenseDraft = {
-  expense: string;
-  type: string;
-  account: string;
-  category: string;
-  amount: string;
-  date: string;
-  paidTo: string;
-  notes: string;
-  comments: string;
-};
-
-function buildEmptySplitDraft(todayIsoDate: string): SplitExpenseDraft {
-  return {
-    expense: "",
-    type: "",
-    account: "",
-    category: "",
-    amount: "",
-    date: todayIsoDate,
-    paidTo: "",
-    notes: "",
-    comments: "",
-  };
-}
-
-export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, saving, userOptions }: {
+export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {
   activeItem: MenuItemKey;
   formType: FormType;
   setFormType: (value: FormType) => void;
@@ -58,6 +34,22 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       baseExpenseId?: string;
       baseExpenseLabel?: string;
       subExpenseId?: string;
+    }>;
+  }) => Promise<unknown>;
+  bulkCreateIncomings: (args: {
+    rows: Array<{
+      incoming: string;
+      paidBy: string;
+      incomeType: string;
+      account: string;
+      amount: number;
+      date: string;
+      monthYear: string;
+      notes?: string;
+      comments?: string;
+      incomingId: string;
+      baseIncomingId?: string;
+      subIncomingId?: string;
     }>;
   }) => Promise<unknown>;
   saving: boolean;
@@ -87,7 +79,13 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
   const [recurringStatus, setRecurringStatus] = useState<"active" | "inactive">(
     "active",
   );
-  const [splitDrafts, setSplitDrafts] = useState<SplitExpenseDraft[]>([]);
+
+  const [splitExpenseDrafts, setSplitExpenseDrafts] = useState<
+    SplitExpenseDraft[]
+  >([]);
+  const [splitIncomingDrafts, setSplitIncomingDrafts] = useState<
+    SplitIncomingDraft[]
+  >([]);
   const [submittingSplit, setSubmittingSplit] = useState(false);
 
   const resetOptionState = useCallback(() => {
@@ -106,50 +104,85 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
     setFormType(nextFormType);
   };
 
-  const openSplitForm = () => {
+  const openSplitExpenseForm = () => {
     resetOptionState();
-    setSplitDrafts([buildEmptySplitDraft(todayIsoDate)]);
+    setSplitExpenseDrafts([buildEmptySplitExpenseDraft(todayIsoDate)]);
+    setSplitIncomingDrafts([]);
     setFormType("expense");
+  };
+
+  const openSplitIncomingForm = () => {
+    resetOptionState();
+    setSplitIncomingDrafts([buildEmptySplitIncomingDraft(todayIsoDate)]);
+    setSplitExpenseDrafts([]);
+    setFormType("incoming");
   };
 
   const closeForm = () => {
     resetOptionState();
-    setSplitDrafts([]);
+    setSplitExpenseDrafts([]);
+    setSplitIncomingDrafts([]);
     setSubmittingSplit(false);
     setFormType(null);
   };
 
-  const isSplitMode = formType === "expense" && splitDrafts.length > 0;
+  const isSplitExpenseMode =
+    formType === "expense" && splitExpenseDrafts.length > 0;
+  const isSplitIncomingMode =
+    formType === "incoming" && splitIncomingDrafts.length > 0;
 
-  const updateSplitDraft = (
+  const updateSplitExpenseDraft = (
     index: number,
     key: keyof SplitExpenseDraft,
     value: string,
   ) => {
-    setSplitDrafts((current) =>
+    setSplitExpenseDrafts((current) =>
       current.map((row, rowIndex) =>
         rowIndex === index ? { ...row, [key]: value } : row));
   };
 
-  const addSplitDraft = () => {
-    setSplitDrafts((current) => {
+  const addSplitExpenseDraft = () => {
+    setSplitExpenseDrafts((current) => {
       const previous = current[current.length - 1];
-      const next: SplitExpenseDraft = {
-        ...buildEmptySplitDraft(todayIsoDate),
-        date: previous?.date ?? todayIsoDate,
-        account: previous?.account ?? "",
-        paidTo: previous?.paidTo ?? "",
-      };
-      return [...current, next];
+      return [
+        ...current,
+        {
+          ...buildEmptySplitExpenseDraft(todayIsoDate),
+          date: previous?.date ?? todayIsoDate,
+          account: previous?.account ?? "",
+          paidTo: previous?.paidTo ?? "",
+        },
+      ];
     });
   };
 
-  const removeSplitDraft = (index: number) => {
-    setSplitDrafts((current) => current.filter((_, i) => i !== index));
+  const updateSplitIncomingDraft = (
+    index: number,
+    key: keyof SplitIncomingDraft,
+    value: string,
+  ) => {
+    setSplitIncomingDrafts((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [key]: value } : row));
+  };
+
+  const addSplitIncomingDraft = () => {
+    setSplitIncomingDrafts((current) => {
+      const previous = current[current.length - 1];
+      return [
+        ...current,
+        {
+          ...buildEmptySplitIncomingDraft(todayIsoDate),
+          date: previous?.date ?? todayIsoDate,
+          account: previous?.account ?? "",
+          monthYear: previous?.monthYear ?? "",
+        },
+      ];
+    });
   };
 
   const createSplitExpenses = async () => {
-    const cleaned = splitDrafts.map((row) => ({
+    const cleaned = splitExpenseDrafts.map((row) => ({
       ...row,
       expense: row.expense.trim(),
       type: row.type.trim(),
@@ -198,16 +231,74 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
         })),
       });
 
-      const uniqueTypes = [...new Set(cleaned.map((row) => row.type))];
-      const uniqueAccounts = [...new Set(cleaned.map((row) => row.account))];
-      const uniqueCategories = [...new Set(cleaned.map((row) => row.category))];
       await Promise.all([
-        ...uniqueTypes.map((value) =>
+        ...[...new Set(cleaned.map((row) => row.type))].map((value) =>
           saveOption(addUserOption, "expenseType", value)),
-        ...uniqueAccounts.map((value) =>
+        ...[...new Set(cleaned.map((row) => row.account))].map((value) =>
           saveOption(addUserOption, "account", value)),
-        ...uniqueCategories.map((value) =>
+        ...[...new Set(cleaned.map((row) => row.category))].map((value) =>
           saveOption(addUserOption, "category", value)),
+      ]);
+
+      closeForm();
+    } finally {
+      setSubmittingSplit(false);
+    }
+  };
+
+  const createSplitIncomings = async () => {
+    const cleaned = splitIncomingDrafts.map((row) => ({
+      ...row,
+      incoming: row.incoming.trim(),
+      paidBy: row.paidBy.trim(),
+      incomeType: row.incomeType.trim(),
+      account: row.account.trim(),
+      date: row.date.trim(),
+      monthYear: row.monthYear.trim(),
+      notes: row.notes.trim(),
+      comments: row.comments.trim(),
+    }));
+
+    const invalid = cleaned.find(
+      (row) =>
+        !row.incoming ||
+        !row.paidBy ||
+        !row.incomeType ||
+        !row.account ||
+        !row.date ||
+        !row.monthYear ||
+        !row.amount.trim(),
+    );
+    if (invalid) {
+      window.alert("Fill all required fields on every split incoming.");
+      return;
+    }
+
+    setSubmittingSplit(true);
+    try {
+      const baseIncomingId = randomId16();
+      await bulkCreateIncomings({
+        rows: cleaned.map((row, index) => ({
+          incoming: row.incoming,
+          paidBy: row.paidBy,
+          incomeType: row.incomeType,
+          account: row.account,
+          amount: toAmount(row.amount),
+          date: row.date,
+          monthYear: row.monthYear,
+          notes: row.notes || undefined,
+          comments: row.comments || undefined,
+          incomingId: randomId16(),
+          baseIncomingId,
+          subIncomingId: String(index + 1).padStart(3, "0"),
+        })),
+      });
+
+      await Promise.all([
+        ...[...new Set(cleaned.map((row) => row.incomeType))].map((value) =>
+          saveOption(addUserOption, "incomeType", value)),
+        ...[...new Set(cleaned.map((row) => row.account))].map((value) =>
+          saveOption(addUserOption, "account", value)),
       ]);
 
       closeForm();
@@ -256,25 +347,34 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
           >
             +
           </button>
-          {activeItem === "expenses" && (
+          {activeItem === "expenses" ? (
             <button
               type="button"
               className="split-entry-launcher"
-              onClick={openSplitForm}
+              onClick={openSplitExpenseForm}
             >
               + Split
             </button>
-          )}
+          ) : null}
+          {activeItem === "incomings" ? (
+            <button
+              type="button"
+              className="split-entry-launcher"
+              onClick={openSplitIncomingForm}
+            >
+              + Split
+            </button>
+          ) : null}
         </div>
       )}
 
       {formType === "expense" && (
         <div className="modal-overlay" onClick={closeForm}>
           <div
-            className={isSplitMode ? "split-modal-shell" : ""}
+            className={isSplitExpenseMode ? "split-modal-shell" : ""}
             onClick={(e) => e.stopPropagation()}
           >
-            {!isSplitMode && (
+            {!isSplitExpenseMode ? (
               <div className="modal-card">
                 <div className="modal-header">
                   <h3>Add Expense</h3>
@@ -344,9 +444,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                   </button>
                 </form>
               </div>
-            )}
-
-            {isSplitMode && (
+            ) : (
               <div className="split-modal-layout">
                 <div className="split-modal-toolbar">
                   <h3>Add Split Expenses</h3>
@@ -354,7 +452,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     <button
                       type="button"
                       className="split-entry-launcher"
-                      onClick={addSplitDraft}
+                      onClick={addSplitExpenseDraft}
                       disabled={submittingSplit}
                     >
                       + Split
@@ -377,33 +475,25 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     </button>
                   </div>
                 </div>
-
                 <div className="split-modal-cards">
-                  {splitDrafts.map((draft, index) => (
+                  {splitExpenseDrafts.map((draft, index) => (
                     <div
-                      key={`split-draft-${index}`}
+                      key={`split-expense-${index}`}
                       className="modal-card split-modal-card"
                     >
                       <div className="modal-header">
                         <h3>Split #{index + 1}</h3>
-                        {splitDrafts.length > 1 && (
-                          <button
-                            type="button"
-                            className="modal-close"
-                            onClick={() => removeSplitDraft(index)}
-                            disabled={submittingSplit}
-                          >
-                            ✕
-                          </button>
-                        )}
                       </div>
-
                       <div className="entry-form modal-form">
                         <input
                           placeholder="Expense"
                           value={draft.expense}
                           onChange={(e) =>
-                            updateSplitDraft(index, "expense", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "expense",
+                              e.target.value,
+                            )
                           }
                           required
                         />
@@ -415,7 +505,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="Type"
                           required
                           onChange={(value) =>
-                            updateSplitDraft(index, "type", value)
+                            updateSplitExpenseDraft(index, "type", value)
                           }
                           onCreateOption={saveOption.bind(null, addUserOption)}
                         />
@@ -427,7 +517,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="Account"
                           required
                           onChange={(value) =>
-                            updateSplitDraft(index, "account", value)
+                            updateSplitExpenseDraft(index, "account", value)
                           }
                           onCreateOption={saveOption.bind(null, addUserOption)}
                         />
@@ -439,7 +529,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="Category"
                           required
                           onChange={(value) =>
-                            updateSplitDraft(index, "category", value)
+                            updateSplitExpenseDraft(index, "category", value)
                           }
                           onCreateOption={saveOption.bind(null, addUserOption)}
                         />
@@ -447,7 +537,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="Amount"
                           value={draft.amount}
                           onChange={(e) =>
-                            updateSplitDraft(index, "amount", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "amount",
+                              e.target.value,
+                            )
                           }
                           required
                         />
@@ -455,7 +549,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           type="date"
                           value={draft.date}
                           onChange={(e) =>
-                            updateSplitDraft(index, "date", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "date",
+                              e.target.value,
+                            )
                           }
                           required
                         />
@@ -463,7 +561,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="PaidTo"
                           value={draft.paidTo}
                           onChange={(e) =>
-                            updateSplitDraft(index, "paidTo", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "paidTo",
+                              e.target.value,
+                            )
                           }
                           required
                         />
@@ -471,14 +573,22 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           placeholder="Notes"
                           value={draft.notes}
                           onChange={(e) =>
-                            updateSplitDraft(index, "notes", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "notes",
+                              e.target.value,
+                            )
                           }
                         />
                         <input
                           placeholder="Comments"
                           value={draft.comments}
                           onChange={(e) =>
-                            updateSplitDraft(index, "comments", e.target.value)
+                            updateSplitExpenseDraft(
+                              index,
+                              "comments",
+                              e.target.value,
+                            )
                           }
                         />
                       </div>
@@ -493,60 +603,223 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
 
       {formType === "incoming" && (
         <div className="modal-overlay" onClick={closeForm}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Add Incoming</h3>
-              <button type="button" className="modal-close" onClick={closeForm}>
-                ✕
-              </button>
-            </div>
-            <form
-              className="entry-form modal-form"
-              onSubmit={(e) => void onAddIncoming(e)}
-            >
-              <input name="incoming" placeholder="Incoming" required />
-              <input name="paidBy" placeholder="PaidBy" required />
-              <OptionPicker
-                kind="incomeType"
-                label="Income Type"
-                name="incomeType"
-                value={incomingType}
-                options={toOptionValues(userOptions?.incomeType)}
-                placeholder="IncomeType"
-                required
-                onChange={setIncomingType}
-                onCreateOption={saveOption.bind(null, addUserOption)}
-              />
-              <OptionPicker
-                kind="account"
-                label="Account"
-                name="account"
-                value={incomingAccount}
-                options={toOptionValues(userOptions?.account)}
-                placeholder="Account"
-                required
-                onChange={setIncomingAccount}
-                onCreateOption={saveOption.bind(null, addUserOption)}
-              />
-              <input name="amount" placeholder="Amount" required />
-              <input
-                name="date"
-                type="date"
-                defaultValue={todayIsoDate}
-                required
-              />
-              <input name="monthYear" placeholder="MonthYear" required />
-              <input name="notes" placeholder="Notes" />
-              <input name="comments" placeholder="Comments" />
-              <button
-                type="submit"
-                className="save-plus-btn"
-                aria-label="Save incoming"
-                disabled={saving}
-              >
-                +
-              </button>
-            </form>
+          <div
+            className={isSplitIncomingMode ? "split-modal-shell" : ""}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!isSplitIncomingMode ? (
+              <div className="modal-card">
+                <div className="modal-header">
+                  <h3>Add Incoming</h3>
+                  <button
+                    type="button"
+                    className="modal-close"
+                    onClick={closeForm}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form
+                  className="entry-form modal-form"
+                  onSubmit={(e) => void onAddIncoming(e)}
+                >
+                  <input name="incoming" placeholder="Incoming" required />
+                  <input name="paidBy" placeholder="PaidBy" required />
+                  <OptionPicker
+                    kind="incomeType"
+                    label="Income Type"
+                    name="incomeType"
+                    value={incomingType}
+                    options={toOptionValues(userOptions?.incomeType)}
+                    placeholder="IncomeType"
+                    required
+                    onChange={setIncomingType}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="account"
+                    label="Account"
+                    name="account"
+                    value={incomingAccount}
+                    options={toOptionValues(userOptions?.account)}
+                    placeholder="Account"
+                    required
+                    onChange={setIncomingAccount}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <input name="amount" placeholder="Amount" required />
+                  <input
+                    name="date"
+                    type="date"
+                    defaultValue={todayIsoDate}
+                    required
+                  />
+                  <input name="monthYear" placeholder="MonthYear" required />
+                  <input name="notes" placeholder="Notes" />
+                  <input name="comments" placeholder="Comments" />
+                  <button
+                    type="submit"
+                    className="save-plus-btn"
+                    aria-label="Save incoming"
+                    disabled={saving}
+                  >
+                    +
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="split-modal-layout">
+                <div className="split-modal-toolbar">
+                  <h3>Add Split Incomings</h3>
+                  <div className="split-modal-toolbar-actions">
+                    <button
+                      type="button"
+                      className="split-entry-launcher"
+                      onClick={addSplitIncomingDraft}
+                      disabled={submittingSplit}
+                    >
+                      + Split
+                    </button>
+                    <button
+                      type="button"
+                      className="save-plus-btn split-create-btn"
+                      onClick={() => void createSplitIncomings()}
+                      disabled={submittingSplit || saving}
+                    >
+                      Create All
+                    </button>
+                    <button
+                      type="button"
+                      className="modal-close"
+                      onClick={closeForm}
+                      disabled={submittingSplit}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <div className="split-modal-cards">
+                  {splitIncomingDrafts.map((draft, index) => (
+                    <div
+                      key={`split-incoming-${index}`}
+                      className="modal-card split-modal-card"
+                    >
+                      <div className="modal-header">
+                        <h3>Split #{index + 1}</h3>
+                      </div>
+                      <div className="entry-form modal-form">
+                        <input
+                          placeholder="Incoming"
+                          value={draft.incoming}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "incoming",
+                              e.target.value,
+                            )
+                          }
+                          required
+                        />
+                        <input
+                          placeholder="PaidBy"
+                          value={draft.paidBy}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "paidBy",
+                              e.target.value,
+                            )
+                          }
+                          required
+                        />
+                        <OptionPicker
+                          kind="incomeType"
+                          label="Income Type"
+                          value={draft.incomeType}
+                          options={toOptionValues(userOptions?.incomeType)}
+                          placeholder="IncomeType"
+                          required
+                          onChange={(value) =>
+                            updateSplitIncomingDraft(index, "incomeType", value)
+                          }
+                          onCreateOption={saveOption.bind(null, addUserOption)}
+                        />
+                        <OptionPicker
+                          kind="account"
+                          label="Account"
+                          value={draft.account}
+                          options={toOptionValues(userOptions?.account)}
+                          placeholder="Account"
+                          required
+                          onChange={(value) =>
+                            updateSplitIncomingDraft(index, "account", value)
+                          }
+                          onCreateOption={saveOption.bind(null, addUserOption)}
+                        />
+                        <input
+                          placeholder="Amount"
+                          value={draft.amount}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "amount",
+                              e.target.value,
+                            )
+                          }
+                          required
+                        />
+                        <input
+                          type="date"
+                          value={draft.date}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "date",
+                              e.target.value,
+                            )
+                          }
+                          required
+                        />
+                        <input
+                          placeholder="MonthYear"
+                          value={draft.monthYear}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "monthYear",
+                              e.target.value,
+                            )
+                          }
+                          required
+                        />
+                        <input
+                          placeholder="Notes"
+                          value={draft.notes}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "notes",
+                              e.target.value,
+                            )
+                          }
+                        />
+                        <input
+                          placeholder="Comments"
+                          value={draft.comments}
+                          onChange={(e) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "comments",
+                              e.target.value,
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
