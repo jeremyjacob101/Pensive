@@ -1,12 +1,12 @@
-import type { FormType, UserOptions } from "../types/workspace";
 import { getDefaultOptionValue, toOptionValues } from "../helpers/options";
+import type { FormType, UserOptions } from "../types/workspace";
 import { api } from "../../convex/_generated/api";
+import type { MenuItemKey } from "../types/ui";
 import { OptionPicker } from "./OptionPicker";
 import { saveOption } from "../pages/actions";
 import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
 import { useMemo, useState } from "react";
-import type { MenuItemKey } from "../types/ui";
 
 function getTodayIsoDate() {
   const now = new Date();

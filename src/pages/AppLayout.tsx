@@ -54,7 +54,9 @@ export function AppLayout() {
 
     const hasColorQualityIssue = Object.values(userOptions).some((options) => {
       if (!options || options.length === 0) return false;
-      const normalized = options.map((option) => option.color?.toUpperCase() ?? "");
+      const normalized = options.map(
+        (option) => option.color?.toUpperCase() ?? "",
+      );
       const hasMissingOrInvalid = normalized.some(
         (color) => !/^#[0-9A-F]{6}$/.test(color),
       );

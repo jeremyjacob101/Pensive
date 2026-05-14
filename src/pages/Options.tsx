@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
-import type { CSSProperties } from "react";
 import { api } from "../../convex/_generated/api";
 import { optionKinds } from "../types/schema";
+import type { CSSProperties } from "react";
 import { saveOption } from "./actions";
 
 export function Options() {
@@ -67,7 +67,10 @@ export function Options() {
                   </div>
                   <span className="option-color-label">
                     <span className="option-color-name">{option.value}</span>
-                    <span className="option-color-underline" aria-hidden="true" />
+                    <span
+                      className="option-color-underline"
+                      aria-hidden="true"
+                    />
                   </span>
                   <button
                     className={`option-star-btn${option.isDefault ? " is-default" : ""}`}

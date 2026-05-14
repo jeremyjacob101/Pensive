@@ -434,8 +434,7 @@ export const setDefault = mutation({
 
     const rows = await ctx.db
       .query("userOptions")
-      .withIndex("by_user_kind", (q) =>
-        q.eq("userId", userId).eq("kind", kind))
+      .withIndex("by_user_kind", (q) => q.eq("userId", userId).eq("kind", kind))
       .take(MAX_OPTIONS_PER_KIND);
 
     const selected = rows.find((row) => row.value === trimmedValue);
@@ -443,7 +442,8 @@ export const setDefault = mutation({
 
     for (const row of rows) {
       const nextIsDefault = isDefault && row._id === selected._id;
-      if ((row as { isDefault?: boolean }).isDefault === nextIsDefault) continue;
+      if ((row as { isDefault?: boolean }).isDefault === nextIsDefault)
+        continue;
       await ctx.db.patch(row._id, { isDefault: nextIsDefault });
     }
   },

@@ -46,7 +46,11 @@ export function Recurrings() {
               "category",
               row.category,
             );
-            const accountColor = getOptionColor(userOptions, "account", row.paidBy);
+            const accountColor = getOptionColor(
+              userOptions,
+              "account",
+              row.paidBy,
+            );
 
             return (
               <div
@@ -63,7 +67,10 @@ export function Recurrings() {
                       />
                       <span>₪{row.price}</span>
                     </div>
-                    <span className="entry-card-primary-divider" aria-hidden="true" />
+                    <span
+                      className="entry-card-primary-divider"
+                      aria-hidden="true"
+                    />
                     <div className="entry-card-title-wrap">
                       <span className="entry-card-title">{row.name}</span>
                       <span

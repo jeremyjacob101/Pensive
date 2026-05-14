@@ -342,13 +342,15 @@ thead th {
 .month-indicator {
   position: fixed;
   top: 88px;
-  width: 146px;
+  left: var(--month-row-left, 0px);
+  transform: translateX(calc(-100% - 18px));
+  width: max-content;
   min-width: 146px;
+  height: fit-content;
   display: flex;
   justify-content: flex-end;
   text-align: right;
   pointer-events: none;
-  right: calc(64px + 820px + 18px);
   z-index: 20;
 }
 
