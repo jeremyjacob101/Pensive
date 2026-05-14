@@ -1,31 +1,15 @@
 import { getDefaultOptionValue, toOptionValues } from "../helpers/options";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormType, UserOptions } from "../types/workspace";
+import { getTodayIsoDate } from "../helpers/dates";
 import { api } from "../../convex/_generated/api";
 import type { MenuItemKey } from "../types/ui";
 import { OptionPicker } from "./OptionPicker";
 import { saveOption } from "../pages/actions";
 import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
-import { useMemo, useState } from "react";
 
-function getTodayIsoDate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export function AddEntryPanel({
-  activeItem,
-  formType,
-  setFormType,
-  onAddExpense,
-  onAddIncoming,
-  onAddRecurring,
-  saving,
-  userOptions,
-}: {
+export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense, onAddIncoming, onAddRecurring, saving, userOptions }: {
   activeItem: MenuItemKey;
   formType: FormType;
   setFormType: (value: FormType) => void;
@@ -53,15 +37,23 @@ export function AddEntryPanel({
   const [incomingType, setIncomingType] = useState("");
   const [incomingAccount, setIncomingAccount] = useState("");
   const [recurringCategory, setRecurringCategory] = useState("");
+  const [recurringKind, setRecurringKind] = useState<"expense" | "incoming">(
+    "expense",
+  );
+  const [recurringStatus, setRecurringStatus] = useState<"active" | "inactive">(
+    "active",
+  );
 
-  const resetOptionState = () => {
+  const resetOptionState = useCallback(() => {
     setExpenseType(defaults.expenseType);
     setExpenseAccount(defaults.account);
     setExpenseCategory(defaults.category);
     setIncomingType(defaults.incomeType);
     setIncomingAccount(defaults.account);
     setRecurringCategory(defaults.category);
-  };
+    setRecurringKind("expense");
+    setRecurringStatus("active");
+  }, [defaults]);
 
   const openForm = (nextFormType: FormType) => {
     resetOptionState();
@@ -72,6 +64,20 @@ export function AddEntryPanel({
     resetOptionState();
     setFormType(null);
   };
+
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<{ kind?: "expense" | "incoming" }>)
+        .detail;
+      const kind = detail?.kind === "incoming" ? "incoming" : "expense";
+      resetOptionState();
+      setRecurringKind(kind);
+      setFormType("recurring");
+    };
+    window.addEventListener("pensive:open-recurring-modal", listener);
+    return () =>
+      window.removeEventListener("pensive:open-recurring-modal", listener);
+  }, [resetOptionState, setFormType]);
 
   const openModalFromActiveTab = () => {
     if (activeItem === "expenses") {
@@ -89,7 +95,7 @@ export function AddEntryPanel({
 
   return (
     <>
-      {activeItem !== "options" && (
+      {activeItem !== "options" && activeItem !== "recurrings" && (
         <div className="add-entry-launcher-row">
           <button
             type="button"
@@ -245,25 +251,104 @@ export function AddEntryPanel({
               className="entry-form modal-form"
               onSubmit={(e) => void onAddRecurring(e)}
             >
-              <input name="status" placeholder="Status" required />
+              <label>
+                Kind
+                <select
+                  name="kind"
+                  value={recurringKind}
+                  onChange={(e) =>
+                    setRecurringKind(
+                      e.target.value === "incoming" ? "incoming" : "expense",
+                    )
+                  }
+                >
+                  <option value="expense">Expense</option>
+                  <option value="incoming">Incoming</option>
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  name="status"
+                  value={recurringStatus}
+                  onChange={(e) =>
+                    setRecurringStatus(
+                      e.target.value === "inactive" ? "inactive" : "active",
+                    )
+                  }
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
               <input name="name" placeholder="Name" required />
-              <input name="type" placeholder="Type" required />
               <input name="price" placeholder="Price" required />
               <input name="frequency" placeholder="Frequency" required />
               <input name="dayOfMonth" placeholder="Day of Month" required />
-              <input name="paidBy" placeholder="Paid By" required />
-              <OptionPicker
-                kind="category"
-                label="Category"
-                name="category"
-                value={recurringCategory}
-                options={toOptionValues(userOptions?.category)}
-                placeholder="Category"
-                required
-                onChange={setRecurringCategory}
-                onCreateOption={saveOption.bind(null, addUserOption)}
-              />
-              <input name="paidTo" placeholder="Paid To" required />
+              {recurringKind === "expense" ? (
+                <>
+                  <OptionPicker
+                    kind="expenseType"
+                    label="Expense Type"
+                    name="expenseType"
+                    value={expenseType}
+                    options={toOptionValues(userOptions?.expenseType)}
+                    placeholder="Type"
+                    required
+                    onChange={setExpenseType}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="account"
+                    label="Expense Account"
+                    name="expenseAccount"
+                    value={expenseAccount}
+                    options={toOptionValues(userOptions?.account)}
+                    placeholder="Account"
+                    required
+                    onChange={setExpenseAccount}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="category"
+                    label="Expense Category"
+                    name="expenseCategory"
+                    value={recurringCategory}
+                    options={toOptionValues(userOptions?.category)}
+                    placeholder="Category"
+                    required
+                    onChange={setRecurringCategory}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <input name="expensePaidTo" placeholder="Paid To" required />
+                </>
+              ) : (
+                <>
+                  <input name="incomingPaidBy" placeholder="Paid By" required />
+                  <OptionPicker
+                    kind="incomeType"
+                    label="Income Type"
+                    name="incomingType"
+                    value={incomingType}
+                    options={toOptionValues(userOptions?.incomeType)}
+                    placeholder="Income Type"
+                    required
+                    onChange={setIncomingType}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="account"
+                    label="Incoming Account"
+                    name="incomingAccount"
+                    value={incomingAccount}
+                    options={toOptionValues(userOptions?.account)}
+                    placeholder="Account"
+                    required
+                    onChange={setIncomingAccount}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                </>
+              )}
               <input name="notes" placeholder="Notes" />
               <button
                 type="submit"

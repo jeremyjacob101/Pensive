@@ -31,14 +31,22 @@ export type WorkspaceMutations = {
   }) => Promise<unknown>;
   createRecurring: (args: {
     status: string;
+    kind: "expense" | "incoming";
     name: string;
-    type: string;
+    type?: string;
     price: number;
     frequency: string;
     dayOfMonth: number;
-    paidBy: string;
-    category: string;
-    paidTo: string;
+    paidBy?: string;
+    category?: string;
+    paidTo?: string;
+    expenseType?: string;
+    expenseAccount?: string;
+    expenseCategory?: string;
+    expensePaidTo?: string;
+    incomingPaidBy?: string;
+    incomingType?: string;
+    incomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;
   addUserOption: (args: {
@@ -78,14 +86,22 @@ export type WorkspaceMutations = {
   updateRecurring: (args: {
     id: Id<"recurrings">;
     status: string;
+    kind: "expense" | "incoming";
     name: string;
     type?: string;
     price: number;
     frequency: string;
     dayOfMonth: number;
-    paidBy: string;
-    category: string;
-    paidTo: string;
+    paidBy?: string;
+    category?: string;
+    paidTo?: string;
+    expenseType?: string;
+    expenseAccount?: string;
+    expenseCategory?: string;
+    expensePaidTo?: string;
+    incomingPaidBy?: string;
+    incomingType?: string;
+    incomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;
   deleteExpense: (args: { id: Id<"expenses"> }) => Promise<unknown>;

@@ -1,7 +1,4 @@
-export function ThemeToggle({
-  isDark,
-  onToggle,
-}: {
+export function ThemeToggle({ isDark, onToggle }: {
   isDark: boolean;
   onToggle: () => void;
 }) {

@@ -40,18 +40,40 @@ export const list = query({
 export const create = mutation({
   args: {
     status: v.string(),
+    kind: v.union(v.literal("expense"), v.literal("incoming")),
     name: v.string(),
     type: v.optional(v.string()),
     price: v.number(),
     frequency: v.string(),
     dayOfMonth: v.number(),
-    paidBy: v.string(),
-    category: v.string(),
-    paidTo: v.string(),
+    paidBy: v.optional(v.string()),
+    category: v.optional(v.string()),
+    paidTo: v.optional(v.string()),
+    expenseType: v.optional(v.string()),
+    expenseAccount: v.optional(v.string()),
+    expenseCategory: v.optional(v.string()),
+    expensePaidTo: v.optional(v.string()),
+    incomingPaidBy: v.optional(v.string()),
+    incomingType: v.optional(v.string()),
+    incomingAccount: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
+    if (args.kind === "expense") {
+      if (
+        !args.expenseType ||
+        !args.expenseAccount ||
+        !args.expenseCategory ||
+        !args.expensePaidTo
+      ) {
+        throw new Error("Missing required expense recurring fields");
+      }
+    } else {
+      if (!args.incomingPaidBy || !args.incomingType || !args.incomingAccount) {
+        throw new Error("Missing required incoming recurring fields");
+      }
+    }
     return await ctx.db.insert("recurrings", { ...args, userId });
   },
 });
@@ -61,14 +83,22 @@ export const bulkCreate = mutation({
     rows: v.array(
       v.object({
         status: v.string(),
+        kind: v.union(v.literal("expense"), v.literal("incoming")),
         name: v.string(),
         type: v.optional(v.string()),
         price: v.number(),
         frequency: v.string(),
         dayOfMonth: v.number(),
-        paidBy: v.string(),
-        category: v.string(),
-        paidTo: v.string(),
+        paidBy: v.optional(v.string()),
+        category: v.optional(v.string()),
+        paidTo: v.optional(v.string()),
+        expenseType: v.optional(v.string()),
+        expenseAccount: v.optional(v.string()),
+        expenseCategory: v.optional(v.string()),
+        expensePaidTo: v.optional(v.string()),
+        incomingPaidBy: v.optional(v.string()),
+        incomingType: v.optional(v.string()),
+        incomingAccount: v.optional(v.string()),
         notes: v.optional(v.string()),
       }),
     ),
@@ -102,24 +132,64 @@ export const update = mutation({
   args: {
     id: v.id("recurrings"),
     status: v.string(),
+    kind: v.union(v.literal("expense"), v.literal("incoming")),
     name: v.string(),
     type: v.optional(v.string()),
     price: v.number(),
     frequency: v.string(),
     dayOfMonth: v.number(),
-    paidBy: v.string(),
-    category: v.string(),
-    paidTo: v.string(),
+    paidBy: v.optional(v.string()),
+    category: v.optional(v.string()),
+    paidTo: v.optional(v.string()),
+    expenseType: v.optional(v.string()),
+    expenseAccount: v.optional(v.string()),
+    expenseCategory: v.optional(v.string()),
+    expensePaidTo: v.optional(v.string()),
+    incomingPaidBy: v.optional(v.string()),
+    incomingType: v.optional(v.string()),
+    incomingAccount: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { id, ...rest }) => {
+  handler: async (ctx, { id, kind, ...rest }) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
     if (!existing || existing.userId !== userId) {
       throw new Error("Not found");
     }
 
-    await ctx.db.patch(id, rest);
+    if (kind === "expense") {
+      if (
+        !rest.expenseType ||
+        !rest.expenseAccount ||
+        !rest.expenseCategory ||
+        !rest.expensePaidTo
+      ) {
+        throw new Error("Missing required expense recurring fields");
+      }
+    } else {
+      if (!rest.incomingPaidBy || !rest.incomingType || !rest.incomingAccount) {
+        throw new Error("Missing required incoming recurring fields");
+      }
+    }
+
+    await ctx.db.patch(id, { kind, ...rest });
+    return id;
+  },
+});
+
+export const setStatus = mutation({
+  args: {
+    id: v.id("recurrings"),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+  },
+  handler: async (ctx, { id, status }) => {
+    const userId = await requireUserId(ctx);
+    const existing = await ctx.db.get(id);
+    if (!existing || existing.userId !== userId) {
+      throw new Error("Not found");
+    }
+
+    await ctx.db.patch(id, { status });
     return id;
   },
 });
@@ -177,13 +247,41 @@ export const materializeDueExpenses = mutation({
         continue;
       }
 
-      const automationKey = `recurring:${recurring._id}:${runDate}`;
-      const already = await ctx.db
+      const kind = recurring.kind ?? "expense";
+      const automationKey = `recurring:${kind}:${recurring._id}:${runDate}`;
+
+      if (kind === "incoming") {
+        const alreadyIncoming = await ctx.db
+          .query("incomings")
+          .withIndex("by_incoming_id", (q) => q.eq("incomingId", automationKey))
+          .first();
+        if (alreadyIncoming) {
+          skipped++;
+          continue;
+        }
+        await ctx.db.insert("incomings", {
+          userId,
+          incoming: recurring.name,
+          paidBy: recurring.incomingPaidBy ?? "",
+          incomeType: recurring.incomingType ?? "",
+          account: recurring.incomingAccount ?? "",
+          amount: recurring.price,
+          date: runDate,
+          monthYear: runDate.slice(0, 7),
+          notes: recurring.notes,
+          comments: `Triggered at ${formatJerusalemNow()}`,
+          incomingId: automationKey,
+        });
+        created++;
+        continue;
+      }
+
+      const alreadyExpense = await ctx.db
         .query("expenses")
         .withIndex("by_user_id_automation_key", (q) =>
           q.eq("userId", userId).eq("automationKey", automationKey))
         .first();
-      if (already) {
+      if (alreadyExpense) {
         skipped++;
         continue;
       }
@@ -191,12 +289,12 @@ export const materializeDueExpenses = mutation({
       await ctx.db.insert("expenses", {
         userId,
         expense: recurring.name,
-        type: recurring.type ?? "Recurring",
-        account: recurring.paidBy,
-        category: recurring.category,
+        type: recurring.expenseType ?? recurring.type ?? "Recurring",
+        account: recurring.expenseAccount ?? recurring.paidBy ?? "",
+        category: recurring.expenseCategory ?? recurring.category ?? "",
         amount: recurring.price,
         date: runDate,
-        paidTo: recurring.paidTo,
+        paidTo: recurring.expensePaidTo ?? recurring.paidTo ?? "",
         notes: recurring.notes,
         comments: `Triggered at ${formatJerusalemNow()}`,
         expenseId: randomId16(),

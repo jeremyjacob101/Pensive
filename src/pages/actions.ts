@@ -131,16 +131,57 @@ export async function handleAddRecurring(
   const form = new FormData(e.currentTarget);
   deps.setSaving(true);
   try {
+    const kind =
+      String(form.get("kind") ?? "expense") === "incoming"
+        ? "incoming"
+        : "expense";
     await deps.createRecurring({
-      status: String(form.get("status") ?? ""),
+      status:
+        String(form.get("status") ?? "active") === "inactive"
+          ? "inactive"
+          : "active",
+      kind,
       name: String(form.get("name") ?? ""),
-      type: String(form.get("type") ?? ""),
+      type: kind === "expense" ? String(form.get("expenseType") ?? "") : "",
       price: toAmount(String(form.get("price") ?? "")),
       frequency: String(form.get("frequency") ?? ""),
       dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
-      paidBy: String(form.get("paidBy") ?? ""),
-      category: String(form.get("category") ?? ""),
-      paidTo: String(form.get("paidTo") ?? ""),
+      paidBy:
+        kind === "expense"
+          ? String(form.get("expenseAccount") ?? "")
+          : String(form.get("incomingPaidBy") ?? ""),
+      category:
+        kind === "expense" ? String(form.get("expenseCategory") ?? "") : "",
+      paidTo:
+        kind === "expense"
+          ? String(form.get("expensePaidTo") ?? "")
+          : String(form.get("incomingAccount") ?? ""),
+      expenseType:
+        kind === "expense" ? String(form.get("expenseType") ?? "") : undefined,
+      expenseAccount:
+        kind === "expense"
+          ? String(form.get("expenseAccount") ?? "")
+          : undefined,
+      expenseCategory:
+        kind === "expense"
+          ? String(form.get("expenseCategory") ?? "")
+          : undefined,
+      expensePaidTo:
+        kind === "expense"
+          ? String(form.get("expensePaidTo") ?? "")
+          : undefined,
+      incomingPaidBy:
+        kind === "incoming"
+          ? String(form.get("incomingPaidBy") ?? "")
+          : undefined,
+      incomingType:
+        kind === "incoming"
+          ? String(form.get("incomingType") ?? "")
+          : undefined,
+      incomingAccount:
+        kind === "incoming"
+          ? String(form.get("incomingAccount") ?? "")
+          : undefined,
       notes: String(form.get("notes") ?? "") || undefined,
     });
     e.currentTarget.reset();
@@ -199,14 +240,22 @@ export function handleStartEditRecurring(
   setEditingRecurringId(row._id);
   setEditValues({
     status: row.status,
+    kind: row.kind ?? "expense",
     name: row.name,
-    type: row.type ?? "",
+    type: row.type ?? row.expenseType ?? "",
     price: String(row.price),
     frequency: row.frequency,
     dayOfMonth: String(row.dayOfMonth),
-    paidBy: row.paidBy,
-    category: row.category,
-    paidTo: row.paidTo,
+    paidBy: row.paidBy ?? "",
+    category: row.category ?? "",
+    paidTo: row.paidTo ?? "",
+    expenseType: row.expenseType ?? row.type ?? "",
+    expenseAccount: row.expenseAccount ?? row.paidBy ?? "",
+    expenseCategory: row.expenseCategory ?? row.category ?? "",
+    expensePaidTo: row.expensePaidTo ?? row.paidTo ?? "",
+    incomingPaidBy: row.incomingPaidBy ?? "",
+    incomingType: row.incomingType ?? "",
+    incomingAccount: row.incomingAccount ?? "",
     notes: row.notes ?? "",
   });
 }
@@ -308,17 +357,46 @@ export async function handleUpdateRecurring(
 ) {
   deps.setSaving(true);
   try {
+    const kind = deps.editValues.kind === "incoming" ? "incoming" : "expense";
     await deps.updateRecurring({
       id: row._id,
-      status: deps.editValues.status ?? "",
+      status: deps.editValues.status === "inactive" ? "inactive" : "active",
+      kind,
       name: deps.editValues.name ?? "",
-      type: deps.editValues.type ?? "",
+      type: kind === "expense" ? (deps.editValues.expenseType ?? "") : "",
       price: toAmount(deps.editValues.price ?? ""),
       frequency: deps.editValues.frequency ?? "",
       dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
-      paidBy: deps.editValues.paidBy ?? "",
-      category: deps.editValues.category ?? "",
-      paidTo: deps.editValues.paidTo ?? "",
+      paidBy:
+        kind === "expense"
+          ? (deps.editValues.expenseAccount ?? "")
+          : (deps.editValues.incomingPaidBy ?? ""),
+      category:
+        kind === "expense" ? (deps.editValues.expenseCategory ?? "") : "",
+      paidTo:
+        kind === "expense"
+          ? (deps.editValues.expensePaidTo ?? "")
+          : (deps.editValues.incomingAccount ?? ""),
+      expenseType:
+        kind === "expense" ? (deps.editValues.expenseType ?? "") : undefined,
+      expenseAccount:
+        kind === "expense" ? (deps.editValues.expenseAccount ?? "") : undefined,
+      expenseCategory:
+        kind === "expense"
+          ? (deps.editValues.expenseCategory ?? "")
+          : undefined,
+      expensePaidTo:
+        kind === "expense" ? (deps.editValues.expensePaidTo ?? "") : undefined,
+      incomingPaidBy:
+        kind === "incoming"
+          ? (deps.editValues.incomingPaidBy ?? "")
+          : undefined,
+      incomingType:
+        kind === "incoming" ? (deps.editValues.incomingType ?? "") : undefined,
+      incomingAccount:
+        kind === "incoming"
+          ? (deps.editValues.incomingAccount ?? "")
+          : undefined,
       notes: deps.editValues.notes || undefined,
     });
     deps.setEditingRecurringId(null);

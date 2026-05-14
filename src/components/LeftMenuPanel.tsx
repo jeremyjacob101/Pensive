@@ -2,14 +2,7 @@ import type { MenuItem, MenuItemKey } from "../types/ui";
 import { ThemeToggle } from "./ThemeToggle";
 import type { ReactNode } from "react";
 
-export function LeftMenuPanel({
-  items,
-  activeItem,
-  onSelect,
-  onUserClick,
-  isDark,
-  onToggleTheme,
-}: {
+export function LeftMenuPanel({ items, activeItem, onSelect, onUserClick, isDark, onToggleTheme }: {
   items: MenuItem[];
   activeItem: MenuItemKey;
   onSelect: (item: MenuItemKey) => void;

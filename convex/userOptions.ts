@@ -158,17 +158,6 @@ function makeSeededRng(seedText: string) {
   };
 }
 
-function shuffleWithRng<T>(items: T[], rng: () => number) {
-  const output = [...items];
-  for (let index = output.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(rng() * (index + 1));
-    const current = output[index];
-    output[index] = output[swapIndex];
-    output[swapIndex] = current;
-  }
-  return output;
-}
-
 function pickCandidateColor(candidateIndex: number, rng: () => number) {
   const hue = (rng() * 360 + candidateIndex * 137.508) % 360;
   const saturation = 0.58 + rng() * 0.34;
@@ -368,45 +357,6 @@ export const updateColor = mutation({
     if (!existing) throw new Error("Option not found");
 
     await ctx.db.patch(existing._id, { color: normalizedColor });
-  },
-});
-
-export const backfillColors = mutation({
-  args: { forceReassignAll: v.optional(v.boolean()) },
-  handler: async (ctx, { forceReassignAll }) => {
-    const userId = await requireUserId(ctx);
-    let updated = 0;
-    const shouldReassignAll = forceReassignAll === true;
-
-    for (const kind of OPTION_KINDS) {
-      const rawRows = await ctx.db
-        .query("userOptions")
-        .withIndex("by_user_kind", (q) =>
-          q.eq("userId", userId).eq("kind", kind))
-        .take(MAX_OPTIONS_PER_KIND);
-      const rows = shouldReassignAll
-        ? shuffleWithRng(rawRows, Math.random)
-        : rawRows;
-
-      const usedColors: string[] = [];
-
-      for (const row of rows) {
-        const normalizedColor = normalizeHexColor(
-          (row as { color?: string }).color ?? "",
-        );
-        if (!shouldReassignAll && normalizedColor) {
-          usedColors.push(normalizedColor);
-          continue;
-        }
-
-        const replacementColor = pickMostDistinctColor(usedColors, Math.random);
-        usedColors.push(replacementColor);
-        await ctx.db.patch(row._id, { color: replacementColor });
-        updated += 1;
-      }
-    }
-
-    return { updated };
   },
 });
 

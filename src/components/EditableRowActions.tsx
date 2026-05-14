@@ -1,11 +1,4 @@
-export function EditableRowActions({
-  isEditing,
-  saving,
-  onSave,
-  onCancel,
-  onEdit,
-  onDelete,
-}: {
+export function EditableRowActions({ isEditing, saving, onSave, onCancel, onEdit, onDelete }: {
   isEditing: boolean;
   saving: boolean;
   onSave: () => void | Promise<void>;

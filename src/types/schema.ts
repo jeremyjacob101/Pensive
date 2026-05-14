@@ -26,14 +26,18 @@ export const incomingHeaders = [
 
 export const recurringHeaders = [
   "Status",
+  "Kind",
   "Name",
-  "Type",
+  "ExpenseType",
+  "ExpenseAccount",
+  "ExpenseCategory",
+  "ExpensePaidTo",
+  "IncomingPaidBy",
+  "IncomingType",
+  "IncomingAccount",
   "Price",
   "Frequency",
   "Day of Month",
-  "Paid By",
-  "Category",
-  "Paid To",
   "Notes",
 ] as const;
 

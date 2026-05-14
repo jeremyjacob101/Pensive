@@ -13,10 +13,12 @@
   },
   "prettier": {
     "plugins": [
-      "./config/prettier-plugin-single-line-imports.mjs"
+      "./config/prettier-one-line-imports.mjs",
+      "./config/prettier-one-line-props.mjs"
     ],
     "singleLineImports": true,
     "sortTopImportsByLength": true,
+    "singleLineFunctionParamDestructuring": true,
     "overrides": [
       {
         "files": [

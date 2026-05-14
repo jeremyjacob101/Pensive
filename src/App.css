@@ -339,6 +339,56 @@ thead th {
   box-sizing: border-box;
 }
 
+.entries-without-month {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding-right: 64px;
+  box-sizing: border-box;
+}
+
+.recurrings-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.recurrings-column {
+  min-width: 0;
+}
+
+.recurrings-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recurrings-column-title {
+  margin: 4px 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.recurrings-column-add-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.recurrings-empty {
+  margin: 8px 0 0;
+  opacity: 0.75;
+}
+
 .month-indicator {
   position: fixed;
   top: 88px;
@@ -409,6 +459,32 @@ thead th {
   min-height: 86px;
   padding: 24px 16px;
   text-align: left;
+}
+
+.recurring-entry-card-main {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+
+.recurring-status-toggle-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recurring-status-toggle {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.recurring-entry-card.is-inactive {
+  opacity: 0.58;
+  filter: saturate(0.55) brightness(0.9);
+}
+
+.recurring-entry-card.is-inactive .entry-card-color-dot {
+  opacity: 0.7;
 }
 
 .entry-card-primary {
@@ -498,6 +574,20 @@ thead th {
   font-size: 13px;
   opacity: 0.8;
   white-space: nowrap;
+}
+
+.recurring-cycle-date {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
+  line-height: 1;
+  margin-left: 8px;
+  padding-right: 2px;
+}
+
+.recurring-cycle-date .entry-card-account-icon {
+  transform: translateY(1px);
 }
 
 .entry-card-chevron {
@@ -819,9 +909,26 @@ thead th {
     row-gap: 8px;
   }
 
-  .entries-with-month {
+  .recurring-entry-card-main {
+    grid-template-columns: auto minmax(120px, 1fr) auto;
+    grid-template-areas:
+      "toggle primary controls"
+      "toggle date controls";
+  }
+
+  .recurring-status-toggle-wrap {
+    grid-area: toggle;
+    align-self: center;
+  }
+
+  .entries-with-month,
+  .entries-without-month {
     display: block;
     padding-right: 0;
+  }
+
+  .recurrings-columns {
+    grid-template-columns: 1fr;
   }
 
   .month-indicator {

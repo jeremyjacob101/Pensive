@@ -80,12 +80,7 @@ function renderModuleExportName(node, options) {
 
 function renderImportAttributePart(node, options) {
   const name = renderModuleExportName(node, options);
-
-  if (name) {
-    return name.printed;
-  }
-
-  return null;
+  return name ? name.printed : null;
 }
 
 function renderLiteral(node, options) {
@@ -165,11 +160,7 @@ function renderImportSpecifiers(specifiers, options) {
   for (const specifier of specifiers) {
     switch (specifier.type) {
       case "ImportDefaultSpecifier": {
-        if (defaultPart) {
-          return null;
-        }
-
-        if (!specifier.local?.name) {
+        if (defaultPart || !specifier.local?.name) {
           return null;
         }
 
