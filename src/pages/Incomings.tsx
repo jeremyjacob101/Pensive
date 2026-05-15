@@ -1,13 +1,9 @@
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
 import { formatMonthLabel, formatShortDisplayDate, formatYearLabel } from "../helpers/dates";
+import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import {
-  getOptionColor,
-  getScopedOptionValues,
-  toOptionValues,
-} from "../helpers/options";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
 import { OptionPicker } from "../components/OptionPicker";
@@ -421,7 +417,10 @@ export function Incomings() {
                                       placeholder="Income Type"
                                       onChange={(value) =>
                                         setEditValues((v) => {
-                                          const next = { ...v, incomeType: value };
+                                          const next: EditValues = {
+                                            ...v,
+                                            incomeType: value,
+                                          };
                                           const scoped = getScopedOptionValues(
                                             userOptions,
                                             "incomeSubtype",
@@ -714,7 +713,10 @@ export function Incomings() {
                             placeholder="Income Type"
                             onChange={(value) =>
                               setEditValues((v) => {
-                                const next = { ...v, incomeType: value };
+                                const next: EditValues = {
+                                  ...v,
+                                  incomeType: value,
+                                };
                                 const scoped = getScopedOptionValues(
                                   userOptions,
                                   "incomeSubtype",

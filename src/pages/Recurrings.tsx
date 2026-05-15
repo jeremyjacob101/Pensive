@@ -1,11 +1,7 @@
 import { handleDeleteRecurring, handleStartEditRecurring, handleUpdateRecurring } from "./actions";
+import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import {
-  getOptionColor,
-  getScopedOptionValues,
-  toOptionValues,
-} from "../helpers/options";
 import type { WorkspaceMutations } from "../types/workspaceActions";
 import type { UserOptions, EditValues } from "../types/workspace";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
@@ -572,7 +568,10 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                 placeholder="Category"
                 onChange={(value) =>
                   setEditValues((v) => {
-                    const next = { ...v, expenseCategory: value };
+                    const next: EditValues = {
+                      ...v,
+                      expenseCategory: value,
+                    };
                     const scoped = getScopedOptionValues(
                       userOptions,
                       "subcategory",
@@ -639,7 +638,10 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                 placeholder="Income Type"
                 onChange={(value) =>
                   setEditValues((v) => {
-                    const next = { ...v, incomingType: value };
+                    const next: EditValues = {
+                      ...v,
+                      incomingType: value,
+                    };
                     const scoped = getScopedOptionValues(
                       userOptions,
                       "incomeSubtype",

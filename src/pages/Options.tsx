@@ -1,31 +1,11 @@
+import { kindFromDraggingRowKey } from "../helpers/optionsDnD";
+import type { DragPayload } from "../types/optionsDnD";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { optionKinds } from "../types/schema";
 import type { CSSProperties } from "react";
-import { useState } from "react";
 import { saveOption } from "./actions";
-
-type DragPayload = {
-  kind: "category" | "incomeType" | "subcategory" | "incomeSubtype";
-  value: string;
-  parentValue?: string;
-};
-
-const kindFromDraggingRowKey = (
-  draggingRowKey: string | null,
-): DragPayload["kind"] | null => {
-  if (!draggingRowKey) return null;
-  const [kind] = draggingRowKey.split(":");
-  if (
-    kind === "category" ||
-    kind === "incomeType" ||
-    kind === "subcategory" ||
-    kind === "incomeSubtype"
-  ) {
-    return kind;
-  }
-  return null;
-};
+import { useState } from "react";
 
 export function Options() {
   const addUserOption = useMutation(api.userOptions.add);
@@ -82,164 +62,111 @@ export function Options() {
       {optionKinds
         .filter(({ key }) => key !== "subcategory" && key !== "incomeSubtype")
         .map(({ key, label }) => {
-        const options = userOptions?.[key] ?? [];
-        const childKind =
-          key === "category"
-            ? "subcategory"
-            : key === "incomeType"
-              ? "incomeSubtype"
-              : null;
-        const childOptions =
-          childKind && userOptions?.[childKind] ? userOptions[childKind] : [];
-        return (
-          <section key={key} className="options-kind-card">
-            <form
-              className="options-add-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = new FormData(e.currentTarget);
-                void saveOption(
-                  addUserOption,
-                  key,
-                  String(form.get("value") ?? ""),
-                );
-                e.currentTarget.reset();
-              }}
-            >
-              <div className="options-add-header">
-                <label htmlFor={`add-option-${key}`}>{label}</label>
-                {childKind ? (
-                  <div
-                    className={`option-promote-dropzone${
-                      ((key === "category" &&
-                        draggingRowKey?.startsWith("subcategory:")) ||
+          const options = userOptions?.[key] ?? [];
+          const childKind =
+            key === "category"
+              ? "subcategory"
+              : key === "incomeType"
+                ? "incomeSubtype"
+                : null;
+          const childOptions =
+            childKind && userOptions?.[childKind] ? userOptions[childKind] : [];
+          return (
+            <section key={key} className="options-kind-card">
+              <form
+                className="options-add-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = new FormData(e.currentTarget);
+                  void saveOption(
+                    addUserOption,
+                    key,
+                    String(form.get("value") ?? ""),
+                  );
+                  e.currentTarget.reset();
+                }}
+              >
+                <div className="options-add-header">
+                  <label htmlFor={`add-option-${key}`}>{label}</label>
+                  {childKind ? (
+                    <div
+                      className={`option-promote-dropzone${
+                        (key === "category" &&
+                          draggingRowKey?.startsWith("subcategory:")) ||
                         (key === "incomeType" &&
-                          draggingRowKey?.startsWith("incomeSubtype:")))
-                        ? " is-visible"
-                        : ""
-                    }${
-                      draggedOption &&
-                      ((key === "category" &&
-                        draggedOption.kind === "subcategory") ||
-                        (key === "incomeType" &&
-                          draggedOption.kind === "incomeSubtype"))
-                        ? " is-drop-target"
-                        : ""
-                    }`}
-                    onDragOver={(event) => {
-                      const payload = resolveDragPayload(event);
-                      const allowedKind =
-                        key === "category" ? "subcategory" : "incomeSubtype";
-                      const payloadKind =
-                        payload?.kind ?? kindFromDraggingRowKey(draggingRowKey);
-                      if (payloadKind !== allowedKind) return;
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = "move";
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      const payload = resolveDragPayload(event);
-                      if (!payload) return;
-                      const allowedKind =
-                        key === "category" ? "subcategory" : "incomeSubtype";
-                      if (payload.kind !== allowedKind) return;
-                      if (!payload.parentValue) return;
-                      void promoteSubtype({
-                        kind: payload.kind,
-                        value: payload.value,
-                        parentValue: payload.parentValue,
-                      });
-                      setDraggedOption(null);
-                    }}
-                  >
-                    Drop sub{key === "category" ? "category" : "type"} here to separate
-                  </div>
-                ) : null}
-              </div>
-              <input
-                id={`add-option-${key}`}
-                name="value"
-                placeholder={`Add ${label}`}
-              />
-              <button type="submit">Add</button>
-            </form>
-
-            <div className="options-row-list">
-              {options.map((option) => {
-                const children = childKind
-                  ? childOptions.filter(
-                      (child) => (child.parentValue ?? "") === option.value,
-                    )
-                  : [];
-                return (
-                  <div
-                    key={`${key}-${option.value}`}
-                    className={`option-parent-group${
-                      dropTargetKey === `${key}:${option.value}`
-                        ? " is-drop-target"
-                        : ""
-                    }`}
-                    onDragOver={(event) => {
-                      if (key !== "category" && key !== "incomeType") return;
-                      const payload = resolveDragPayload(event);
-                      const payloadKind =
-                        payload?.kind ?? kindFromDraggingRowKey(draggingRowKey);
-                      if (!payloadKind) return;
-                      const targetSubtypeKind =
-                        key === "category" ? "subcategory" : "incomeSubtype";
-                      if (
-                        payloadKind === key ||
-                        payloadKind === targetSubtypeKind
-                      ) {
+                          draggingRowKey?.startsWith("incomeSubtype:"))
+                          ? " is-visible"
+                          : ""
+                      }${
+                        draggedOption &&
+                        ((key === "category" &&
+                          draggedOption.kind === "subcategory") ||
+                          (key === "incomeType" &&
+                            draggedOption.kind === "incomeSubtype"))
+                          ? " is-drop-target"
+                          : ""
+                      }`}
+                      onDragOver={(event) => {
+                        const payload = resolveDragPayload(event);
+                        const allowedKind =
+                          key === "category" ? "subcategory" : "incomeSubtype";
+                        const payloadKind =
+                          payload?.kind ??
+                          kindFromDraggingRowKey(draggingRowKey);
+                        if (payloadKind !== allowedKind) return;
                         event.preventDefault();
                         event.dataTransfer.dropEffect = "move";
-                        setDropTargetKey(`${key}:${option.value}`);
-                      }
-                    }}
-                    onDrop={(event) => {
-                      if (key !== "category" && key !== "incomeType") return;
-                      event.preventDefault();
-                      setDropTargetKey(null);
-                      const dragged = resolveDragPayload(event);
-                      setDraggedOption(null);
-                      if (!dragged) return;
-                      const targetSubtypeKind =
-                        key === "category" ? "subcategory" : "incomeSubtype";
-
-                      if (dragged.kind === key) {
-                        if (dragged.value === option.value) return;
-                        void moveToSubtype({
-                          kind: key,
-                          sourceValue: dragged.value,
-                          targetValue: option.value,
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        const payload = resolveDragPayload(event);
+                        if (!payload) return;
+                        const allowedKind =
+                          key === "category" ? "subcategory" : "incomeSubtype";
+                        if (payload.kind !== allowedKind) return;
+                        if (!payload.parentValue) return;
+                        void promoteSubtype({
+                          kind: payload.kind,
+                          value: payload.value,
+                          parentValue: payload.parentValue,
                         });
-                        return;
-                      }
+                        setDraggedOption(null);
+                      }}
+                    >
+                      Drop sub{key === "category" ? "category" : "type"} here to
+                      separate
+                    </div>
+                  ) : null}
+                </div>
+                <input
+                  id={`add-option-${key}`}
+                  name="value"
+                  placeholder={`Add ${label}`}
+                />
+                <button type="submit">Add</button>
+              </form>
 
-                      if (dragged.kind === targetSubtypeKind) {
-                        if (!dragged.parentValue) return;
-                        if (dragged.parentValue === option.value) return;
-                        void moveSubtype({
-                          kind: targetSubtypeKind,
-                          value: dragged.value,
-                          sourceParentValue: dragged.parentValue,
-                          targetParentValue: option.value,
-                        });
-                      }
-                    }}
-                  >
+              <div className="options-row-list">
+                {options.map((option) => {
+                  const children = childKind
+                    ? childOptions.filter(
+                        (child) => (child.parentValue ?? "") === option.value,
+                      )
+                    : [];
+                  return (
                     <div
-                      className={`option-color-row${childKind ? "" : " option-color-row-compact"}${
-                        key === "category" || key === "incomeType"
-                          ? " option-draggable"
+                      key={`${key}-${option.value}`}
+                      className={`option-parent-group${
+                        dropTargetKey === `${key}:${option.value}`
+                          ? " is-drop-target"
                           : ""
-                      }${draggingRowKey === `${key}:${option.value}` ? " is-dragging" : ""}`}
-                      draggable={key === "category" || key === "incomeType"}
+                      }`}
                       onDragOver={(event) => {
                         if (key !== "category" && key !== "incomeType") return;
                         const payload = resolveDragPayload(event);
                         const payloadKind =
-                          payload?.kind ?? kindFromDraggingRowKey(draggingRowKey);
+                          payload?.kind ??
+                          kindFromDraggingRowKey(draggingRowKey);
                         if (!payloadKind) return;
                         const targetSubtypeKind =
                           key === "category" ? "subcategory" : "incomeSubtype";
@@ -252,166 +179,103 @@ export function Options() {
                           setDropTargetKey(`${key}:${option.value}`);
                         }
                       }}
-                      onDragStart={(event) => {
+                      onDrop={(event) => {
                         if (key !== "category" && key !== "incomeType") return;
-                        setDraggedOption({
-                          kind: key,
-                          value: option.value,
-                        });
-                        setDraggingRowKey(`${key}:${option.value}`);
-                        event.dataTransfer.setData(
-                          "text/plain",
-                          JSON.stringify({
-                            kind: key,
-                            value: option.value,
-                          }),
-                        );
-                        event.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragEnd={() => {
-                        setDraggedOption(null);
+                        event.preventDefault();
                         setDropTargetKey(null);
-                        setDraggingRowKey(null);
+                        const dragged = resolveDragPayload(event);
+                        setDraggedOption(null);
+                        if (!dragged) return;
+                        const targetSubtypeKind =
+                          key === "category" ? "subcategory" : "incomeSubtype";
+
+                        if (dragged.kind === key) {
+                          if (dragged.value === option.value) return;
+                          void moveToSubtype({
+                            kind: key,
+                            sourceValue: dragged.value,
+                            targetValue: option.value,
+                          });
+                          return;
+                        }
+
+                        if (dragged.kind === targetSubtypeKind) {
+                          if (!dragged.parentValue) return;
+                          if (dragged.parentValue === option.value) return;
+                          void moveSubtype({
+                            kind: targetSubtypeKind,
+                            value: dragged.value,
+                            sourceParentValue: dragged.parentValue,
+                            targetParentValue: option.value,
+                          });
+                        }
                       }}
-                      style={
-                        {
-                          "--option-color": option.color || "#6B7280",
-                        } as CSSProperties
-                      }
                     >
-                      <button
-                        type="button"
-                        draggable={false}
-                        className={`option-color-chip option-color-chip-btn${option.isDefault ? " is-default" : ""}`}
-                        aria-label={`Set default ${label} ${option.value}`}
-                        onClick={() =>
-                          void setUserOptionDefault({
-                            kind: key,
-                            value: option.value,
-                            isDefault: true,
-                          })
-                        }
-                      >
-                        <span className="option-color-dot" />
-                      </button>
-                      <span className="option-color-label">
-                        <span className="option-color-name">{option.value}</span>
-                      </span>
-                      {childKind ? (
-                        <button
-                          className="option-plus-btn"
-                          type="button"
-                          draggable={false}
-                          onClick={() => {
-                            const next = window
-                              .prompt(
-                                `Add ${
-                                  childKind === "subcategory"
-                                    ? "subcategory"
-                                    : "income subtype"
-                                } under ${option.value}`,
-                              )
-                              ?.trim();
-                            if (!next) return;
-                            void saveOption(
-                              addUserOption,
-                              childKind,
-                              next,
-                              option.value,
-                            );
-                          }}
-                        >
-                          +
-                        </button>
-                      ) : null}
-                      <button
-                        className="option-rename-btn"
-                        type="button"
-                        draggable={false}
-                        onClick={() => {
-                          setEditingOption({
-                            kind: key,
-                            value: option.value,
-                            color: option.color || "#6B7280",
-                            nextValue: option.value,
-                            nextColor: option.color || "#6B7280",
-                            label,
-                          });
-                        }}
-                      >
-                        ✎
-                      </button>
-                      <button
-                        className="option-remove-btn"
-                        type="button"
-                        draggable={false}
-                        onClick={() =>
-                          void removeUserOption({ kind: key, value: option.value })
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
-                    {children.map((child) => (
                       <div
-                        key={`${childKind}-${option.value}-${child.value}`}
-                        draggable
+                        className={`option-color-row${childKind ? "" : " option-color-row-compact"}${
+                          key === "category" || key === "incomeType"
+                            ? " option-draggable"
+                            : ""
+                        }${draggingRowKey === `${key}:${option.value}` ? " is-dragging" : ""}`}
+                        draggable={key === "category" || key === "incomeType"}
+                        onDragOver={(event) => {
+                          if (key !== "category" && key !== "incomeType")
+                            return;
+                          const payload = resolveDragPayload(event);
+                          const payloadKind =
+                            payload?.kind ??
+                            kindFromDraggingRowKey(draggingRowKey);
+                          if (!payloadKind) return;
+                          const targetSubtypeKind =
+                            key === "category"
+                              ? "subcategory"
+                              : "incomeSubtype";
+                          if (
+                            payloadKind === key ||
+                            payloadKind === targetSubtypeKind
+                          ) {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = "move";
+                            setDropTargetKey(`${key}:${option.value}`);
+                          }
+                        }}
                         onDragStart={(event) => {
+                          if (key !== "category" && key !== "incomeType")
+                            return;
                           setDraggedOption({
-                            kind: childKind!,
-                            value: child.value,
-                            parentValue: option.value,
+                            kind: key,
+                            value: option.value,
                           });
-                          setDraggingRowKey(
-                            `${childKind}:${option.value}:${child.value}`,
-                          );
+                          setDraggingRowKey(`${key}:${option.value}`);
                           event.dataTransfer.setData(
                             "text/plain",
                             JSON.stringify({
-                              kind: childKind,
-                              value: child.value,
-                              parentValue: option.value,
+                              kind: key,
+                              value: option.value,
                             }),
                           );
                           event.dataTransfer.effectAllowed = "move";
-                        }}
-                        onMouseDown={() => {
-                          setDraggingRowKey(
-                            `${childKind}:${option.value}:${child.value}`,
-                          );
                         }}
                         onDragEnd={() => {
                           setDraggedOption(null);
                           setDropTargetKey(null);
                           setDraggingRowKey(null);
                         }}
-                        onDragStartCapture={() => {
-                          setDraggingRowKey(
-                            `${childKind}:${option.value}:${child.value}`,
-                          );
-                        }}
-                        className={`option-color-row option-color-row-child option-color-row-compact option-draggable${
-                          draggingRowKey ===
-                          `${childKind}:${option.value}:${child.value}`
-                            ? " is-dragging"
-                            : ""
-                        }`}
                         style={
                           {
-                            "--option-color": child.color || "#6B7280",
+                            "--option-color": option.color || "#6B7280",
                           } as CSSProperties
                         }
                       >
                         <button
                           type="button"
                           draggable={false}
-                          className={`option-color-chip option-color-chip-btn${child.isDefault ? " is-default" : ""}`}
-                          aria-label={`Set default ${childKind === "subcategory" ? "subcategory" : "income subtype"} ${child.value}`}
+                          className={`option-color-chip option-color-chip-btn${option.isDefault ? " is-default" : ""}`}
+                          aria-label={`Set default ${label} ${option.value}`}
                           onClick={() =>
                             void setUserOptionDefault({
-                              kind: childKind!,
-                              value: child.value,
-                              parentValue: option.value,
+                              kind: key,
+                              value: option.value,
                               isDefault: true,
                             })
                           }
@@ -419,24 +283,49 @@ export function Options() {
                           <span className="option-color-dot" />
                         </button>
                         <span className="option-color-label">
-                          <span className="option-color-name">{child.value}</span>
+                          <span className="option-color-name">
+                            {option.value}
+                          </span>
                         </span>
+                        {childKind ? (
+                          <button
+                            className="option-plus-btn"
+                            type="button"
+                            draggable={false}
+                            onClick={() => {
+                              const next = window
+                                .prompt(
+                                  `Add ${
+                                    childKind === "subcategory"
+                                      ? "subcategory"
+                                      : "income subtype"
+                                  } under ${option.value}`,
+                                )
+                                ?.trim();
+                              if (!next) return;
+                              void saveOption(
+                                addUserOption,
+                                childKind,
+                                next,
+                                option.value,
+                              );
+                            }}
+                          >
+                            +
+                          </button>
+                        ) : null}
                         <button
                           className="option-rename-btn"
                           type="button"
                           draggable={false}
                           onClick={() => {
                             setEditingOption({
-                              kind: childKind!,
-                              value: child.value,
-                              parentValue: option.value,
-                              color: child.color || "#6B7280",
-                              nextValue: child.value,
-                              nextColor: child.color || "#6B7280",
-                              label:
-                                childKind === "subcategory"
-                                  ? "Subcategory"
-                                  : "Income Subtype",
+                              kind: key,
+                              value: option.value,
+                              color: option.color || "#6B7280",
+                              nextValue: option.value,
+                              nextColor: option.color || "#6B7280",
+                              label,
                             });
                           }}
                         >
@@ -448,26 +337,132 @@ export function Options() {
                           draggable={false}
                           onClick={() =>
                             void removeUserOption({
-                              kind: childKind!,
-                              value: child.value,
-                              parentValue: option.value,
+                              kind: key,
+                              value: option.value,
                             })
                           }
                         >
                           ×
                         </button>
                       </div>
-                    ))}
-                  </div>
-                );
-              })}
-              {options.length === 0 ? (
-                <div className="option-empty-hint">No options yet.</div>
-              ) : null}
-            </div>
-          </section>
-        );
-      })}
+                      {children.map((child) => (
+                        <div
+                          key={`${childKind}-${option.value}-${child.value}`}
+                          draggable
+                          onDragStart={(event) => {
+                            setDraggedOption({
+                              kind: childKind!,
+                              value: child.value,
+                              parentValue: option.value,
+                            });
+                            setDraggingRowKey(
+                              `${childKind}:${option.value}:${child.value}`,
+                            );
+                            event.dataTransfer.setData(
+                              "text/plain",
+                              JSON.stringify({
+                                kind: childKind,
+                                value: child.value,
+                                parentValue: option.value,
+                              }),
+                            );
+                            event.dataTransfer.effectAllowed = "move";
+                          }}
+                          onMouseDown={() => {
+                            setDraggingRowKey(
+                              `${childKind}:${option.value}:${child.value}`,
+                            );
+                          }}
+                          onDragEnd={() => {
+                            setDraggedOption(null);
+                            setDropTargetKey(null);
+                            setDraggingRowKey(null);
+                          }}
+                          onDragStartCapture={() => {
+                            setDraggingRowKey(
+                              `${childKind}:${option.value}:${child.value}`,
+                            );
+                          }}
+                          className={`option-color-row option-color-row-child option-color-row-compact option-draggable${
+                            draggingRowKey ===
+                            `${childKind}:${option.value}:${child.value}`
+                              ? " is-dragging"
+                              : ""
+                          }`}
+                          style={
+                            {
+                              "--option-color": child.color || "#6B7280",
+                            } as CSSProperties
+                          }
+                        >
+                          <button
+                            type="button"
+                            draggable={false}
+                            className={`option-color-chip option-color-chip-btn${child.isDefault ? " is-default" : ""}`}
+                            aria-label={`Set default ${childKind === "subcategory" ? "subcategory" : "income subtype"} ${child.value}`}
+                            onClick={() =>
+                              void setUserOptionDefault({
+                                kind: childKind!,
+                                value: child.value,
+                                parentValue: option.value,
+                                isDefault: true,
+                              })
+                            }
+                          >
+                            <span className="option-color-dot" />
+                          </button>
+                          <span className="option-color-label">
+                            <span className="option-color-name">
+                              {child.value}
+                            </span>
+                          </span>
+                          <button
+                            className="option-rename-btn"
+                            type="button"
+                            draggable={false}
+                            onClick={() => {
+                              setEditingOption({
+                                kind: childKind!,
+                                value: child.value,
+                                parentValue: option.value,
+                                color: child.color || "#6B7280",
+                                nextValue: child.value,
+                                nextColor: child.color || "#6B7280",
+                                label:
+                                  childKind === "subcategory"
+                                    ? "Subcategory"
+                                    : "Income Subtype",
+                              });
+                            }}
+                          >
+                            ✎
+                          </button>
+                          <button
+                            className="option-remove-btn"
+                            type="button"
+                            draggable={false}
+                            onClick={() =>
+                              void removeUserOption({
+                                kind: childKind!,
+                                value: child.value,
+                                parentValue: option.value,
+                              })
+                            }
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                {options.length === 0 ? (
+                  <div className="option-empty-hint">No options yet.</div>
+                ) : null}
+              </div>
+            </section>
+          );
+        })}
       {editingOption ? (
         <div className="modal-overlay" onClick={() => setEditingOption(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -491,8 +486,7 @@ export function Options() {
                           ...current,
                           nextValue: e.target.value,
                         }
-                      : current,
-                  )
+                      : current)
                 }
                 placeholder="Name"
               />
@@ -508,8 +502,7 @@ export function Options() {
                             ...current,
                             nextColor: e.target.value,
                           }
-                        : current,
-                    )
+                        : current)
                   }
                 />
               </label>
@@ -536,8 +529,7 @@ export function Options() {
                         value: nextName,
                         parentValue: editingOption.parentValue,
                         color: nextColor,
-                      }),
-                    )
+                      }))
                     .then(() => setEditingOption(null));
                 }}
               >

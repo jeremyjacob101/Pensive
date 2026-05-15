@@ -422,7 +422,7 @@ export async function handleUpdateRecurring(
           : undefined,
       expenseSubcategory:
         kind === "expense"
-          ? (deps.editValues.expenseSubcategory || undefined)
+          ? deps.editValues.expenseSubcategory || undefined
           : undefined,
       expensePaidTo:
         kind === "expense" ? (deps.editValues.expensePaidTo ?? "") : undefined,
@@ -434,7 +434,7 @@ export async function handleUpdateRecurring(
         kind === "incoming" ? (deps.editValues.incomingType ?? "") : undefined,
       incomingSubtype:
         kind === "incoming"
-          ? (deps.editValues.incomingSubtype || undefined)
+          ? deps.editValues.incomingSubtype || undefined
           : undefined,
       incomingAccount:
         kind === "incoming"

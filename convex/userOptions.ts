@@ -336,15 +336,14 @@ export const list = query({
       subcategoryRows,
       incomeTypeRows,
       incomeSubtypeRows,
-    ] =
-      await Promise.all(
-        OPTION_KINDS.map((kind) =>
-          ctx.db
-            .query("userOptions")
-            .withIndex("by_user_kind", (q) =>
-              q.eq("userId", userId).eq("kind", kind))
-            .take(MAX_OPTIONS_PER_KIND)),
-      );
+    ] = await Promise.all(
+      OPTION_KINDS.map((kind) =>
+        ctx.db
+          .query("userOptions")
+          .withIndex("by_user_kind", (q) =>
+            q.eq("userId", userId).eq("kind", kind))
+          .take(MAX_OPTIONS_PER_KIND)),
+    );
 
     return {
       expenseType: formatOptionList(
@@ -402,7 +401,11 @@ export const list = query({
 });
 
 export const add = mutation({
-  args: { kind: optionKind, value: v.string(), parentValue: v.optional(v.string()) },
+  args: {
+    kind: optionKind,
+    value: v.string(),
+    parentValue: v.optional(v.string()),
+  },
   handler: async (ctx, { kind, value, parentValue }) => {
     const userId = await requireUserId(ctx);
     await upsertOption(ctx, userId, kind, value, parentValue);
@@ -410,7 +413,12 @@ export const add = mutation({
 });
 
 export const updateColor = mutation({
-  args: { kind: optionKind, value: v.string(), color: v.string(), parentValue: v.optional(v.string()) },
+  args: {
+    kind: optionKind,
+    value: v.string(),
+    color: v.string(),
+    parentValue: v.optional(v.string()),
+  },
   handler: async (ctx, { kind, value, color, parentValue }) => {
     const userId = await requireUserId(ctx);
     const normalizedColor = normalizeHexColor(color);
@@ -435,7 +443,11 @@ export const updateColor = mutation({
 });
 
 export const remove = mutation({
-  args: { kind: optionKind, value: v.string(), parentValue: v.optional(v.string()) },
+  args: {
+    kind: optionKind,
+    value: v.string(),
+    parentValue: v.optional(v.string()),
+  },
   handler: async (ctx, { kind, value, parentValue }) => {
     const userId = await requireUserId(ctx);
     const matches = await ctx.db
@@ -459,7 +471,10 @@ export const remove = mutation({
           q.eq("userId", userId).eq("kind", "subcategory"))
         .collect();
       for (const child of children) {
-        if (((child as { parentValue?: string }).parentValue ?? "") === value.trim()) {
+        if (
+          ((child as { parentValue?: string }).parentValue ?? "") ===
+          value.trim()
+        ) {
           await ctx.db.delete(child._id);
         }
       }
@@ -471,7 +486,10 @@ export const remove = mutation({
           q.eq("userId", userId).eq("kind", "incomeSubtype"))
         .collect();
       for (const child of children) {
-        if (((child as { parentValue?: string }).parentValue ?? "") === value.trim()) {
+        if (
+          ((child as { parentValue?: string }).parentValue ?? "") ===
+          value.trim()
+        ) {
           await ctx.db.delete(child._id);
         }
       }
@@ -480,7 +498,12 @@ export const remove = mutation({
 });
 
 export const setDefault = mutation({
-  args: { kind: optionKind, value: v.string(), isDefault: v.boolean(), parentValue: v.optional(v.string()) },
+  args: {
+    kind: optionKind,
+    value: v.string(),
+    isDefault: v.boolean(),
+    parentValue: v.optional(v.string()),
+  },
   handler: async (ctx, { kind, value, isDefault, parentValue }) => {
     const userId = await requireUserId(ctx);
     const trimmedValue = value.trim();
@@ -554,8 +577,7 @@ export const rename = mutation({
     const duplicate = sameNameRows.find(
       (row) =>
         ((row as { parentValue?: string }).parentValue ?? "") ===
-        normalizedParent &&
-        row._id !== existing._id,
+          normalizedParent && row._id !== existing._id,
     );
     if (duplicate) throw new Error("An option with this name already exists");
 
@@ -569,8 +591,10 @@ export const rename = mutation({
       for (const expense of expenses) {
         const patch: { category?: string; subcategory?: string } = {};
         if (expense.category === currentValue) patch.category = targetValue;
-        if ((expense.subcategory ?? "") === currentValue) patch.subcategory = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(expense._id, patch);
+        if ((expense.subcategory ?? "") === currentValue)
+          patch.subcategory = targetValue;
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(expense._id, patch);
       }
 
       const recurrings = await ctx.db
@@ -583,12 +607,14 @@ export const rename = mutation({
           expenseCategory?: string;
           expenseSubcategory?: string;
         } = {};
-        if ((recurring.category ?? "") === currentValue) patch.category = targetValue;
+        if ((recurring.category ?? "") === currentValue)
+          patch.category = targetValue;
         if ((recurring.expenseCategory ?? "") === currentValue)
           patch.expenseCategory = targetValue;
         if ((recurring.expenseSubcategory ?? "") === currentValue)
           patch.expenseSubcategory = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(recurring._id, patch);
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(recurring._id, patch);
       }
 
       const subcategories = await ctx.db
@@ -597,7 +623,9 @@ export const rename = mutation({
           q.eq("userId", userId).eq("kind", "subcategory"))
         .collect();
       for (const sub of subcategories) {
-        if (((sub as { parentValue?: string }).parentValue ?? "") !== currentValue)
+        if (
+          ((sub as { parentValue?: string }).parentValue ?? "") !== currentValue
+        )
           continue;
         await ctx.db.patch(sub._id, { parentValue: targetValue });
       }
@@ -627,7 +655,9 @@ export const rename = mutation({
             normalizedParent &&
           (recurring.expenseSubcategory ?? "") === currentValue
         ) {
-          await ctx.db.patch(recurring._id, { expenseSubcategory: targetValue });
+          await ctx.db.patch(recurring._id, {
+            expenseSubcategory: targetValue,
+          });
         }
       }
       return;
@@ -640,10 +670,12 @@ export const rename = mutation({
         .collect();
       for (const incoming of incomings) {
         const patch: { incomeType?: string; incomeSubtype?: string } = {};
-        if (incoming.incomeType === currentValue) patch.incomeType = targetValue;
+        if (incoming.incomeType === currentValue)
+          patch.incomeType = targetValue;
         if ((incoming.incomeSubtype ?? "") === currentValue)
           patch.incomeSubtype = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(incoming._id, patch);
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(incoming._id, patch);
       }
       const recurrings = await ctx.db
         .query("recurrings")
@@ -655,7 +687,8 @@ export const rename = mutation({
           patch.incomingType = targetValue;
         if ((recurring.incomingSubtype ?? "") === currentValue)
           patch.incomingSubtype = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(recurring._id, patch);
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(recurring._id, patch);
       }
       const subtypes = await ctx.db
         .query("userOptions")
@@ -663,7 +696,9 @@ export const rename = mutation({
           q.eq("userId", userId).eq("kind", "incomeSubtype"))
         .collect();
       for (const sub of subtypes) {
-        if (((sub as { parentValue?: string }).parentValue ?? "") !== currentValue)
+        if (
+          ((sub as { parentValue?: string }).parentValue ?? "") !== currentValue
+        )
           continue;
         await ctx.db.patch(sub._id, { parentValue: targetValue });
       }
@@ -717,7 +752,8 @@ export const rename = mutation({
         if ((recurring.type ?? "") === currentValue) patch.type = targetValue;
         if ((recurring.expenseType ?? "") === currentValue)
           patch.expenseType = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(recurring._id, patch);
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(recurring._id, patch);
       }
       return;
     }
@@ -746,13 +782,19 @@ export const rename = mutation({
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
       for (const recurring of recurrings) {
-        const patch: { paidBy?: string; expenseAccount?: string; incomingAccount?: string } = {};
-        if ((recurring.paidBy ?? "") === currentValue) patch.paidBy = targetValue;
+        const patch: {
+          paidBy?: string;
+          expenseAccount?: string;
+          incomingAccount?: string;
+        } = {};
+        if ((recurring.paidBy ?? "") === currentValue)
+          patch.paidBy = targetValue;
         if ((recurring.expenseAccount ?? "") === currentValue)
           patch.expenseAccount = targetValue;
         if ((recurring.incomingAccount ?? "") === currentValue)
           patch.incomingAccount = targetValue;
-        if (Object.keys(patch).length > 0) await ctx.db.patch(recurring._id, patch);
+        if (Object.keys(patch).length > 0)
+          await ctx.db.patch(recurring._id, patch);
       }
     }
   },
@@ -806,7 +848,8 @@ export const moveToSubtype = mutation({
       );
       const siblingColors = subtypeRows
         .filter(
-          (row) => ((row as { parentValue?: string }).parentValue ?? "") === target,
+          (row) =>
+            ((row as { parentValue?: string }).parentValue ?? "") === target,
         )
         .map((row) => (row as { color?: string }).color ?? "")
         .filter((color) => normalizeHexColor(color));
@@ -824,7 +867,9 @@ export const moveToSubtype = mutation({
     }
 
     for (const subtypeRow of subtypeRows) {
-      if (((subtypeRow as { parentValue?: string }).parentValue ?? "") !== source)
+      if (
+        ((subtypeRow as { parentValue?: string }).parentValue ?? "") !== source
+      )
         continue;
       await ctx.db.patch(subtypeRow._id, { parentValue: target });
     }
@@ -850,10 +895,15 @@ export const moveToSubtype = mutation({
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
       for (const recurringRow of recurringRows) {
-        const recurringCategory =
-          (recurringRow.expenseCategory ?? recurringRow.category ?? "").trim();
+        const recurringCategory = (
+          recurringRow.expenseCategory ??
+          recurringRow.category ??
+          ""
+        ).trim();
         if (recurringCategory !== source) continue;
-        const existingSubcategory = (recurringRow.expenseSubcategory ?? "").trim();
+        const existingSubcategory = (
+          recurringRow.expenseSubcategory ?? ""
+        ).trim();
         await ctx.db.patch(recurringRow._id, {
           category: target,
           expenseCategory: target,
@@ -961,8 +1011,11 @@ export const promoteSubtype = mutation({
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
       for (const recurring of recurrings) {
-        const recurringCategory =
-          (recurring.expenseCategory ?? recurring.category ?? "").trim();
+        const recurringCategory = (
+          recurring.expenseCategory ??
+          recurring.category ??
+          ""
+        ).trim();
         if (
           recurringCategory === sourceParent &&
           (recurring.expenseSubcategory ?? "") === subtypeValue
@@ -1018,13 +1071,18 @@ export const moveSubtype = mutation({
     sourceParentValue: v.string(),
     targetParentValue: v.string(),
   },
-  handler: async (ctx, { kind, value, sourceParentValue, targetParentValue }) => {
+  handler: async (
+    ctx,
+    { kind, value, sourceParentValue, targetParentValue },
+  ) => {
     const userId = await requireUserId(ctx);
     const subtypeValue = value.trim();
     const sourceParent = sourceParentValue.trim();
     const targetParent = targetParentValue.trim();
     if (!subtypeValue || !sourceParent || !targetParent) {
-      throw new Error("value, sourceParentValue and targetParentValue are required");
+      throw new Error(
+        "value, sourceParentValue and targetParentValue are required",
+      );
     }
     if (sourceParent === targetParent) return;
 

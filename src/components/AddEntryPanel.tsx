@@ -1,10 +1,6 @@
 import { buildEmptySplitExpenseDraft, buildEmptySplitIncomingDraft } from "../helpers/splitDrafts";
+import { getDefaultOptionValue, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import type { SplitExpenseDraft, SplitIncomingDraft } from "../types/splitDrafts";
-import {
-  getDefaultOptionValue,
-  getScopedOptionValues,
-  toOptionValues,
-} from "../helpers/options";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormType, UserOptions } from "../types/workspace";
 import { randomId16, toAmount } from "../helpers/formatters";
@@ -186,7 +182,10 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
     );
     if (incomingSubtype && !scopedSubtypes.includes(incomingSubtype))
       setIncomingSubtype("");
-    if (recurringIncomingSubtype && !scopedSubtypes.includes(recurringIncomingSubtype)) {
+    if (
+      recurringIncomingSubtype &&
+      !scopedSubtypes.includes(recurringIncomingSubtype)
+    ) {
       setRecurringIncomingSubtype("");
     }
   };

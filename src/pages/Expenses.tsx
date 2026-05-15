@@ -1,13 +1,9 @@
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { formatMonthLabel, formatShortDisplayDate, formatYearLabel } from "../helpers/dates";
+import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import {
-  getOptionColor,
-  getScopedOptionValues,
-  toOptionValues,
-} from "../helpers/options";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
 import { OptionPicker } from "../components/OptionPicker";
@@ -385,7 +381,9 @@ export function Expenses() {
                               </div>
                               <div className="grouped-expense-row-meta">
                                 {row.type} · {row.category}
-                                {row.subcategory ? ` / ${row.subcategory}` : ""}{" "}
+                                {row.subcategory
+                                  ? ` / ${row.subcategory}`
+                                  : ""}{" "}
                                 · {row.account} · {row.paidTo}
                               </div>
                             </div>
@@ -499,7 +497,10 @@ export function Expenses() {
                                       placeholder="Category"
                                       onChange={(value) =>
                                         setEditValues((v) => {
-                                          const next = { ...v, category: value };
+                                          const next: EditValues = {
+                                            ...v,
+                                            category: value,
+                                          };
                                           const scoped = getScopedOptionValues(
                                             userOptions,
                                             "subcategory",
@@ -794,7 +795,10 @@ export function Expenses() {
                             placeholder="Category"
                             onChange={(value) =>
                               setEditValues((v) => {
-                                const next = { ...v, category: value };
+                                const next: EditValues = {
+                                  ...v,
+                                  category: value,
+                                };
                                 const scoped = getScopedOptionValues(
                                   userOptions,
                                   "subcategory",
