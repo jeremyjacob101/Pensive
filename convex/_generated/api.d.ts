@@ -10,10 +10,14 @@
 
 import type * as auth from "../auth.js";
 import type * as baseSubIds from "../baseSubIds.js";
+import type * as effectiveAmounts from "../effectiveAmounts.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
 import type * as incomings from "../incomings.js";
+import type * as paybackHelpers from "../paybackHelpers.js";
+import type * as paybackLinks from "../paybackLinks.js";
 import type * as recurrings from "../recurrings.js";
+import type * as summaries from "../summaries.js";
 import type * as userOptions from "../userOptions.js";
 
 import type {
@@ -25,10 +29,14 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   baseSubIds: typeof baseSubIds;
+  effectiveAmounts: typeof effectiveAmounts;
   expenses: typeof expenses;
   http: typeof http;
   incomings: typeof incomings;
+  paybackHelpers: typeof paybackHelpers;
+  paybackLinks: typeof paybackLinks;
   recurrings: typeof recurrings;
+  summaries: typeof summaries;
   userOptions: typeof userOptions;
 }>;
 

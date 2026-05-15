@@ -1,6 +1,8 @@
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
 import { formatMonthLabel, formatShortDisplayDate, formatYearLabel } from "../helpers/dates";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
+import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
+import { IncomingPaybackLinkManager } from "../components/PaybackLinkManager";
 import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
@@ -13,6 +15,14 @@ import { useMemo, useRef, useState } from "react";
 import { parseSubId } from "../helpers/subId";
 import { CreditCard } from "lucide-react";
 import { saveOption } from "./actions";
+
+function getEffectiveAmount(row: { amount: number; effectiveAmount?: number }) {
+  return row.effectiveAmount ?? row.amount;
+}
+
+function formatMoney(value: number) {
+  return `₪${value.toLocaleString("en-US")}`;
+}
 
 export function Incomings() {
   const [editingIncomingId, setEditingIncomingId] = useState<string | null>(
@@ -51,6 +61,7 @@ export function Incomings() {
         latestDate: string;
         latestCreation: number;
         totalAmount: number;
+        totalEffectiveAmount: number;
         rows: typeof incomings;
       }
     >();
@@ -71,6 +82,7 @@ export function Incomings() {
           latestDate: row.date,
           latestCreation: row._creationTime,
           totalAmount: row.amount,
+          totalEffectiveAmount: getEffectiveAmount(row),
           rows: [row],
         });
         continue;
@@ -78,6 +90,7 @@ export function Incomings() {
 
       existing.rows.push(row);
       existing.totalAmount += row.amount;
+      existing.totalEffectiveAmount += getEffectiveAmount(row);
       if (
         row.date > existing.latestDate ||
         (row.date === existing.latestDate &&
@@ -256,7 +269,7 @@ export function Incomings() {
                 const amountTooltip = group.rows
                   .map(
                     (row) =>
-                      `${row.incoming}: ₪${row.amount.toLocaleString("en-US")}`,
+                      `${row.incoming}: ${formatMoney(row.amount)} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
                   )
                   .join("\n");
 
@@ -277,8 +290,9 @@ export function Incomings() {
                             style={{ color: accountColor }}
                             aria-hidden="true"
                           />
-                          <span>
-                            ₪{group.totalAmount.toLocaleString("en-US")}
+                          <span>{formatMoney(group.totalAmount)}</span>
+                          <span className="entry-card-effective-amount">
+                            {formatMoney(group.totalEffectiveAmount)} effective
                           </span>
                         </div>
                         <span
@@ -339,7 +353,10 @@ export function Incomings() {
 
                             <div className="grouped-expense-row-amount-date">
                               <span className="grouped-expense-row-amount">
-                                ₪{row.amount.toLocaleString("en-US")}
+                                {formatMoney(row.amount)}
+                              </span>
+                              <span className="grouped-expense-row-effective">
+                                {formatMoney(getEffectiveAmount(row))} effective
                               </span>
                               <span className="grouped-expense-row-date">
                                 {formatShortDisplayDate(row.date)}
@@ -492,6 +509,10 @@ export function Incomings() {
                                         }))
                                       }
                                     />
+                                    <EffectiveAmountControls
+                                      editValues={editValues}
+                                      setEditValues={setEditValues}
+                                    />
                                     <input
                                       type="date"
                                       value={editValues.date ?? ""}
@@ -530,6 +551,10 @@ export function Incomings() {
                                       }
                                     />
                                     {renderPartnerEditor(row)}
+                                    <IncomingPaybackLinkManager
+                                      incomingId={row._id}
+                                      disabled={saving}
+                                    />
                                     <button
                                       type="button"
                                       className="save-plus-btn"
@@ -591,7 +616,10 @@ export function Incomings() {
                           style={{ color: accountColor }}
                           aria-hidden="true"
                         />
-                        <span>₪{row.amount}</span>
+                        <span>{formatMoney(row.amount)}</span>
+                        <span className="entry-card-effective-amount">
+                          {formatMoney(getEffectiveAmount(row))} effective
+                        </span>
                       </div>
                       <span
                         className="entry-card-primary-divider"
@@ -656,6 +684,10 @@ export function Incomings() {
                         </div>
                         <div>
                           <strong>Month/Year:</strong> {row.monthYear}
+                        </div>
+                        <div>
+                          <strong>Effective:</strong>{" "}
+                          {formatMoney(getEffectiveAmount(row))}
                         </div>
                         <div>
                           <strong>Notes:</strong> {row.notes ?? "-"}
@@ -781,6 +813,10 @@ export function Incomings() {
                               }))
                             }
                           />
+                          <EffectiveAmountControls
+                            editValues={editValues}
+                            setEditValues={setEditValues}
+                          />
                           <input
                             type="date"
                             value={editValues.date ?? ""}
@@ -819,6 +855,10 @@ export function Incomings() {
                             }
                           />
                           {renderPartnerEditor(row)}
+                          <IncomingPaybackLinkManager
+                            incomingId={row._id}
+                            disabled={saving}
+                          />
                           <button
                             type="button"
                             className="save-plus-btn"

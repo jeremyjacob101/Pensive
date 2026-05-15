@@ -12,6 +12,8 @@ export default defineSchema({
     category: v.string(),
     subcategory: v.optional(v.string()),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(v.union(v.literal("auto"), v.literal("manual"))),
     date: v.string(),
     paidTo: v.string(),
     notes: v.optional(v.string()),
@@ -34,6 +36,8 @@ export default defineSchema({
     incomeSubtype: v.optional(v.string()),
     account: v.string(),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(v.union(v.literal("auto"), v.literal("manual"))),
     date: v.string(),
     monthYear: v.string(),
     notes: v.optional(v.string()),
@@ -47,6 +51,19 @@ export default defineSchema({
     .index("by_incoming_id", ["incomingId"])
     .index("by_user_base_incoming_id", ["userId", "baseIncomingId"])
     .index("by_date", ["date"]),
+  paybackLinks: defineTable({
+    userId: v.optional(v.id("users")),
+    expenseId: v.id("expenses"),
+    incomingId: v.id("incomings"),
+    allocatedAmount: v.number(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_expense", ["userId", "expenseId"])
+    .index("by_user_incoming", ["userId", "incomingId"])
+    .index("by_user_pair", ["userId", "expenseId", "incomingId"])
+    .index("by_user_id", ["userId"]),
   userOptions: defineTable({
     userId: v.optional(v.id("users")),
     kind: v.union(

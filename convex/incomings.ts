@@ -1,3 +1,4 @@
+import { deletePaybackLinksForIncoming, normalizeEffectiveAmountFields, recomputeIncomingEffectiveAmount, type EffectiveAmountMode } from "./paybackHelpers";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
@@ -39,6 +40,11 @@ function normalizeSharedFields(args: {
     subIncomingId: args.subIncomingId?.trim() || undefined,
   };
 }
+
+const effectiveAmountModeValidator = v.union(
+  v.literal("auto"),
+  v.literal("manual"),
+);
 
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
   const userId = await getAuthUserId(ctx);
@@ -116,6 +122,8 @@ export const create = mutation({
     incomeSubtype: v.optional(v.string()),
     account: v.string(),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(effectiveAmountModeValidator),
     date: v.string(),
     monthYear: v.string(),
     notes: v.optional(v.string()),
@@ -128,10 +136,12 @@ export const create = mutation({
     const userId = await requireUserId(ctx);
     const incomingId = args.incomingId.trim() || randomId16();
     const shared = normalizeSharedFields(args);
+    const effective = normalizeEffectiveAmountFields(args);
 
     return await ctx.db.insert("incomings", {
       ...args,
       ...shared,
+      ...effective,
       incomingId,
       userId,
       date: normalizeDate(args.date),
@@ -149,6 +159,8 @@ export const bulkCreate = mutation({
         incomeSubtype: v.optional(v.string()),
         account: v.string(),
         amount: v.number(),
+        effectiveAmount: v.optional(v.number()),
+        effectiveAmountMode: v.optional(effectiveAmountModeValidator),
         date: v.string(),
         monthYear: v.string(),
         notes: v.optional(v.string()),
@@ -164,10 +176,12 @@ export const bulkCreate = mutation({
     for (const row of rows) {
       const incomingId = row.incomingId.trim() || randomId16();
       const shared = normalizeSharedFields(row);
+      const effective = normalizeEffectiveAmountFields(row);
 
       await ctx.db.insert("incomings", {
         ...row,
         ...shared,
+        ...effective,
         incomingId,
         userId,
         date: normalizeDate(row.date),
@@ -187,6 +201,7 @@ export const clearAll = mutation({
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .take(limit);
     for (const doc of docs) {
+      await deletePaybackLinksForIncoming(ctx, userId, doc._id);
       await ctx.db.delete(doc._id);
     }
     return { deleted: docs.length, done: docs.length < limit };
@@ -202,6 +217,8 @@ export const update = mutation({
     incomeSubtype: v.optional(v.string()),
     account: v.string(),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(effectiveAmountModeValidator),
     date: v.string(),
     monthYear: v.string(),
     notes: v.optional(v.string()),
@@ -210,7 +227,10 @@ export const update = mutation({
     baseIncomingId: v.optional(v.string()),
     subIncomingId: v.optional(v.string()),
   },
-  handler: async (ctx, { id, ...rest }) => {
+  handler: async (
+    ctx,
+    { id, effectiveAmount, effectiveAmountMode, ...rest },
+  ) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
     if (!existing || existing.userId !== userId) {
@@ -219,13 +239,25 @@ export const update = mutation({
 
     const incomingId = rest.incomingId.trim() || existing.incomingId;
     const shared = normalizeSharedFields(rest);
+    const nextEffectiveAmountMode =
+      effectiveAmountMode ??
+      ((existing.effectiveAmountMode ?? "auto") as EffectiveAmountMode);
+    const nextEffectiveAmount =
+      nextEffectiveAmountMode === "manual"
+        ? (effectiveAmount ?? existing.effectiveAmount ?? rest.amount)
+        : rest.amount;
 
     await ctx.db.patch(id, {
       ...rest,
       ...shared,
+      effectiveAmount: nextEffectiveAmount,
+      effectiveAmountMode: nextEffectiveAmountMode,
       incomingId,
       date: normalizeDate(rest.date),
     });
+    if (nextEffectiveAmountMode === "auto") {
+      await recomputeIncomingEffectiveAmount(ctx, userId, id);
+    }
     return id;
   },
 });
@@ -321,6 +353,7 @@ export const remove = mutation({
     if (!existing || existing.userId !== userId) {
       throw new Error("Not found");
     }
+    await deletePaybackLinksForIncoming(ctx, userId, id);
     await ctx.db.delete(id as Id<"incomings">);
     return id;
   },

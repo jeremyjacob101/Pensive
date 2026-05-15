@@ -27,6 +27,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       category: string;
       subcategory?: string;
       amount: number;
+      effectiveAmount?: number;
+      effectiveAmountMode?: "auto" | "manual";
       date: string;
       paidTo: string;
       notes?: string;
@@ -45,6 +47,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       incomeSubtype?: string;
       account: string;
       amount: number;
+      effectiveAmount?: number;
+      effectiveAmountMode?: "auto" | "manual";
       date: string;
       monthYear: string;
       notes?: string;

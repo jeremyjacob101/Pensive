@@ -232,6 +232,8 @@ export function handleStartEditExpense(
     category: row.category,
     subcategory: row.subcategory ?? "",
     amount: String(row.amount),
+    effectiveAmount: String(row.effectiveAmount ?? row.amount),
+    effectiveAmountMode: row.effectiveAmountMode ?? "auto",
     date: row.date,
     paidTo: row.paidTo,
     notes: row.notes ?? "",
@@ -253,6 +255,8 @@ export function handleStartEditIncoming(
     incomeSubtype: row.incomeSubtype ?? "",
     account: row.account,
     amount: String(row.amount),
+    effectiveAmount: String(row.effectiveAmount ?? row.amount),
+    effectiveAmountMode: row.effectiveAmountMode ?? "auto",
     date: row.date,
     monthYear: row.monthYear,
     notes: row.notes ?? "",
@@ -310,6 +314,12 @@ export async function handleUpdateExpense(
       category: deps.editValues.category ?? "",
       subcategory: deps.editValues.subcategory || undefined,
       amount: toAmount(deps.editValues.amount ?? ""),
+      effectiveAmount:
+        deps.editValues.effectiveAmountMode === "manual"
+          ? toAmount(deps.editValues.effectiveAmount ?? "")
+          : undefined,
+      effectiveAmountMode:
+        deps.editValues.effectiveAmountMode === "manual" ? "manual" : "auto",
       date: deps.editValues.date ?? "",
       paidTo: deps.editValues.paidTo ?? "",
       notes: deps.editValues.notes || undefined,
@@ -355,6 +365,12 @@ export async function handleUpdateIncoming(
       incomeSubtype: deps.editValues.incomeSubtype || undefined,
       account: deps.editValues.account ?? "",
       amount: toAmount(deps.editValues.amount ?? ""),
+      effectiveAmount:
+        deps.editValues.effectiveAmountMode === "manual"
+          ? toAmount(deps.editValues.effectiveAmount ?? "")
+          : undefined,
+      effectiveAmountMode:
+        deps.editValues.effectiveAmountMode === "manual" ? "manual" : "auto",
       date: deps.editValues.date ?? "",
       monthYear: deps.editValues.monthYear ?? "",
       notes: deps.editValues.notes || undefined,

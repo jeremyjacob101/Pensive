@@ -24,6 +24,7 @@ export function AppLayout() {
   const createIncoming = useMutation(api.incomings.create);
   const bulkCreateIncomings = useMutation(api.incomings.bulkCreate);
   const createRecurring = useMutation(api.recurrings.create);
+  const backfillEffectiveAmounts = useMutation(api.effectiveAmounts.backfill);
   const addUserOption = useMutation(api.userOptions.add);
 
   const userOptions = useQuery(api.userOptions.list);
@@ -40,6 +41,24 @@ export function AppLayout() {
     document.documentElement.style.backgroundColor = "#000000";
     document.body.style.backgroundColor = "#000000";
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function runBackfill() {
+      try {
+        for (let attempt = 0; attempt < 10 && !cancelled; attempt += 1) {
+          const result = await backfillEffectiveAmounts({ batchSize: 200 });
+          if (result.done) break;
+        }
+      } catch (error) {
+        console.error("Failed to backfill effective amounts", error);
+      }
+    }
+    void runBackfill();
+    return () => {
+      cancelled = true;
+    };
+  }, [backfillEffectiveAmounts]);
 
   return (
     <div className={isDark ? "theme-dark" : ""}>

@@ -1,3 +1,4 @@
+import { deletePaybackLinksForExpense, normalizeEffectiveAmountFields, recomputeExpenseEffectiveAmount, type EffectiveAmountMode } from "./paybackHelpers";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
@@ -41,6 +42,11 @@ function normalizeSharedFields(args: {
     subExpenseId: args.subExpenseId?.trim() || undefined,
   };
 }
+
+const effectiveAmountModeValidator = v.union(
+  v.literal("auto"),
+  v.literal("manual"),
+);
 
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
   const userId = await getAuthUserId(ctx);
@@ -126,6 +132,8 @@ export const create = mutation({
     category: v.string(),
     subcategory: v.optional(v.string()),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(effectiveAmountModeValidator),
     date: v.string(),
     paidTo: v.string(),
     notes: v.optional(v.string()),
@@ -139,10 +147,12 @@ export const create = mutation({
     const userId = await requireUserId(ctx);
     const expenseId = args.expenseId.trim() || randomId16();
     const shared = normalizeSharedFields(args);
+    const effective = normalizeEffectiveAmountFields(args);
 
     return await ctx.db.insert("expenses", {
       ...args,
       ...shared,
+      ...effective,
       expenseId,
       userId,
       date: normalizeDate(args.date),
@@ -160,6 +170,8 @@ export const bulkCreate = mutation({
         category: v.string(),
         subcategory: v.optional(v.string()),
         amount: v.number(),
+        effectiveAmount: v.optional(v.number()),
+        effectiveAmountMode: v.optional(effectiveAmountModeValidator),
         date: v.string(),
         paidTo: v.string(),
         notes: v.optional(v.string()),
@@ -176,10 +188,12 @@ export const bulkCreate = mutation({
     for (const row of rows) {
       const expenseId = row.expenseId.trim() || randomId16();
       const shared = normalizeSharedFields(row);
+      const effective = normalizeEffectiveAmountFields(row);
 
       await ctx.db.insert("expenses", {
         ...row,
         ...shared,
+        ...effective,
         expenseId,
         userId,
         date: normalizeDate(row.date),
@@ -199,6 +213,7 @@ export const clearAll = mutation({
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .take(limit);
     for (const doc of docs) {
+      await deletePaybackLinksForExpense(ctx, userId, doc._id);
       await ctx.db.delete(doc._id);
     }
     return { deleted: docs.length, done: docs.length < limit };
@@ -214,6 +229,8 @@ export const update = mutation({
     category: v.string(),
     subcategory: v.optional(v.string()),
     amount: v.number(),
+    effectiveAmount: v.optional(v.number()),
+    effectiveAmountMode: v.optional(effectiveAmountModeValidator),
     date: v.string(),
     paidTo: v.string(),
     notes: v.optional(v.string()),
@@ -223,7 +240,10 @@ export const update = mutation({
     baseExpenseLabel: v.optional(v.string()),
     subExpenseId: v.optional(v.string()),
   },
-  handler: async (ctx, { id, ...rest }) => {
+  handler: async (
+    ctx,
+    { id, effectiveAmount, effectiveAmountMode, ...rest },
+  ) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
     if (!existing || existing.userId !== userId) {
@@ -232,13 +252,25 @@ export const update = mutation({
 
     const expenseId = rest.expenseId.trim() || existing.expenseId;
     const shared = normalizeSharedFields(rest);
+    const nextEffectiveAmountMode =
+      effectiveAmountMode ??
+      ((existing.effectiveAmountMode ?? "auto") as EffectiveAmountMode);
+    const nextEffectiveAmount =
+      nextEffectiveAmountMode === "manual"
+        ? (effectiveAmount ?? existing.effectiveAmount ?? rest.amount)
+        : rest.amount;
 
     await ctx.db.patch(id, {
       ...rest,
       ...shared,
+      effectiveAmount: nextEffectiveAmount,
+      effectiveAmountMode: nextEffectiveAmountMode,
       expenseId,
       date: normalizeDate(rest.date),
     });
+    if (nextEffectiveAmountMode === "auto") {
+      await recomputeExpenseEffectiveAmount(ctx, userId, id);
+    }
     return id;
   },
 });
@@ -282,6 +314,7 @@ export const removeBaseExpense = mutation({
 
     const rows = await listRowsByBaseExpenseId(ctx, userId, targetBaseId);
     for (const row of rows) {
+      await deletePaybackLinksForExpense(ctx, userId, row._id);
       await ctx.db.delete(row._id);
     }
 
@@ -446,6 +479,7 @@ export const remove = mutation({
     if (!existing || existing.userId !== userId) {
       throw new Error("Not found");
     }
+    await deletePaybackLinksForExpense(ctx, userId, id);
     await ctx.db.delete(id as Id<"expenses">);
     return id;
   },

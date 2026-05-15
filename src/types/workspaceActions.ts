@@ -12,6 +12,8 @@ export type WorkspaceMutations = {
     category: string;
     subcategory?: string;
     amount: number;
+    effectiveAmount?: number;
+    effectiveAmountMode?: "auto" | "manual";
     date: string;
     paidTo: string;
     notes?: string;
@@ -27,6 +29,8 @@ export type WorkspaceMutations = {
     incomeSubtype?: string;
     account: string;
     amount: number;
+    effectiveAmount?: number;
+    effectiveAmountMode?: "auto" | "manual";
     date: string;
     monthYear: string;
     notes?: string;
@@ -75,6 +79,8 @@ export type WorkspaceMutations = {
     category: string;
     subcategory?: string;
     amount: number;
+    effectiveAmount?: number;
+    effectiveAmountMode?: "auto" | "manual";
     date: string;
     paidTo: string;
     notes?: string;
@@ -92,6 +98,8 @@ export type WorkspaceMutations = {
     incomeSubtype?: string;
     account: string;
     amount: number;
+    effectiveAmount?: number;
+    effectiveAmountMode?: "auto" | "manual";
     date: string;
     monthYear: string;
     notes?: string;
