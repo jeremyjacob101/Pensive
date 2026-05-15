@@ -3,6 +3,7 @@ export type SplitExpenseDraft = {
   type: string;
   account: string;
   category: string;
+  subcategory: string;
   amount: string;
   date: string;
   paidTo: string;
@@ -14,6 +15,7 @@ export type SplitIncomingDraft = {
   incoming: string;
   paidBy: string;
   incomeType: string;
+  incomeSubtype: string;
   account: string;
   amount: string;
   date: string;

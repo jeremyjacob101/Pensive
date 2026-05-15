@@ -9,10 +9,15 @@ export async function saveOption(
   addUserOption: WorkspaceMutations["addUserOption"],
   kind: OptionKind,
   value: string,
+  parentValue?: string,
 ) {
   const trimmed = value.trim();
   if (!trimmed) return;
-  await addUserOption({ kind, value: trimmed });
+  await addUserOption({
+    kind,
+    value: trimmed,
+    parentValue: parentValue?.trim() || undefined,
+  });
 }
 
 export async function handleAddExpense(
@@ -36,6 +41,7 @@ export async function handleAddExpense(
       type: String(form.get("type") ?? ""),
       account: String(form.get("account") ?? ""),
       category: String(form.get("category") ?? ""),
+      subcategory: String(form.get("subcategory") ?? "") || undefined,
       amount: toAmount(String(form.get("amount") ?? "")),
       date: String(form.get("date") ?? ""),
       paidTo: String(form.get("paidTo") ?? ""),
@@ -57,6 +63,12 @@ export async function handleAddExpense(
       saveOption(
         deps.addUserOption,
         "category",
+        String(form.get("category") ?? ""),
+      ),
+      saveOption(
+        deps.addUserOption,
+        "subcategory",
+        String(form.get("subcategory") ?? ""),
         String(form.get("category") ?? ""),
       ),
     ]);
@@ -88,6 +100,7 @@ export async function handleAddIncoming(
       incoming: String(form.get("incoming") ?? ""),
       paidBy: String(form.get("paidBy") ?? ""),
       incomeType: String(form.get("incomeType") ?? ""),
+      incomeSubtype: String(form.get("incomeSubtype") ?? "") || undefined,
       account: String(form.get("account") ?? ""),
       amount: toAmount(String(form.get("amount") ?? "")),
       date: String(form.get("date") ?? ""),
@@ -106,6 +119,12 @@ export async function handleAddIncoming(
         deps.addUserOption,
         "account",
         String(form.get("account") ?? ""),
+      ),
+      saveOption(
+        deps.addUserOption,
+        "incomeSubtype",
+        String(form.get("incomeSubtype") ?? ""),
+        String(form.get("incomeType") ?? ""),
       ),
     ]);
     e.currentTarget.reset();
@@ -166,6 +185,10 @@ export async function handleAddRecurring(
         kind === "expense"
           ? String(form.get("expenseCategory") ?? "")
           : undefined,
+      expenseSubcategory:
+        kind === "expense"
+          ? String(form.get("expenseSubcategory") ?? "") || undefined
+          : undefined,
       expensePaidTo:
         kind === "expense"
           ? String(form.get("expensePaidTo") ?? "")
@@ -177,6 +200,10 @@ export async function handleAddRecurring(
       incomingType:
         kind === "incoming"
           ? String(form.get("incomingType") ?? "")
+          : undefined,
+      incomingSubtype:
+        kind === "incoming"
+          ? String(form.get("incomingSubtype") ?? "") || undefined
           : undefined,
       incomingAccount:
         kind === "incoming"
@@ -203,6 +230,7 @@ export function handleStartEditExpense(
     type: row.type,
     account: row.account,
     category: row.category,
+    subcategory: row.subcategory ?? "",
     amount: String(row.amount),
     date: row.date,
     paidTo: row.paidTo,
@@ -222,6 +250,7 @@ export function handleStartEditIncoming(
     incoming: row.incoming,
     paidBy: row.paidBy,
     incomeType: row.incomeType,
+    incomeSubtype: row.incomeSubtype ?? "",
     account: row.account,
     amount: String(row.amount),
     date: row.date,
@@ -252,9 +281,11 @@ export function handleStartEditRecurring(
     expenseType: row.expenseType ?? row.type ?? "",
     expenseAccount: row.expenseAccount ?? row.paidBy ?? "",
     expenseCategory: row.expenseCategory ?? row.category ?? "",
+    expenseSubcategory: row.expenseSubcategory ?? "",
     expensePaidTo: row.expensePaidTo ?? row.paidTo ?? "",
     incomingPaidBy: row.incomingPaidBy ?? "",
     incomingType: row.incomingType ?? "",
+    incomingSubtype: row.incomingSubtype ?? "",
     incomingAccount: row.incomingAccount ?? "",
     notes: row.notes ?? "",
   });
@@ -277,6 +308,7 @@ export async function handleUpdateExpense(
       type: deps.editValues.type ?? "",
       account: deps.editValues.account ?? "",
       category: deps.editValues.category ?? "",
+      subcategory: deps.editValues.subcategory || undefined,
       amount: toAmount(deps.editValues.amount ?? ""),
       date: deps.editValues.date ?? "",
       paidTo: deps.editValues.paidTo ?? "",
@@ -320,6 +352,7 @@ export async function handleUpdateIncoming(
       incoming: deps.editValues.incoming ?? "",
       paidBy: deps.editValues.paidBy ?? "",
       incomeType: deps.editValues.incomeType ?? "",
+      incomeSubtype: deps.editValues.incomeSubtype || undefined,
       account: deps.editValues.account ?? "",
       amount: toAmount(deps.editValues.amount ?? ""),
       date: deps.editValues.date ?? "",
@@ -387,6 +420,10 @@ export async function handleUpdateRecurring(
         kind === "expense"
           ? (deps.editValues.expenseCategory ?? "")
           : undefined,
+      expenseSubcategory:
+        kind === "expense"
+          ? (deps.editValues.expenseSubcategory || undefined)
+          : undefined,
       expensePaidTo:
         kind === "expense" ? (deps.editValues.expensePaidTo ?? "") : undefined,
       incomingPaidBy:
@@ -395,6 +432,10 @@ export async function handleUpdateRecurring(
           : undefined,
       incomingType:
         kind === "incoming" ? (deps.editValues.incomingType ?? "") : undefined,
+      incomingSubtype:
+        kind === "incoming"
+          ? (deps.editValues.incomingSubtype || undefined)
+          : undefined,
       incomingAccount:
         kind === "incoming"
           ? (deps.editValues.incomingAccount ?? "")

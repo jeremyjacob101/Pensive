@@ -1,7 +1,11 @@
 import { handleDeleteRecurring, handleStartEditRecurring, handleUpdateRecurring } from "./actions";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import { getOptionColor, toOptionValues } from "../helpers/options";
+import {
+  getOptionColor,
+  getScopedOptionValues,
+  toOptionValues,
+} from "../helpers/options";
 import type { WorkspaceMutations } from "../types/workspaceActions";
 import type { UserOptions, EditValues } from "../types/workspace";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
@@ -209,6 +213,10 @@ export function Recurrings() {
                               {row.expenseCategory ?? row.category ?? "-"}
                             </div>
                             <div>
+                              <strong>Subcategory:</strong>{" "}
+                              {row.expenseSubcategory ?? "-"}
+                            </div>
+                            <div>
                               <strong>Paid To:</strong>{" "}
                               {row.expensePaidTo ?? row.paidTo ?? "-"}
                             </div>
@@ -397,6 +405,10 @@ export function Recurrings() {
                               {row.incomingType ?? "-"}
                             </div>
                             <div>
+                              <strong>Income Subtype:</strong>{" "}
+                              {row.incomingSubtype ?? "-"}
+                            </div>
+                            <div>
                               <strong>Account:</strong>{" "}
                               {row.incomingAccount ?? row.paidTo ?? "-"}
                             </div>
@@ -559,12 +571,42 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                 options={toOptionValues(userOptions?.category)}
                 placeholder="Category"
                 onChange={(value) =>
+                  setEditValues((v) => {
+                    const next = { ...v, expenseCategory: value };
+                    const scoped = getScopedOptionValues(
+                      userOptions,
+                      "subcategory",
+                      value,
+                    );
+                    if (
+                      (next.expenseSubcategory ?? "") &&
+                      !scoped.includes(next.expenseSubcategory ?? "")
+                    ) {
+                      next.expenseSubcategory = "";
+                    }
+                    return next;
+                  })
+                }
+                onCreateOption={saveOption.bind(null, addUserOption)}
+              />
+              <OptionPicker
+                kind="subcategory"
+                label="Expense Subcategory"
+                value={editValues.expenseSubcategory ?? ""}
+                options={getScopedOptionValues(
+                  userOptions,
+                  "subcategory",
+                  editValues.expenseCategory ?? "",
+                )}
+                placeholder="Subcategory"
+                onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    expenseCategory: value,
+                    expenseSubcategory: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
+                parentValue={editValues.expenseCategory ?? ""}
               />
               <input
                 value={editValues.expensePaidTo ?? ""}
@@ -596,12 +638,42 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                 options={toOptionValues(userOptions?.incomeType)}
                 placeholder="Income Type"
                 onChange={(value) =>
+                  setEditValues((v) => {
+                    const next = { ...v, incomingType: value };
+                    const scoped = getScopedOptionValues(
+                      userOptions,
+                      "incomeSubtype",
+                      value,
+                    );
+                    if (
+                      (next.incomingSubtype ?? "") &&
+                      !scoped.includes(next.incomingSubtype ?? "")
+                    ) {
+                      next.incomingSubtype = "";
+                    }
+                    return next;
+                  })
+                }
+                onCreateOption={saveOption.bind(null, addUserOption)}
+              />
+              <OptionPicker
+                kind="incomeSubtype"
+                label="Income Subtype"
+                value={editValues.incomingSubtype ?? ""}
+                options={getScopedOptionValues(
+                  userOptions,
+                  "incomeSubtype",
+                  editValues.incomingType ?? "",
+                )}
+                placeholder="Income Subtype"
+                onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    incomingType: value,
+                    incomingSubtype: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
+                parentValue={editValues.incomingType ?? ""}
               />
               <OptionPicker
                 kind="account"

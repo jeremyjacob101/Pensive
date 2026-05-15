@@ -1,6 +1,10 @@
 import { buildEmptySplitExpenseDraft, buildEmptySplitIncomingDraft } from "../helpers/splitDrafts";
 import type { SplitExpenseDraft, SplitIncomingDraft } from "../types/splitDrafts";
-import { getDefaultOptionValue, toOptionValues } from "../helpers/options";
+import {
+  getDefaultOptionValue,
+  getScopedOptionValues,
+  toOptionValues,
+} from "../helpers/options";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormType, UserOptions } from "../types/workspace";
 import { randomId16, toAmount } from "../helpers/formatters";
@@ -25,6 +29,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       type: string;
       account: string;
       category: string;
+      subcategory?: string;
       amount: number;
       date: string;
       paidTo: string;
@@ -41,6 +46,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       incoming: string;
       paidBy: string;
       incomeType: string;
+      incomeSubtype?: string;
       account: string;
       amount: number;
       date: string;
@@ -70,9 +76,14 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
   const [expenseType, setExpenseType] = useState("");
   const [expenseAccount, setExpenseAccount] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("");
+  const [expenseSubcategory, setExpenseSubcategory] = useState("");
   const [incomingType, setIncomingType] = useState("");
+  const [incomingSubtype, setIncomingSubtype] = useState("");
   const [incomingAccount, setIncomingAccount] = useState("");
   const [recurringCategory, setRecurringCategory] = useState("");
+  const [recurringExpenseSubcategory, setRecurringExpenseSubcategory] =
+    useState("");
+  const [recurringIncomingSubtype, setRecurringIncomingSubtype] = useState("");
   const [recurringKind, setRecurringKind] = useState<"expense" | "incoming">(
     "expense",
   );
@@ -92,9 +103,13 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
     setExpenseType(defaults.expenseType);
     setExpenseAccount(defaults.account);
     setExpenseCategory(defaults.category);
+    setExpenseSubcategory("");
     setIncomingType(defaults.incomeType);
+    setIncomingSubtype("");
     setIncomingAccount(defaults.account);
     setRecurringCategory(defaults.category);
+    setRecurringExpenseSubcategory("");
+    setRecurringIncomingSubtype("");
     setRecurringKind("expense");
     setRecurringStatus("active");
   }, [defaults]);
@@ -130,6 +145,66 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
     formType === "expense" && splitExpenseDrafts.length > 0;
   const isSplitIncomingMode =
     formType === "incoming" && splitIncomingDrafts.length > 0;
+  const expenseSubcategoryOptions = getScopedOptionValues(
+    userOptions,
+    "subcategory",
+    expenseCategory,
+  );
+  const incomingSubtypeOptions = getScopedOptionValues(
+    userOptions,
+    "incomeSubtype",
+    incomingType,
+  );
+  const recurringExpenseSubcategoryOptions = getScopedOptionValues(
+    userOptions,
+    "subcategory",
+    recurringCategory,
+  );
+  const recurringIncomingSubtypeOptions = getScopedOptionValues(
+    userOptions,
+    "incomeSubtype",
+    incomingType,
+  );
+
+  const handleExpenseCategoryChange = (value: string) => {
+    setExpenseCategory(value);
+    const scopedSubcategories = getScopedOptionValues(
+      userOptions,
+      "subcategory",
+      value,
+    );
+    if (expenseSubcategory && !scopedSubcategories.includes(expenseSubcategory))
+      setExpenseSubcategory("");
+  };
+
+  const handleIncomingTypeChange = (value: string) => {
+    setIncomingType(value);
+    const scopedSubtypes = getScopedOptionValues(
+      userOptions,
+      "incomeSubtype",
+      value,
+    );
+    if (incomingSubtype && !scopedSubtypes.includes(incomingSubtype))
+      setIncomingSubtype("");
+    if (recurringIncomingSubtype && !scopedSubtypes.includes(recurringIncomingSubtype)) {
+      setRecurringIncomingSubtype("");
+    }
+  };
+
+  const handleRecurringCategoryChange = (value: string) => {
+    setRecurringCategory(value);
+    const scopedSubcategories = getScopedOptionValues(
+      userOptions,
+      "subcategory",
+      value,
+    );
+    if (
+      recurringExpenseSubcategory &&
+      !scopedSubcategories.includes(recurringExpenseSubcategory)
+    ) {
+      setRecurringExpenseSubcategory("");
+    }
+  };
 
   const updateSplitExpenseDraft = (
     index: number,
@@ -138,7 +213,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
   ) => {
     setSplitExpenseDrafts((current) =>
       current.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, [key]: value } : row));
+        rowIndex === index
+          ? key === "category"
+            ? { ...row, category: value, subcategory: "" }
+            : { ...row, [key]: value }
+          : row));
   };
 
   const addSplitExpenseDraft = () => {
@@ -163,7 +242,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
   ) => {
     setSplitIncomingDrafts((current) =>
       current.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, [key]: value } : row));
+        rowIndex === index
+          ? key === "incomeType"
+            ? { ...row, incomeType: value, incomeSubtype: "" }
+            : { ...row, [key]: value }
+          : row));
   };
 
   const addSplitIncomingDraft = () => {
@@ -188,6 +271,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       type: row.type.trim(),
       account: row.account.trim(),
       category: row.category.trim(),
+      subcategory: row.subcategory.trim(),
       paidTo: row.paidTo.trim(),
       date: row.date.trim(),
       notes: row.notes.trim(),
@@ -219,6 +303,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
           type: row.type,
           account: row.account,
           category: row.category,
+          subcategory: row.subcategory || undefined,
           amount: toAmount(row.amount),
           date: row.date,
           paidTo: row.paidTo,
@@ -238,6 +323,15 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
           saveOption(addUserOption, "account", value)),
         ...[...new Set(cleaned.map((row) => row.category))].map((value) =>
           saveOption(addUserOption, "category", value)),
+        ...cleaned
+          .filter((row) => row.subcategory && row.category)
+          .map((row) =>
+            saveOption(
+              addUserOption,
+              "subcategory",
+              row.subcategory,
+              row.category,
+            )),
       ]);
 
       closeForm();
@@ -252,6 +346,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       incoming: row.incoming.trim(),
       paidBy: row.paidBy.trim(),
       incomeType: row.incomeType.trim(),
+      incomeSubtype: row.incomeSubtype.trim(),
       account: row.account.trim(),
       date: row.date.trim(),
       monthYear: row.monthYear.trim(),
@@ -282,6 +377,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
           incoming: row.incoming,
           paidBy: row.paidBy,
           incomeType: row.incomeType,
+          incomeSubtype: row.incomeSubtype || undefined,
           account: row.account,
           amount: toAmount(row.amount),
           date: row.date,
@@ -297,6 +393,15 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
       await Promise.all([
         ...[...new Set(cleaned.map((row) => row.incomeType))].map((value) =>
           saveOption(addUserOption, "incomeType", value)),
+        ...cleaned
+          .filter((row) => row.incomeSubtype && row.incomeType)
+          .map((row) =>
+            saveOption(
+              addUserOption,
+              "incomeSubtype",
+              row.incomeSubtype,
+              row.incomeType,
+            )),
         ...[...new Set(cleaned.map((row) => row.account))].map((value) =>
           saveOption(addUserOption, "account", value)),
       ]);
@@ -421,8 +526,19 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     options={toOptionValues(userOptions?.category)}
                     placeholder="Category"
                     required
-                    onChange={setExpenseCategory}
+                    onChange={handleExpenseCategoryChange}
                     onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="subcategory"
+                    label="Subcategory"
+                    name="subcategory"
+                    value={expenseSubcategory}
+                    options={expenseSubcategoryOptions}
+                    placeholder="Subcategory"
+                    onChange={setExpenseSubcategory}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                    parentValue={expenseCategory}
                   />
                   <input name="amount" placeholder="Amount" required />
                   <input
@@ -533,6 +649,22 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                           }
                           onCreateOption={saveOption.bind(null, addUserOption)}
                         />
+                        <OptionPicker
+                          kind="subcategory"
+                          label="Subcategory"
+                          value={draft.subcategory}
+                          options={getScopedOptionValues(
+                            userOptions,
+                            "subcategory",
+                            draft.category,
+                          )}
+                          placeholder="Subcategory"
+                          onChange={(value) =>
+                            updateSplitExpenseDraft(index, "subcategory", value)
+                          }
+                          onCreateOption={saveOption.bind(null, addUserOption)}
+                          parentValue={draft.category}
+                        />
                         <input
                           placeholder="Amount"
                           value={draft.amount}
@@ -633,8 +765,19 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     options={toOptionValues(userOptions?.incomeType)}
                     placeholder="IncomeType"
                     required
-                    onChange={setIncomingType}
+                    onChange={handleIncomingTypeChange}
                     onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="incomeSubtype"
+                    label="Income Subtype"
+                    name="incomeSubtype"
+                    value={incomingSubtype}
+                    options={incomingSubtypeOptions}
+                    placeholder="IncomeSubtype"
+                    onChange={setIncomingSubtype}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                    parentValue={incomingType}
                   />
                   <OptionPicker
                     kind="account"
@@ -743,6 +886,26 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                             updateSplitIncomingDraft(index, "incomeType", value)
                           }
                           onCreateOption={saveOption.bind(null, addUserOption)}
+                        />
+                        <OptionPicker
+                          kind="incomeSubtype"
+                          label="Income Subtype"
+                          value={draft.incomeSubtype}
+                          options={getScopedOptionValues(
+                            userOptions,
+                            "incomeSubtype",
+                            draft.incomeType,
+                          )}
+                          placeholder="IncomeSubtype"
+                          onChange={(value) =>
+                            updateSplitIncomingDraft(
+                              index,
+                              "incomeSubtype",
+                              value,
+                            )
+                          }
+                          onCreateOption={saveOption.bind(null, addUserOption)}
+                          parentValue={draft.incomeType}
                         />
                         <OptionPicker
                           kind="account"
@@ -903,8 +1066,19 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     options={toOptionValues(userOptions?.category)}
                     placeholder="Category"
                     required
-                    onChange={setRecurringCategory}
+                    onChange={handleRecurringCategoryChange}
                     onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="subcategory"
+                    label="Expense Subcategory"
+                    name="expenseSubcategory"
+                    value={recurringExpenseSubcategory}
+                    options={recurringExpenseSubcategoryOptions}
+                    placeholder="Subcategory"
+                    onChange={setRecurringExpenseSubcategory}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                    parentValue={recurringCategory}
                   />
                   <input name="expensePaidTo" placeholder="Paid To" required />
                 </>
@@ -919,8 +1093,19 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
                     options={toOptionValues(userOptions?.incomeType)}
                     placeholder="Income Type"
                     required
-                    onChange={setIncomingType}
+                    onChange={handleIncomingTypeChange}
                     onCreateOption={saveOption.bind(null, addUserOption)}
+                  />
+                  <OptionPicker
+                    kind="incomeSubtype"
+                    label="Income Subtype"
+                    name="incomingSubtype"
+                    value={recurringIncomingSubtype}
+                    options={recurringIncomingSubtypeOptions}
+                    placeholder="Income Subtype"
+                    onChange={setRecurringIncomingSubtype}
+                    onCreateOption={saveOption.bind(null, addUserOption)}
+                    parentValue={incomingType}
                   />
                   <OptionPicker
                     kind="account"

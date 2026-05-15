@@ -10,6 +10,7 @@ export type WorkspaceMutations = {
     type: string;
     account: string;
     category: string;
+    subcategory?: string;
     amount: number;
     date: string;
     paidTo: string;
@@ -23,6 +24,7 @@ export type WorkspaceMutations = {
     incoming: string;
     paidBy: string;
     incomeType: string;
+    incomeSubtype?: string;
     account: string;
     amount: number;
     date: string;
@@ -47,19 +49,23 @@ export type WorkspaceMutations = {
     expenseType?: string;
     expenseAccount?: string;
     expenseCategory?: string;
+    expenseSubcategory?: string;
     expensePaidTo?: string;
     incomingPaidBy?: string;
     incomingType?: string;
+    incomingSubtype?: string;
     incomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;
   addUserOption: (args: {
     kind: OptionKind;
     value: string;
+    parentValue?: string;
   }) => Promise<unknown>;
   removeUserOption: (args: {
     kind: OptionKind;
     value: string;
+    parentValue?: string;
   }) => Promise<unknown>;
   updateExpense: (args: {
     id: Id<"expenses">;
@@ -67,6 +73,7 @@ export type WorkspaceMutations = {
     type: string;
     account: string;
     category: string;
+    subcategory?: string;
     amount: number;
     date: string;
     paidTo: string;
@@ -82,6 +89,7 @@ export type WorkspaceMutations = {
     incoming: string;
     paidBy: string;
     incomeType: string;
+    incomeSubtype?: string;
     account: string;
     amount: number;
     date: string;
@@ -107,9 +115,11 @@ export type WorkspaceMutations = {
     expenseType?: string;
     expenseAccount?: string;
     expenseCategory?: string;
+    expenseSubcategory?: string;
     expensePaidTo?: string;
     incomingPaidBy?: string;
     incomingType?: string;
+    incomingSubtype?: string;
     incomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;

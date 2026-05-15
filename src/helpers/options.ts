@@ -23,3 +23,14 @@ export function getDefaultOptionValue(
 ) {
   return userOptions?.[kind]?.find((item) => item.isDefault)?.value ?? "";
 }
+
+export function getScopedOptionValues(
+  userOptions: UserOptions | undefined,
+  kind: OptionKind,
+  parentValue: string,
+) {
+  const normalizedParent = parentValue.trim();
+  return (userOptions?.[kind] ?? [])
+    .filter((option) => (option.parentValue ?? "") === normalizedParent)
+    .map((option) => option.value);
+}

@@ -3,7 +3,11 @@ import { formatMonthLabel, formatShortDisplayDate, formatYearLabel } from "../he
 import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import { getOptionColor, toOptionValues } from "../helpers/options";
+import {
+  getOptionColor,
+  getScopedOptionValues,
+  toOptionValues,
+} from "../helpers/options";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
 import { OptionPicker } from "../components/OptionPicker";
@@ -380,8 +384,9 @@ export function Expenses() {
                                 />
                               </div>
                               <div className="grouped-expense-row-meta">
-                                {row.type} · {row.category} · {row.account} ·{" "}
-                                {row.paidTo}
+                                {row.type} · {row.category}
+                                {row.subcategory ? ` / ${row.subcategory}` : ""}{" "}
+                                · {row.account} · {row.paidTo}
                               </div>
                             </div>
 
@@ -493,15 +498,50 @@ export function Expenses() {
                                       )}
                                       placeholder="Category"
                                       onChange={(value) =>
+                                        setEditValues((v) => {
+                                          const next = { ...v, category: value };
+                                          const scoped = getScopedOptionValues(
+                                            userOptions,
+                                            "subcategory",
+                                            value,
+                                          );
+                                          if (
+                                            (next.subcategory ?? "") &&
+                                            !scoped.includes(
+                                              next.subcategory ?? "",
+                                            )
+                                          ) {
+                                            next.subcategory = "";
+                                          }
+                                          return next;
+                                        })
+                                      }
+                                      onCreateOption={saveOption.bind(
+                                        null,
+                                        addUserOption,
+                                      )}
+                                    />
+                                    <OptionPicker
+                                      kind="subcategory"
+                                      label="Subcategory"
+                                      value={editValues.subcategory ?? ""}
+                                      options={getScopedOptionValues(
+                                        userOptions,
+                                        "subcategory",
+                                        editValues.category ?? "",
+                                      )}
+                                      placeholder="Subcategory"
+                                      onChange={(value) =>
                                         setEditValues((v) => ({
                                           ...v,
-                                          category: value,
+                                          subcategory: value,
                                         }))
                                       }
                                       onCreateOption={saveOption.bind(
                                         null,
                                         addUserOption,
                                       )}
+                                      parentValue={editValues.category ?? ""}
                                     />
                                     <input
                                       value={editValues.amount ?? ""}
@@ -674,6 +714,9 @@ export function Expenses() {
                           <strong>Category:</strong> {row.category}
                         </div>
                         <div>
+                          <strong>Subcategory:</strong> {row.subcategory || "-"}
+                        </div>
+                        <div>
                           <strong>Paid To:</strong> {row.paidTo}
                         </div>
                         <div>
@@ -750,12 +793,48 @@ export function Expenses() {
                             options={toOptionValues(userOptions?.category)}
                             placeholder="Category"
                             onChange={(value) =>
-                              setEditValues((v) => ({ ...v, category: value }))
+                              setEditValues((v) => {
+                                const next = { ...v, category: value };
+                                const scoped = getScopedOptionValues(
+                                  userOptions,
+                                  "subcategory",
+                                  value,
+                                );
+                                if (
+                                  (next.subcategory ?? "") &&
+                                  !scoped.includes(next.subcategory ?? "")
+                                ) {
+                                  next.subcategory = "";
+                                }
+                                return next;
+                              })
                             }
                             onCreateOption={saveOption.bind(
                               null,
                               addUserOption,
                             )}
+                          />
+                          <OptionPicker
+                            kind="subcategory"
+                            label="Subcategory"
+                            value={editValues.subcategory ?? ""}
+                            options={getScopedOptionValues(
+                              userOptions,
+                              "subcategory",
+                              editValues.category ?? "",
+                            )}
+                            placeholder="Subcategory"
+                            onChange={(value) =>
+                              setEditValues((v) => ({
+                                ...v,
+                                subcategory: value,
+                              }))
+                            }
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                            parentValue={editValues.category ?? ""}
                           />
                           <input
                             value={editValues.amount ?? ""}

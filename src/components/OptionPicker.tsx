@@ -2,7 +2,7 @@ import type { OptionKind } from "../types/schema";
 
 const CREATE_NEW_OPTION_VALUE = "__create_new_option__";
 
-export function OptionPicker({ kind, label, name, value, options, placeholder, required = false, disabled = false, onChange, onCreateOption }: {
+export function OptionPicker({ kind, label, name, value, options, placeholder, required = false, disabled = false, onChange, onCreateOption, parentValue }: {
   kind: OptionKind;
   label: string;
   name?: string;
@@ -12,7 +12,12 @@ export function OptionPicker({ kind, label, name, value, options, placeholder, r
   required?: boolean;
   disabled?: boolean;
   onChange: (value: string) => void;
-  onCreateOption: (kind: OptionKind, value: string) => Promise<void>;
+  onCreateOption: (
+    kind: OptionKind,
+    value: string,
+    parentValue?: string,
+  ) => Promise<void>;
+  parentValue?: string;
 }) {
   const hasCurrentValue = value !== "" && options.includes(value);
 
@@ -33,7 +38,7 @@ export function OptionPicker({ kind, label, name, value, options, placeholder, r
       return;
     }
 
-    await onCreateOption(kind, trimmed);
+    await onCreateOption(kind, trimmed, parentValue);
     onChange(trimmed);
   };
 

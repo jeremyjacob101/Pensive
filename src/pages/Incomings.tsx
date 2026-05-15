@@ -3,7 +3,11 @@ import { formatMonthLabel, formatShortDisplayDate, formatYearLabel } from "../he
 import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { EditableRowActions } from "../components/EditableRowActions";
-import { getOptionColor, toOptionValues } from "../helpers/options";
+import {
+  getOptionColor,
+  getScopedOptionValues,
+  toOptionValues,
+} from "../helpers/options";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
 import { OptionPicker } from "../components/OptionPicker";
@@ -329,7 +333,11 @@ export function Incomings() {
                                 />
                               </div>
                               <div className="grouped-expense-row-meta">
-                                {row.incomeType} · {row.paidBy} · {row.account}
+                                {row.incomeType}
+                                {row.incomeSubtype
+                                  ? ` / ${row.incomeSubtype}`
+                                  : ""}{" "}
+                                · {row.paidBy} · {row.account}
                               </div>
                             </div>
 
@@ -412,15 +420,50 @@ export function Incomings() {
                                       )}
                                       placeholder="Income Type"
                                       onChange={(value) =>
+                                        setEditValues((v) => {
+                                          const next = { ...v, incomeType: value };
+                                          const scoped = getScopedOptionValues(
+                                            userOptions,
+                                            "incomeSubtype",
+                                            value,
+                                          );
+                                          if (
+                                            (next.incomeSubtype ?? "") &&
+                                            !scoped.includes(
+                                              next.incomeSubtype ?? "",
+                                            )
+                                          ) {
+                                            next.incomeSubtype = "";
+                                          }
+                                          return next;
+                                        })
+                                      }
+                                      onCreateOption={saveOption.bind(
+                                        null,
+                                        addUserOption,
+                                      )}
+                                    />
+                                    <OptionPicker
+                                      kind="incomeSubtype"
+                                      label="Income Subtype"
+                                      value={editValues.incomeSubtype ?? ""}
+                                      options={getScopedOptionValues(
+                                        userOptions,
+                                        "incomeSubtype",
+                                        editValues.incomeType ?? "",
+                                      )}
+                                      placeholder="Income Subtype"
+                                      onChange={(value) =>
                                         setEditValues((v) => ({
                                           ...v,
-                                          incomeType: value,
+                                          incomeSubtype: value,
                                         }))
                                       }
                                       onCreateOption={saveOption.bind(
                                         null,
                                         addUserOption,
                                       )}
+                                      parentValue={editValues.incomeType ?? ""}
                                     />
                                     <OptionPicker
                                       kind="account"
@@ -603,6 +646,10 @@ export function Incomings() {
                           <strong>Income Type:</strong> {row.incomeType}
                         </div>
                         <div>
+                          <strong>Income Subtype:</strong>{" "}
+                          {row.incomeSubtype || "-"}
+                        </div>
+                        <div>
                           <strong>Paid By:</strong> {row.paidBy}
                         </div>
                         <div>
@@ -666,15 +713,48 @@ export function Incomings() {
                             options={toOptionValues(userOptions?.incomeType)}
                             placeholder="Income Type"
                             onChange={(value) =>
+                              setEditValues((v) => {
+                                const next = { ...v, incomeType: value };
+                                const scoped = getScopedOptionValues(
+                                  userOptions,
+                                  "incomeSubtype",
+                                  value,
+                                );
+                                if (
+                                  (next.incomeSubtype ?? "") &&
+                                  !scoped.includes(next.incomeSubtype ?? "")
+                                ) {
+                                  next.incomeSubtype = "";
+                                }
+                                return next;
+                              })
+                            }
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                          <OptionPicker
+                            kind="incomeSubtype"
+                            label="Income Subtype"
+                            value={editValues.incomeSubtype ?? ""}
+                            options={getScopedOptionValues(
+                              userOptions,
+                              "incomeSubtype",
+                              editValues.incomeType ?? "",
+                            )}
+                            placeholder="Income Subtype"
+                            onChange={(value) =>
                               setEditValues((v) => ({
                                 ...v,
-                                incomeType: value,
+                                incomeSubtype: value,
                               }))
                             }
                             onCreateOption={saveOption.bind(
                               null,
                               addUserOption,
                             )}
+                            parentValue={editValues.incomeType ?? ""}
                           />
                           <OptionPicker
                             kind="account"

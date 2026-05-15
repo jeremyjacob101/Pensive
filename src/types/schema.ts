@@ -3,6 +3,7 @@ export const expenseHeaders = [
   "Type",
   "Account",
   "Category",
+  "Subcategory",
   "Amount",
   "Date",
   "PaidTo",
@@ -17,6 +18,7 @@ export const incomingHeaders = [
   "Incoming",
   "PaidBy",
   "IncomeType",
+  "IncomeSubtype",
   "Account",
   "Amount",
   "Date",
@@ -35,9 +37,11 @@ export const recurringHeaders = [
   "ExpenseType",
   "ExpenseAccount",
   "ExpenseCategory",
+  "ExpenseSubcategory",
   "ExpensePaidTo",
   "IncomingPaidBy",
   "IncomingType",
+  "IncomingSubtype",
   "IncomingAccount",
   "Price",
   "Frequency",
@@ -49,7 +53,9 @@ export const optionKinds = [
   { key: "expenseType", label: "Expense Type" },
   { key: "account", label: "Account" },
   { key: "category", label: "Category" },
+  { key: "subcategory", label: "Subcategory" },
   { key: "incomeType", label: "Income Type" },
+  { key: "incomeSubtype", label: "Income Subtype" },
 ] as const;
 
 export type OptionKind = (typeof optionKinds)[number]["key"];
