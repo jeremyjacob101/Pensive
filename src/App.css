@@ -10,6 +10,7 @@
   --surface-muted: #f3f4f6;
   --tab-active-bg: #111827;
   --tab-active-text: #ffffff;
+  --month-width: 88px;
 }
 
 .theme-dark {
@@ -689,7 +690,7 @@ thead th {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .entry-card-main {
@@ -742,6 +743,31 @@ thead th {
   background: var(--border);
   opacity: 0.8;
   align-self: stretch;
+  cursor: default;
+  position: relative;
+}
+
+.entry-card-primary-divider::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+}
+
+.entry-card-primary-divider:hover::after {
+  opacity: 1;
 }
 
 .entry-row-controls {
@@ -778,6 +804,31 @@ thead th {
   border-radius: 999px;
   display: inline-block;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+  cursor: default;
+  position: relative;
+}
+
+.entry-card-color-dot::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+}
+
+.entry-card-color-dot:hover::after {
+  opacity: 1;
 }
 
 .entry-card-title {
@@ -813,6 +864,37 @@ thead th {
   height: 16px;
   min-width: 16px;
   grid-row: 1 / span 2;
+  pointer-events: none;
+}
+
+.entry-card-account-icon-wrap {
+  cursor: default;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+.entry-card-account-icon-wrap::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+}
+
+.entry-card-account-icon-wrap:hover::after {
+  opacity: 1;
 }
 
 .entry-card-effective-amount {

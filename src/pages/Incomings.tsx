@@ -316,16 +316,22 @@ export function Incomings() {
                           className="entry-card-amount"
                           title={amountTooltip}
                         >
-                          <CreditCard
-                            className="entry-card-account-icon"
-                            style={{ color: accountColor }}
-                            aria-hidden="true"
-                          />
+                          <span
+                            className="entry-card-account-icon-wrap"
+                            data-tooltip={firstRow.account}
+                          >
+                            <CreditCard
+                              className="entry-card-account-icon"
+                              style={{ color: accountColor }}
+                              aria-hidden="true"
+                            />
+                          </span>
                           <span>{formatMoney(group.totalEffectiveAmount)}</span>
                         </div>
                         <span
                           className="entry-card-primary-divider"
                           style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                          data-tooltip={firstRow.incomeType}
                           aria-hidden="true"
                         />
                         <div className="entry-card-title-wrap">
@@ -333,6 +339,11 @@ export function Incomings() {
                           <span
                             className="entry-card-color-dot"
                             style={{ backgroundColor: dotColor }}
+                            data-tooltip={
+                              firstRow.incomeSubtype
+                                ? `${firstRow.incomeType} / ${firstRow.incomeSubtype}`
+                                : firstRow.incomeType
+                            }
                           />
                         </div>
                       </div>
@@ -660,11 +671,16 @@ export function Incomings() {
                   <div className="entry-card-main">
                     <div className="entry-card-primary">
                       <div className="entry-card-amount">
-                        <CreditCard
-                          className="entry-card-account-icon"
-                          style={{ color: accountColor }}
-                          aria-hidden="true"
-                        />
+                        <span
+                          className="entry-card-account-icon-wrap"
+                          data-tooltip={row.account}
+                        >
+                          <CreditCard
+                            className="entry-card-account-icon"
+                            style={{ color: accountColor }}
+                            aria-hidden="true"
+                          />
+                        </span>
                         <span>{formatMoney(getEffectiveAmount(row))}</span>
                       </div>
                       <span
@@ -673,6 +689,7 @@ export function Incomings() {
                           backgroundColor: incomeTypeColor,
                           opacity: 0.8,
                         }}
+                        data-tooltip={row.incomeType}
                         aria-hidden="true"
                       />
                       <div className="entry-card-title-wrap">
@@ -680,6 +697,11 @@ export function Incomings() {
                         <span
                           className="entry-card-color-dot"
                           style={{ backgroundColor: dotColor }}
+                          data-tooltip={
+                            row.incomeSubtype
+                              ? `${row.incomeType} / ${row.incomeSubtype}`
+                              : row.incomeType
+                          }
                         />
                       </div>
                     </div>

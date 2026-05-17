@@ -326,16 +326,22 @@ export function Expenses() {
                           className="entry-card-amount"
                           title={amountTooltip}
                         >
-                          <CreditCard
-                            className="entry-card-account-icon"
-                            style={{ color: accountColor }}
-                            aria-hidden="true"
-                          />
+                          <span
+                            className="entry-card-account-icon-wrap"
+                            data-tooltip={firstRow.account}
+                          >
+                            <CreditCard
+                              className="entry-card-account-icon"
+                              style={{ color: accountColor }}
+                              aria-hidden="true"
+                            />
+                          </span>
                           <span>{formatMoney(group.totalEffectiveAmount)}</span>
                         </div>
                         <span
                           className="entry-card-primary-divider"
                           style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                          data-tooltip={firstRow.type}
                           aria-hidden="true"
                         />
                         <div className="entry-card-title-wrap">
@@ -343,6 +349,11 @@ export function Expenses() {
                           <span
                             className="entry-card-color-dot"
                             style={{ backgroundColor: dotColor }}
+                            data-tooltip={
+                              firstRow.subcategory
+                                ? `${firstRow.category} / ${firstRow.subcategory}`
+                                : firstRow.category
+                            }
                           />
                         </div>
                       </div>
@@ -736,16 +747,22 @@ export function Expenses() {
                   <div className="entry-card-main">
                     <div className="entry-card-primary">
                       <div className="entry-card-amount">
-                        <CreditCard
-                          className="entry-card-account-icon"
-                          style={{ color: accountColor }}
-                          aria-hidden="true"
-                        />
+                        <span
+                          className="entry-card-account-icon-wrap"
+                          data-tooltip={row.account}
+                        >
+                          <CreditCard
+                            className="entry-card-account-icon"
+                            style={{ color: accountColor }}
+                            aria-hidden="true"
+                          />
+                        </span>
                         <span>{formatMoney(getEffectiveAmount(row))}</span>
                       </div>
                       <span
                         className="entry-card-primary-divider"
                         style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                        data-tooltip={row.type}
                         aria-hidden="true"
                       />
                       <div className="entry-card-title-wrap">
@@ -753,6 +770,11 @@ export function Expenses() {
                         <span
                           className="entry-card-color-dot"
                           style={{ backgroundColor: dotColor }}
+                          data-tooltip={
+                            row.subcategory
+                              ? `${row.category} / ${row.subcategory}`
+                              : row.category
+                          }
                         />
                       </div>
                     </div>

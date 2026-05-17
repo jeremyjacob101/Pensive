@@ -201,6 +201,16 @@ export function getMonthsInRange(start: string, end: string): string[] {
   return months;
 }
 
+export function getMonthsBetween(start: string, end: string): string[] {
+  const months: string[] = [];
+  let current = start;
+  while (current <= end) {
+    months.push(current);
+    current = shiftMonth(current, 1);
+  }
+  return months;
+}
+
 export function getMonthStartEnd(dateStr: string): {
   start: string;
   end: string;

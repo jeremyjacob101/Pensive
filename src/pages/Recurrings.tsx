@@ -82,6 +82,11 @@ export function Recurrings() {
                     "category",
                     row.expenseCategory ?? row.category ?? "",
                   );
+                  const typeColor = getOptionColor(
+                    userOptions,
+                    "expenseType",
+                    row.expenseType ?? row.type ?? "",
+                  );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
@@ -98,40 +103,26 @@ export function Recurrings() {
                       }${isActive ? "" : " is-inactive"}`}
                     >
                       <div className="entry-card-main recurring-entry-card-main">
-                        <div className="recurring-status-toggle-wrap">
-                          <input
-                            type="checkbox"
-                            className="recurring-status-toggle"
-                            checked={isActive}
-                            disabled={isToggling}
-                            aria-label={
-                              isActive
-                                ? `Set ${row.name} as inactive`
-                                : `Set ${row.name} as active`
-                            }
-                            onChange={() => {
-                              const nextStatus = isActive
-                                ? "inactive"
-                                : "active";
-                              setTogglingRecurringId(row._id);
-                              void setRecurringStatus({
-                                id: row._id,
-                                status: nextStatus,
-                              }).finally(() => setTogglingRecurringId(null));
-                            }}
-                          />
-                        </div>
                         <div className="entry-card-primary">
                           <div className="entry-card-amount">
-                            <CreditCard
-                              className="entry-card-account-icon"
-                              style={{ color: accountColor }}
-                              aria-hidden="true"
-                            />
+                            <span
+                              className="entry-card-account-icon-wrap"
+                              data-tooltip={
+                                row.expenseAccount ?? row.paidBy ?? ""
+                              }
+                            >
+                              <CreditCard
+                                className="entry-card-account-icon"
+                                style={{ color: accountColor }}
+                                aria-hidden="true"
+                              />
+                            </span>
                             <span>₪{row.price}</span>
                           </div>
                           <span
                             className="entry-card-primary-divider"
+                            style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                            data-tooltip={row.expenseType ?? row.type ?? ""}
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -139,6 +130,11 @@ export function Recurrings() {
                             <span
                               className="entry-card-color-dot"
                               style={{ backgroundColor: categoryColor }}
+                              data-tooltip={
+                                row.expenseSubcategory
+                                  ? `${row.expenseCategory ?? row.category ?? ""} / ${row.expenseSubcategory}`
+                                  : (row.expenseCategory ?? row.category ?? "")
+                              }
                             />
                           </div>
                         </div>
@@ -180,6 +176,29 @@ export function Recurrings() {
                           >
                             {isExpanded ? "▴" : "▾"}
                           </button>
+                          <div className="recurring-status-toggle-wrap">
+                            <input
+                              type="checkbox"
+                              className="recurring-status-toggle"
+                              checked={isActive}
+                              disabled={isToggling}
+                              aria-label={
+                                isActive
+                                  ? `Set ${row.name} as inactive`
+                                  : `Set ${row.name} as active`
+                              }
+                              onChange={() => {
+                                const nextStatus = isActive
+                                  ? "inactive"
+                                  : "active";
+                                setTogglingRecurringId(row._id);
+                                void setRecurringStatus({
+                                  id: row._id,
+                                  status: nextStatus,
+                                }).finally(() => setTogglingRecurringId(null));
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -278,6 +297,11 @@ export function Recurrings() {
                     "incomeType",
                     row.incomingType ?? "",
                   );
+                  const typeColor = getOptionColor(
+                    userOptions,
+                    "incomeType",
+                    row.incomingType ?? "",
+                  );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
@@ -294,40 +318,26 @@ export function Recurrings() {
                       }${isActive ? "" : " is-inactive"}`}
                     >
                       <div className="entry-card-main recurring-entry-card-main">
-                        <div className="recurring-status-toggle-wrap">
-                          <input
-                            type="checkbox"
-                            className="recurring-status-toggle"
-                            checked={isActive}
-                            disabled={isToggling}
-                            aria-label={
-                              isActive
-                                ? `Set ${row.name} as inactive`
-                                : `Set ${row.name} as active`
-                            }
-                            onChange={() => {
-                              const nextStatus = isActive
-                                ? "inactive"
-                                : "active";
-                              setTogglingRecurringId(row._id);
-                              void setRecurringStatus({
-                                id: row._id,
-                                status: nextStatus,
-                              }).finally(() => setTogglingRecurringId(null));
-                            }}
-                          />
-                        </div>
                         <div className="entry-card-primary">
                           <div className="entry-card-amount">
-                            <CreditCard
-                              className="entry-card-account-icon"
-                              style={{ color: accountColor }}
-                              aria-hidden="true"
-                            />
+                            <span
+                              className="entry-card-account-icon-wrap"
+                              data-tooltip={
+                                row.incomingAccount ?? row.paidTo ?? ""
+                              }
+                            >
+                              <CreditCard
+                                className="entry-card-account-icon"
+                                style={{ color: accountColor }}
+                                aria-hidden="true"
+                              />
+                            </span>
                             <span>₪{row.price}</span>
                           </div>
                           <span
                             className="entry-card-primary-divider"
+                            style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                            data-tooltip={row.incomingType ?? ""}
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -335,6 +345,11 @@ export function Recurrings() {
                             <span
                               className="entry-card-color-dot"
                               style={{ backgroundColor: categoryColor }}
+                              data-tooltip={
+                                row.incomingSubtype
+                                  ? `${row.incomingType ?? ""} / ${row.incomingSubtype}`
+                                  : (row.incomingType ?? "")
+                              }
                             />
                           </div>
                         </div>
@@ -376,6 +391,29 @@ export function Recurrings() {
                           >
                             {isExpanded ? "▴" : "▾"}
                           </button>
+                          <div className="recurring-status-toggle-wrap">
+                            <input
+                              type="checkbox"
+                              className="recurring-status-toggle"
+                              checked={isActive}
+                              disabled={isToggling}
+                              aria-label={
+                                isActive
+                                  ? `Set ${row.name} as inactive`
+                                  : `Set ${row.name} as active`
+                              }
+                              onChange={() => {
+                                const nextStatus = isActive
+                                  ? "inactive"
+                                  : "active";
+                                setTogglingRecurringId(row._id);
+                                void setRecurringStatus({
+                                  id: row._id,
+                                  status: nextStatus,
+                                }).finally(() => setTogglingRecurringId(null));
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
 
