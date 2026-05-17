@@ -1,4 +1,4 @@
-import { formatMonthLabel, formatShortDisplayDate, formatYearLabel, parseMonthYears } from "../helpers/dates";
+import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
@@ -7,6 +7,7 @@ import { useScrollMonthIndicator } from "../hooks/useScrollMonthIndicator";
 import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
 import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
@@ -27,6 +28,9 @@ export function Expenses() {
     useState<Id<"expenses"> | null>(null);
   const [editValues, setEditValues] = useState<EditValues>({});
   const [saving, setSaving] = useState(false);
+  const [pieRangeStart, setPieRangeStart] = useState("");
+  const [pieRangeEnd, setPieRangeEnd] = useState("");
+  const [isPieDefaultMonth, setIsPieDefaultMonth] = useState(true);
 
   const updateExpense = useMutation(api.expenses.update);
   const deleteExpense = useMutation(api.expenses.remove);
@@ -134,9 +138,12 @@ export function Expenses() {
     listRef,
     displayItems[0]?.date ?? "",
   );
-  const monthText = formatMonthLabel(activeDate);
-  const yearText = formatYearLabel(activeDate);
-  const labelKey = `${monthText}-${yearText}`;
+  const rangeLabelText = formatRangeLabel(
+    pieRangeStart || activeDate,
+    pieRangeEnd || activeDate,
+    isPieDefaultMonth,
+  );
+  const rangeLabelKey = `${rangeLabelText}-${isPieDefaultMonth}`;
   const handlePickPartner = async (partnerId: Id<"expenses">) => {
     if (!partnerPickAnchorId || partnerPickAnchorId === partnerId) return;
     setSaving(true);
@@ -221,11 +228,33 @@ export function Expenses() {
         <p>No expenses yet.</p>
       ) : (
         <div className="entries-with-month">
-          <aside className="month-indicator" aria-hidden="true">
-            <span key={labelKey} className="month-indicator-value">
-              <span className="month-indicator-month">{monthText}</span>
-              <span className="month-indicator-year">{yearText}</span>
-            </span>
+          <aside className="month-indicator-area">
+            <div className="month-indicator" aria-hidden="true">
+              <span key={rangeLabelKey} className="month-indicator-value">
+                <span className="month-indicator-range">{rangeLabelText}</span>
+              </span>
+            </div>
+            <RangePieChartPanel
+              rows={expenses.map((e) => ({
+                monthYears: e.monthYears ?? [],
+                effectiveAmount: getEffectiveAmount(e),
+                category: e.category,
+                subcategory: e.subcategory,
+              }))}
+              userOptions={userOptions}
+              activeDate={activeDate}
+              kind="expense"
+              onRangeChange={(start, end) => {
+                setPieRangeStart(start);
+                setPieRangeEnd(end);
+                setIsPieDefaultMonth(false);
+              }}
+              onReset={() => {
+                setPieRangeStart("");
+                setPieRangeEnd("");
+                setIsPieDefaultMonth(true);
+              }}
+            />
           </aside>
 
           <div ref={listRef} className="entry-card-list">

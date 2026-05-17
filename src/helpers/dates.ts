@@ -99,3 +99,108 @@ export function formatOrdinalDay(dayOfMonth: number): string {
   if (remainder10 === 3) return `${dayOfMonth}rd`;
   return `${dayOfMonth}th`;
 }
+
+export function formatShortYear(value: string): string {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return "";
+  const fullYear = parsed.getFullYear();
+  return `'${String(fullYear).slice(2)}`;
+}
+
+export function isStartOfMonth(value: string): boolean {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.getDate() === 1;
+}
+
+export function isEndOfMonth(value: string): boolean {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  const nextDay = new Date(parsed);
+  nextDay.setDate(nextDay.getDate() + 1);
+  return nextDay.getMonth() !== parsed.getMonth();
+}
+
+export function formatRangeLabel(
+  start: string,
+  end: string,
+  isDefaultMonth: boolean,
+): string {
+  if (!start || !end) return "";
+
+  if (isDefaultMonth) {
+    const startMonth = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+    }).format(new Date(`${start}T00:00:00`));
+    const startYear = formatShortYear(start);
+    return `${startMonth} ${startYear}`;
+  }
+
+  const startMonthLong = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(new Date(`${start}T00:00:00`));
+  const startMonthShort = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+  }).format(new Date(`${start}T00:00:00`));
+  const startYear = formatShortYear(start);
+  const startDay = new Date(`${start}T00:00:00`).getDate();
+
+  const endMonthLong = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(new Date(`${end}T00:00:00`));
+  const endMonthShort = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+  }).format(new Date(`${end}T00:00:00`));
+  const endYear = formatShortYear(end);
+  const endDay = new Date(`${end}T00:00:00`).getDate();
+
+  const startIsFull = isStartOfMonth(start) && isEndOfMonth(start);
+  const endIsFull = isStartOfMonth(end) && isEndOfMonth(end);
+  const startMonthOnly = startIsFull
+    ? `${startMonthLong} ${startYear}`
+    : `${startMonthShort} ${startDay} ${startYear}`;
+  const endMonthOnly = endIsFull
+    ? `${endMonthLong} ${endYear}`
+    : `${endMonthShort} ${endDay} ${endYear}`;
+
+  return `${startMonthOnly} – ${endMonthOnly}`;
+}
+
+export function getMonthsInRange(start: string, end: string): string[] {
+  const startParsed = new Date(`${start}T00:00:00`);
+  const endParsed = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(startParsed.getTime()) || Number.isNaN(endParsed.getTime()))
+    return [];
+
+  const months: string[] = [];
+  const current = new Date(
+    startParsed.getFullYear(),
+    startParsed.getMonth(),
+    1,
+  );
+  const endMonth = new Date(endParsed.getFullYear(), endParsed.getMonth(), 1);
+
+  while (current <= endMonth) {
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    months.push(`${year}-${month}`);
+    current.setMonth(current.getMonth() + 1);
+  }
+
+  return months;
+}
+
+export function getMonthStartEnd(dateStr: string): {
+  start: string;
+  end: string;
+} {
+  if (!dateStr) return { start: "", end: "" };
+  const parsed = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return { start: "", end: "" };
+  const year = parsed.getFullYear();
+  const month = parsed.getMonth();
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { start, end };
+}
