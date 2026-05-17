@@ -1794,8 +1794,8 @@ thead th {
 }
 
 .month-tick-selected {
-  border-color: #4a9eff;
-  background: #4a9eff;
+  border-color: #2373d0;
+  background: #2373d0 !important;
   color: #fff;
   font-weight: 700;
   cursor: pointer;
@@ -1829,7 +1829,7 @@ thead th {
 }
 
 .month-range-handle-left {
-  background: #4a9eff;
+  background: #2373d0;
   margin-right: 2px;
 }
 
@@ -1838,7 +1838,7 @@ thead th {
 }
 
 .month-range-handle-right {
-  background: #4a9eff;
+  background: #2373d0;
   margin-left: 2px;
 }
 
