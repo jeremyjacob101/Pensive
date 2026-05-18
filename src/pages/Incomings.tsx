@@ -12,7 +12,9 @@ import {
 } from "../helpers/formatters";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
+import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -76,6 +78,103 @@ export function Incomings() {
   const incomings = useMemo(() => scopedIncomings ?? [], [scopedIncomings]);
   const isLoadingIncomings =
     scopeArgs === "skip" || scopedIncomings === undefined;
+  const hasAnyIncomings = incomings.length > 0;
+  const [storedAccountDeselected, setStoredAccountDeselected] = useLocalStorage(
+    "incomings:filter:deselected:accounts:v1",
+    "[]",
+  );
+  const [storedCategoryDeselected, setStoredCategoryDeselected] =
+    useLocalStorage("incomings:filter:deselected:category:v1", "[]");
+
+  const incomingCategoryLabel = useCallback(
+    (row: { incomeType: string; incomeSubtype?: string }) =>
+      row.incomeSubtype?.trim()
+        ? `${row.incomeType} / ${row.incomeSubtype}`
+        : row.incomeType,
+    [],
+  );
+
+  const accountOptions = useMemo(() => {
+    const globalAccounts = toOptionValues(userOptions?.account)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const scopedAccounts = incomings
+      .map((row) => row.account.trim())
+      .filter(Boolean);
+    return [...new Set([...globalAccounts, ...scopedAccounts])].sort();
+  }, [incomings, userOptions?.account]);
+  const categoryOptions = useMemo(() => {
+    const incomeTypes = toOptionValues(userOptions?.incomeType)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const incomeSubtypes = userOptions?.incomeSubtype ?? [];
+    const globalLabels = [
+      ...incomeTypes,
+      ...incomeSubtypes
+        .map((option) => {
+          const subtype = option.value.trim();
+          if (!subtype) return "";
+          const parent = option.parentValue?.trim() ?? "";
+          return parent ? `${parent} / ${subtype}` : subtype;
+        })
+        .filter(Boolean),
+    ];
+    const scopedLabels = incomings.map((row) => incomingCategoryLabel(row));
+    return [...new Set([...globalLabels, ...scopedLabels])].sort();
+  }, [
+    incomings,
+    incomingCategoryLabel,
+    userOptions?.incomeSubtype,
+    userOptions?.incomeType,
+  ]);
+
+  const parseStoredList = useCallback((value: string) => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const accountDeselectedSet = useMemo(
+    () => new Set(parseStoredList(storedAccountDeselected)),
+    [parseStoredList, storedAccountDeselected],
+  );
+  const categoryDeselectedSet = useMemo(
+    () => new Set(parseStoredList(storedCategoryDeselected)),
+    [parseStoredList, storedCategoryDeselected],
+  );
+  const selectedAccounts = useMemo(
+    () => accountOptions.filter((value) => !accountDeselectedSet.has(value)),
+    [accountDeselectedSet, accountOptions],
+  );
+  const selectedCategories = useMemo(
+    () => categoryOptions.filter((value) => !categoryDeselectedSet.has(value)),
+    [categoryDeselectedSet, categoryOptions],
+  );
+  const selectedAccountSet = useMemo(
+    () => new Set(selectedAccounts),
+    [selectedAccounts],
+  );
+  const selectedCategorySet = useMemo(
+    () => new Set(selectedCategories),
+    [selectedCategories],
+  );
+  const filteredIncomings = useMemo(
+    () =>
+      incomings.filter(
+        (row) =>
+          selectedAccountSet.has(row.account) &&
+          selectedCategorySet.has(incomingCategoryLabel(row)),
+      ),
+    [
+      incomings,
+      incomingCategoryLabel,
+      selectedAccountSet,
+      selectedCategorySet,
+    ],
+  );
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const monthOverlapSet = useMemo(
@@ -115,12 +214,12 @@ export function Incomings() {
         latestCreation: number;
         totalAmount: number;
         totalEffectiveAmount: number;
-        rows: typeof incomings;
+        rows: typeof filteredIncomings;
       }
     >();
 
-    const soloRows: typeof incomings = [];
-    for (const row of incomings) {
+    const soloRows: typeof filteredIncomings = [];
+    for (const row of filteredIncomings) {
       const baseId = (row.baseIncomingId ?? "").trim();
       if (!baseId) {
         soloRows.push(row);
@@ -205,7 +304,7 @@ export function Incomings() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [incomings, getRowMatchState]);
+  }, [filteredIncomings, getRowMatchState]);
 
   const rangeLabelText =
     mode === "custom"
@@ -295,11 +394,37 @@ export function Incomings() {
     <>
       {isLoadingIncomings ? (
         <p>Loading incomings...</p>
-      ) : displayItems.length === 0 ? (
-        <p>No incomings yet.</p>
       ) : (
         <div className="entries-with-month">
           <aside className="month-indicator-area">
+            <div className="left-filter-toolbar">
+              <MultiSelectFilterDropdown
+                label="Account"
+                options={accountOptions}
+                selected={selectedAccounts}
+                onChange={(next) => {
+                  const nextSet = new Set(next);
+                  setStoredAccountDeselected(
+                    JSON.stringify(
+                      accountOptions.filter((value) => !nextSet.has(value)),
+                    ),
+                  );
+                }}
+              />
+              <MultiSelectFilterDropdown
+                label="Category/Subcategory"
+                options={categoryOptions}
+                selected={selectedCategories}
+                onChange={(next) => {
+                  const nextSet = new Set(next);
+                  setStoredCategoryDeselected(
+                    JSON.stringify(
+                      categoryOptions.filter((value) => !nextSet.has(value)),
+                    ),
+                  );
+                }}
+              />
+            </div>
             <MonthNavigator
               activeMonth={activeMonth}
               mode={mode}
@@ -314,7 +439,7 @@ export function Incomings() {
               onJumpToNewest={jumpToNewest}
             />
             <RangePieChartPanel
-              rows={incomings.map((i) => ({
+              rows={filteredIncomings.map((i) => ({
                 monthYears: i.monthYears ?? [],
                 effectiveAmount: getEffectiveAmount(i),
                 category: i.incomeType,
@@ -349,7 +474,12 @@ export function Incomings() {
               ) : null}
             </div>
 
-            {displayItems.map((item) => {
+            {!hasAnyIncomings ? (
+              <p>No incomings yet.</p>
+            ) : displayItems.length === 0 ? (
+              <p>No incomings match current filters.</p>
+            ) : (
+              displayItems.map((item) => {
               if (item.kind === "group") {
                 const group = item.group;
                 const firstRow = group.rows[0];
@@ -1086,7 +1216,8 @@ export function Incomings() {
                     : null}
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
       )}

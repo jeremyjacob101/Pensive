@@ -12,7 +12,9 @@ import {
 } from "../helpers/formatters";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
+import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -76,6 +78,98 @@ export function Expenses() {
   const expenses = useMemo(() => scopedExpenses ?? [], [scopedExpenses]);
   const isLoadingExpenses =
     scopeArgs === "skip" || scopedExpenses === undefined;
+  const hasAnyExpenses = expenses.length > 0;
+  const [storedAccountDeselected, setStoredAccountDeselected] = useLocalStorage(
+    "expenses:filter:deselected:accounts:v1",
+    "[]",
+  );
+  const [storedCategoryDeselected, setStoredCategoryDeselected] =
+    useLocalStorage("expenses:filter:deselected:category:v1", "[]");
+
+  const expenseCategoryLabel = useCallback(
+    (row: { category: string; subcategory?: string }) =>
+      row.subcategory?.trim()
+        ? `${row.category} / ${row.subcategory}`
+        : row.category,
+    [],
+  );
+
+  const accountOptions = useMemo(() => {
+    const globalAccounts = toOptionValues(userOptions?.account)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const scopedAccounts = expenses
+      .map((row) => row.account.trim())
+      .filter(Boolean);
+    return [...new Set([...globalAccounts, ...scopedAccounts])].sort();
+  }, [expenses, userOptions?.account]);
+  const categoryOptions = useMemo(() => {
+    const categories = toOptionValues(userOptions?.category)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const subcategories = userOptions?.subcategory ?? [];
+    const globalLabels = [
+      ...categories,
+      ...subcategories
+        .map((option) => {
+          const sub = option.value.trim();
+          if (!sub) return "";
+          const parent = option.parentValue?.trim() ?? "";
+          return parent ? `${parent} / ${sub}` : sub;
+        })
+        .filter(Boolean),
+    ];
+    const scopedLabels = expenses.map((row) => expenseCategoryLabel(row));
+    return [...new Set([...globalLabels, ...scopedLabels])].sort();
+  }, [
+    expenseCategoryLabel,
+    expenses,
+    userOptions?.category,
+    userOptions?.subcategory,
+  ]);
+
+  const parseStoredList = useCallback((value: string) => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const accountDeselectedSet = useMemo(
+    () => new Set(parseStoredList(storedAccountDeselected)),
+    [parseStoredList, storedAccountDeselected],
+  );
+  const categoryDeselectedSet = useMemo(
+    () => new Set(parseStoredList(storedCategoryDeselected)),
+    [parseStoredList, storedCategoryDeselected],
+  );
+  const selectedAccounts = useMemo(
+    () => accountOptions.filter((value) => !accountDeselectedSet.has(value)),
+    [accountDeselectedSet, accountOptions],
+  );
+  const selectedCategories = useMemo(
+    () => categoryOptions.filter((value) => !categoryDeselectedSet.has(value)),
+    [categoryDeselectedSet, categoryOptions],
+  );
+  const selectedAccountSet = useMemo(
+    () => new Set(selectedAccounts),
+    [selectedAccounts],
+  );
+  const selectedCategorySet = useMemo(
+    () => new Set(selectedCategories),
+    [selectedCategories],
+  );
+  const filteredExpenses = useMemo(
+    () =>
+      expenses.filter(
+        (row) =>
+          selectedAccountSet.has(row.account) &&
+          selectedCategorySet.has(expenseCategoryLabel(row)),
+      ),
+    [expenses, expenseCategoryLabel, selectedAccountSet, selectedCategorySet],
+  );
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const monthOverlapSet = useMemo(
@@ -115,13 +209,13 @@ export function Expenses() {
         latestCreation: number;
         totalAmount: number;
         totalEffectiveAmount: number;
-        rows: typeof expenses;
+        rows: typeof filteredExpenses;
       }
     >();
 
-    const soloRows: typeof expenses = [];
+    const soloRows: typeof filteredExpenses = [];
 
-    for (const row of expenses) {
+    for (const row of filteredExpenses) {
       const sharedBaseId = (row.baseExpenseId ?? "").trim();
       if (!sharedBaseId) {
         soloRows.push(row);
@@ -207,7 +301,7 @@ export function Expenses() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [expenses, getRowMatchState]);
+  }, [filteredExpenses, getRowMatchState]);
 
   const rangeLabelText =
     mode === "custom"
@@ -297,11 +391,37 @@ export function Expenses() {
     <>
       {isLoadingExpenses ? (
         <p>Loading expenses...</p>
-      ) : displayItems.length === 0 ? (
-        <p>No expenses yet.</p>
       ) : (
         <div className="entries-with-month">
           <aside className="month-indicator-area">
+            <div className="left-filter-toolbar">
+              <MultiSelectFilterDropdown
+                label="Account"
+                options={accountOptions}
+                selected={selectedAccounts}
+                onChange={(next) => {
+                  const nextSet = new Set(next);
+                  setStoredAccountDeselected(
+                    JSON.stringify(
+                      accountOptions.filter((value) => !nextSet.has(value)),
+                    ),
+                  );
+                }}
+              />
+              <MultiSelectFilterDropdown
+                label="Category/Subcategory"
+                options={categoryOptions}
+                selected={selectedCategories}
+                onChange={(next) => {
+                  const nextSet = new Set(next);
+                  setStoredCategoryDeselected(
+                    JSON.stringify(
+                      categoryOptions.filter((value) => !nextSet.has(value)),
+                    ),
+                  );
+                }}
+              />
+            </div>
             <MonthNavigator
               activeMonth={activeMonth}
               mode={mode}
@@ -316,7 +436,7 @@ export function Expenses() {
               onJumpToNewest={jumpToNewest}
             />
             <RangePieChartPanel
-              rows={expenses.map((e) => ({
+              rows={filteredExpenses.map((e) => ({
                 monthYears: e.monthYears ?? [],
                 effectiveAmount: getEffectiveAmount(e),
                 category: e.category,
@@ -352,7 +472,12 @@ export function Expenses() {
               ) : null}
             </div>
 
-            {displayItems.map((item) => {
+            {!hasAnyExpenses ? (
+              <p>No expenses yet.</p>
+            ) : displayItems.length === 0 ? (
+              <p>No expenses match current filters.</p>
+            ) : (
+              displayItems.map((item) => {
               if (item.kind === "group") {
                 const group = item.group;
                 const firstRow = group.rows[0];
@@ -1179,7 +1304,8 @@ export function Expenses() {
                     : null}
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
       )}
