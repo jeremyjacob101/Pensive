@@ -967,6 +967,24 @@ thead th {
   white-space: nowrap;
 }
 
+.entry-card-amount-values {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  line-height: 1.05;
+}
+
+.entry-effective-original {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.55;
+  white-space: nowrap;
+  text-decoration: line-through;
+  margin-top: 3px;
+}
+
 .entry-card-date {
   font-size: 13px;
   opacity: 0.8;

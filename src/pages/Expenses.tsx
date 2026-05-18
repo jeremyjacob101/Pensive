@@ -4,7 +4,12 @@ import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helper
 import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
 import { ExpensePaybackLinkManager } from "../components/PaybackLinkManager";
 import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
-import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
+import {
+  formatMoney,
+  getDisplayEffectiveAmount,
+  getEffectiveAmount,
+  getMonthSpanCount,
+} from "../helpers/formatters";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
@@ -537,8 +542,16 @@ export function Expenses() {
                                 {formatMoney(row.amount)}
                               </span>
                               <span className="grouped-expense-row-effective">
-                                {formatMoney(getEffectiveAmount(row))} effective
+                                {getMonthSpanCount(row) > 1
+                                  ? `(${formatMoney(getDisplayEffectiveAmount(row))}) effective`
+                                  : `${formatMoney(getDisplayEffectiveAmount(row))} effective`}
                               </span>
+                              {getMonthSpanCount(row) > 1 ? (
+                                <span className="entry-effective-original">
+                                  {formatMoney(getEffectiveAmount(row))}{" "}
+                                  effective
+                                </span>
+                              ) : null}
                               <span className="grouped-expense-row-date">
                                 {formatShortDisplayDate(row.date)}
                               </span>
@@ -842,7 +855,18 @@ export function Expenses() {
                             aria-hidden="true"
                           />
                         </span>
-                        <span>{formatMoney(getEffectiveAmount(row))}</span>
+                        <span className="entry-card-amount-values">
+                          <span>
+                            {getMonthSpanCount(row) > 1
+                              ? `(${formatMoney(getDisplayEffectiveAmount(row))})`
+                              : formatMoney(getDisplayEffectiveAmount(row))}
+                          </span>
+                          {getMonthSpanCount(row) > 1 ? (
+                            <span className="entry-effective-original">
+                              {formatMoney(getEffectiveAmount(row))}
+                            </span>
+                          ) : null}
+                        </span>
                       </div>
                       <span
                         className="entry-card-primary-divider"

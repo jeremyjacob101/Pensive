@@ -17,7 +17,10 @@ export function toAmount(value: string) {
 }
 
 export function formatMoney(value: number) {
-  return `₪${value.toLocaleString("en-US")}`;
+  return `₪${value.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export function formatWarnings(result: WarningResult | null | undefined) {
@@ -30,4 +33,18 @@ export function getEffectiveAmount(row: {
   effectiveAmount?: number;
 }) {
   return row.effectiveAmount ?? row.amount;
+}
+
+export function getMonthSpanCount(row: { monthYears?: string[] }) {
+  return Math.max(1, row.monthYears?.length ?? 0);
+}
+
+export function getDisplayEffectiveAmount(row: {
+  amount: number;
+  effectiveAmount?: number;
+  monthYears?: string[];
+}) {
+  const effective = getEffectiveAmount(row);
+  const spanCount = getMonthSpanCount(row);
+  return spanCount > 1 ? effective / spanCount : effective;
 }
