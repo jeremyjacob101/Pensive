@@ -16,6 +16,12 @@ type PersistedDateState = {
   customEnd?: string;
 };
 
+type ParsedDateState = {
+  mode: "month" | "custom";
+  activeMonth: string | null;
+  customRange: { startDate: string; endDate: string } | null;
+};
+
 const DATE_STATE_KEY = "breakdown:state:date:v1";
 const EXPENSE_ACCOUNT_DESELECTED_KEY =
   "breakdown:filter:deselected:expenseAccounts:v1";
@@ -48,7 +54,7 @@ function parseStoredList(value: string) {
   }
 }
 
-function parseDateState(value: string) {
+function parseDateState(value: string): ParsedDateState {
   try {
     const parsed = JSON.parse(value) as PersistedDateState;
     const requestedCustomMode = parsed.mode === "custom";
@@ -171,14 +177,16 @@ export function Breakdown() {
   const expenses = useMemo(() => scopedExpenses ?? [], [scopedExpenses]);
   const incomings = useMemo(() => scopedIncomings ?? [], [scopedIncomings]);
 
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-
-  useEffect(() => {
-    if (mode !== "custom") return;
-    setCustomStart(scope.startDate);
-    setCustomEnd(scope.endDate);
-  }, [mode, scope.startDate, scope.endDate]);
+  const [customStart, setCustomStart] = useState(
+    initialDateState.customRange?.startDate ?? "",
+  );
+  const [customEnd, setCustomEnd] = useState(
+    initialDateState.customRange?.endDate ?? "",
+  );
+  const customStartValue =
+    mode === "custom" && !customStart ? scope.startDate : customStart;
+  const customEndValue =
+    mode === "custom" && !customEnd ? scope.endDate : customEnd;
 
   const rangeLabelText =
     mode === "custom"
@@ -512,8 +520,14 @@ export function Breakdown() {
     scopedIncomings === undefined;
 
   const applyCustomScope = () => {
-    if (!customStart || !customEnd || customStart > customEnd) return;
-    applyCustomRange(customStart, customEnd);
+    if (
+      !customStartValue ||
+      !customEndValue ||
+      customStartValue > customEndValue
+    ) {
+      return;
+    }
+    applyCustomRange(customStartValue, customEndValue);
   };
 
   const resetBreakdown = () => {
@@ -660,7 +674,7 @@ export function Breakdown() {
             From
             <input
               type="date"
-              value={customStart}
+              value={customStartValue}
               onChange={(event) => setCustomStart(event.target.value)}
             />
           </label>
@@ -668,7 +682,7 @@ export function Breakdown() {
             To
             <input
               type="date"
-              value={customEnd}
+              value={customEndValue}
               onChange={(event) => setCustomEnd(event.target.value)}
             />
           </label>
@@ -677,7 +691,11 @@ export function Breakdown() {
               type="button"
               className="split-entry-launcher"
               onClick={applyCustomScope}
-              disabled={!customStart || !customEnd || customStart > customEnd}
+              disabled={
+                !customStartValue ||
+                !customEndValue ||
+                customStartValue > customEndValue
+              }
             >
               Apply Range
             </button>
