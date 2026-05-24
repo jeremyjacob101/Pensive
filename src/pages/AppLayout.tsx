@@ -5,26 +5,12 @@ import { AddEntryPanel } from "../components/AddEntryPanel";
 import { LeftMenuPanel } from "../components/LeftMenuPanel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { THEME_STORAGE_KEY } from "../keys/localStorage";
+import type { TopRowSearchState } from "../types/search";
 import { useMutation, useQuery } from "convex/react";
 import type { FormType } from "../types/workspace";
 import { api } from "../../convex/_generated/api";
 import { useAuth } from "../context/useAuth";
 import { useEffect, useState } from "react";
-
-export type TopRowSearchState = {
-  expenseSearchQuery: string;
-  setExpenseSearchQuery: (value: string) => void;
-  expenseSelectedSearchFields: string[];
-  setExpenseSelectedSearchFields: (value: string[]) => void;
-  incomingSearchQuery: string;
-  setIncomingSearchQuery: (value: string) => void;
-  incomingSelectedSearchFields: string[];
-  setIncomingSelectedSearchFields: (value: string[]) => void;
-  setVisibleExpenseIds: (value: string[]) => void;
-  setVisibleIncomingIds: (value: string[]) => void;
-  setVisibleExpenseCategories: (value: string[]) => void;
-  setVisibleIncomingTypes: (value: string[]) => void;
-};
 
 export function AppLayout() {
   const [storedThemeDark, setStoredThemeDark] = useLocalStorage(

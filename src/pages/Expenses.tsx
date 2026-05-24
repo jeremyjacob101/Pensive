@@ -14,9 +14,10 @@ import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { OptionPicker } from "../components/OptionPicker";
+import type { TopRowSearchState } from "../types/search";
+import { parseStoredList } from "../helpers/storage";
 import { useMutation, useQuery } from "convex/react";
 import type { EditValues } from "../types/workspace";
-import type { TopRowSearchState } from "./AppLayout";
 import { useOutletContext } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { parseSubId } from "../helpers/subId";
@@ -133,24 +134,13 @@ export function Expenses() {
     userOptions?.subcategory,
   ]);
 
-  const parseStoredList = useCallback((value: string) => {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed)
-        ? parsed.filter((v) => typeof v === "string")
-        : [];
-    } catch {
-      return [];
-    }
-  }, []);
-
   const accountDeselectedSet = useMemo(
     () => new Set(parseStoredList(storedAccountDeselected)),
-    [parseStoredList, storedAccountDeselected],
+    [storedAccountDeselected],
   );
   const categoryDeselectedSet = useMemo(
     () => new Set(parseStoredList(storedCategoryDeselected)),
-    [parseStoredList, storedCategoryDeselected],
+    [storedCategoryDeselected],
   );
   const selectedAccounts = useMemo(
     () => accountOptions.filter((value) => !accountDeselectedSet.has(value)),
@@ -612,7 +602,10 @@ export function Expenses() {
               renderedListItems.map((item) => {
                 if (item.kind === "section") {
                   return (
-                    <div key={item.id} className="row-match-section-header-wrap">
+                    <div
+                      key={item.id}
+                      className="row-match-section-header-wrap"
+                    >
                       <button
                         type="button"
                         className="row-match-section-toggle"

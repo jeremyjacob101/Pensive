@@ -1,19 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import type { MonthNavigatorProps } from "../types/monthScope";
 import { formatMonthYearLabel } from "../helpers/dates";
-
-interface MonthNavigatorProps {
-  activeMonth: string | null;
-  mode: "month" | "custom";
-  customRangeLabel: string;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-  canJumpToOldest: boolean;
-  canJumpToNewest: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-  onJumpToOldest: () => void;
-  onJumpToNewest: () => void;
-}
 
 export function MonthNavigator({
   activeMonth,

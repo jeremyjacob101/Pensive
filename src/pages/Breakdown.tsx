@@ -1,107 +1,18 @@
+import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, EXPENSE_TYPE_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
+import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
 import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
+import type { PersistedDateState } from "../types/breakdown";
+import { BREAKDOWN_STORAGE_KEYS } from "../types/breakdown";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { parseStoredList } from "../helpers/storage";
 import { toOptionValues } from "../helpers/options";
 import { api } from "../../convex/_generated/api";
 import { useQuery } from "convex/react";
-
-type PersistedDateState = {
-  mode?: "month" | "custom";
-  activeMonth?: string | null;
-  customStart?: string;
-  customEnd?: string;
-};
-
-type ParsedDateState = {
-  mode: "month" | "custom";
-  activeMonth: string | null;
-  customRange: { startDate: string; endDate: string } | null;
-};
-
-const DATE_STATE_KEY = "breakdown:state:date:v1";
-const EXPENSE_ACCOUNT_DESELECTED_KEY =
-  "breakdown:filter:deselected:expenseAccounts:v1";
-const INCOMING_ACCOUNT_DESELECTED_KEY =
-  "breakdown:filter:deselected:incomingAccounts:v1";
-const EXPENSE_TYPE_DESELECTED_KEY =
-  "breakdown:filter:deselected:expenseType:v1";
-const EXPENSE_CATEGORY_DESELECTED_KEY =
-  "breakdown:filter:deselected:expenseCategory:v1";
-const INCOMING_TYPE_DESELECTED_KEY =
-  "breakdown:filter:deselected:incomingType:v1";
-
-const BREAKDOWN_STORAGE_KEYS = [
-  DATE_STATE_KEY,
-  EXPENSE_ACCOUNT_DESELECTED_KEY,
-  INCOMING_ACCOUNT_DESELECTED_KEY,
-  EXPENSE_TYPE_DESELECTED_KEY,
-  EXPENSE_CATEGORY_DESELECTED_KEY,
-  INCOMING_TYPE_DESELECTED_KEY,
-] as const;
-
-function parseStoredList(value: string) {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((item) => typeof item === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function parseDateState(value: string): ParsedDateState {
-  try {
-    const parsed = JSON.parse(value) as PersistedDateState;
-    const requestedCustomMode = parsed.mode === "custom";
-    const activeMonth =
-      typeof parsed.activeMonth === "string" &&
-      /^\d{4}-\d{2}$/.test(parsed.activeMonth)
-        ? parsed.activeMonth
-        : null;
-    const customStart =
-      typeof parsed.customStart === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(parsed.customStart)
-        ? parsed.customStart
-        : "";
-    const customEnd =
-      typeof parsed.customEnd === "string" &&
-      /^\d{4}-\d{2}-\d{2}$/.test(parsed.customEnd)
-        ? parsed.customEnd
-        : "";
-
-    return {
-      mode:
-        requestedCustomMode && customStart && customEnd ? "custom" : "month",
-      activeMonth,
-      customRange:
-        customStart && customEnd
-          ? {
-              startDate: customStart,
-              endDate: customEnd,
-            }
-          : null,
-    };
-  } catch {
-    return { mode: "month" as const, activeMonth: null, customRange: null };
-  }
-}
-
-function maxMonth(a: string | null, b: string | null) {
-  if (!a) return b;
-  if (!b) return a;
-  return a > b ? a : b;
-}
-
-function minMonth(a: string | null, b: string | null) {
-  if (!a) return b;
-  if (!b) return a;
-  return a < b ? a : b;
-}
 
 export function Breakdown() {
   const [storedDateState, setStoredDateState] = useLocalStorage(

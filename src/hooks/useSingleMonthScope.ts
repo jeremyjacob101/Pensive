@@ -1,40 +1,9 @@
-import { getMonthFromIsoDate, getMonthStartEndFromMonth, getMonthsInRange, getTodayIsoDate, shiftMonth } from "../helpers/dates";
+import type { DateWindow, MonthBounds, MonthScopeMode, UseSingleMonthScopeInitialState } from "../types/monthScope";
+import { fallbackCurrentMonth, validIsoDate, validMonth, windowFromMonth } from "../helpers/monthScope";
+import { getMonthsInRange, shiftMonth } from "../helpers/dates";
 import { useCallback, useMemo, useState } from "react";
 
-export type MonthScopeMode = "month" | "custom";
-
-export interface DateWindow {
-  startDate: string;
-  endDate: string;
-}
-
-interface MonthBounds {
-  newestMonth: string | null;
-  oldestMonth: string | null;
-}
-
-interface UseSingleMonthScopeInitialState {
-  mode?: MonthScopeMode;
-  activeMonth?: string | null;
-  customRange?: DateWindow | null;
-}
-
-function validMonth(value: string | null | undefined): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
-}
-
-function validIsoDate(value: string | null | undefined): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function windowFromMonth(month: string): DateWindow {
-  const window = getMonthStartEndFromMonth(month);
-  return { startDate: window.start, endDate: window.end };
-}
-
-function fallbackCurrentMonth(): string {
-  return getMonthFromIsoDate(getTodayIsoDate());
-}
+export type { DateWindow, MonthScopeMode } from "../types/monthScope";
 
 export function useSingleMonthScope(
   monthBounds: MonthBounds | undefined,

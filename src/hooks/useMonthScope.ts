@@ -1,35 +1,9 @@
-import { getMonthFromIsoDate, getMonthStartEnd, getMonthStartEndFromMonth, getMonthsInRange, getTodayIsoDate, shiftMonth } from "../helpers/dates";
+import { fallbackCurrentMonthWindow, monthFromWindow, validMonth, windowFromMonth } from "../helpers/monthScope";
+import { getMonthFromIsoDate, getMonthsInRange, getTodayIsoDate, shiftMonth } from "../helpers/dates";
+import type { DateWindow, MonthBounds, MonthScopeMode } from "../types/monthScope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export type MonthScopeMode = "month" | "custom";
-
-export interface DateWindow {
-  startDate: string;
-  endDate: string;
-}
-
-interface MonthBounds {
-  newestMonth: string | null;
-  oldestMonth: string | null;
-}
-
-function validMonth(value: string | null | undefined): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
-}
-
-function windowFromMonth(month: string): DateWindow {
-  const window = getMonthStartEndFromMonth(month);
-  return { startDate: window.start, endDate: window.end };
-}
-
-function fallbackCurrentMonthWindow(): DateWindow {
-  const window = getMonthStartEnd(getTodayIsoDate());
-  return { startDate: window.start, endDate: window.end };
-}
-
-function monthFromWindow(window: DateWindow) {
-  return window.startDate.slice(0, 7);
-}
+export type { DateWindow, MonthScopeMode } from "../types/monthScope";
 
 export function useMonthScope(monthBounds: MonthBounds | undefined) {
   const [mode, setMode] = useState<MonthScopeMode>("month");

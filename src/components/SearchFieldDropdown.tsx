@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-
-type SearchFieldOption = {
-  value: string;
-  label: string;
-};
+import type { SearchFieldOption } from "../types/search";
 
 export function SearchFieldDropdown({ options, selected, onChange }: {
   options: SearchFieldOption[];

@@ -1,19 +1,8 @@
+import { isScrollKey, isTypingTarget } from "../helpers/bottomSentinel";
 import { useEffect, useRef } from "react";
 
 const BOTTOM_LOAD_DISTANCE_PX = 320;
 const TRIGGER_COOLDOWN_MS = 650;
-
-function isScrollKey(event: KeyboardEvent) {
-  return ["ArrowDown", "PageDown", "End", " "].includes(event.key);
-}
-
-function isTypingTarget(target: Element | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-  );
-}
 
 export function useBottomSentinel(
   sentinelRef: React.RefObject<HTMLElement | null>,
