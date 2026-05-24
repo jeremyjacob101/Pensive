@@ -125,7 +125,14 @@ function BreakdownGlyph() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
       <rect x="4" y="6" width="4.6" height="14" rx="1.4" fill="#38bdf8" />
-      <rect x="10.2" y="9.5" width="4.6" height="10.5" rx="1.4" fill="#38bdf8" />
+      <rect
+        x="10.2"
+        y="9.5"
+        width="4.6"
+        height="10.5"
+        rx="1.4"
+        fill="#38bdf8"
+      />
       <rect x="16.4" y="13" width="4.6" height="7" rx="1.4" fill="#38bdf8" />
     </svg>
   );

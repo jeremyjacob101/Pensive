@@ -1,13 +1,13 @@
-import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
-import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
-import { toOptionValues } from "../helpers/options";
+import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
+import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { useQuery } from "convex/react";
+import { toOptionValues } from "../helpers/options";
 import { api } from "../../convex/_generated/api";
+import { useQuery } from "convex/react";
 
 type PersistedDateState = {
   mode?: "month" | "custom";
@@ -17,11 +17,16 @@ type PersistedDateState = {
 };
 
 const DATE_STATE_KEY = "breakdown:state:date:v1";
-const EXPENSE_ACCOUNT_DESELECTED_KEY = "breakdown:filter:deselected:expenseAccounts:v1";
-const INCOMING_ACCOUNT_DESELECTED_KEY = "breakdown:filter:deselected:incomingAccounts:v1";
-const EXPENSE_TYPE_DESELECTED_KEY = "breakdown:filter:deselected:expenseType:v1";
-const EXPENSE_CATEGORY_DESELECTED_KEY = "breakdown:filter:deselected:expenseCategory:v1";
-const INCOMING_TYPE_DESELECTED_KEY = "breakdown:filter:deselected:incomingType:v1";
+const EXPENSE_ACCOUNT_DESELECTED_KEY =
+  "breakdown:filter:deselected:expenseAccounts:v1";
+const INCOMING_ACCOUNT_DESELECTED_KEY =
+  "breakdown:filter:deselected:incomingAccounts:v1";
+const EXPENSE_TYPE_DESELECTED_KEY =
+  "breakdown:filter:deselected:expenseType:v1";
+const EXPENSE_CATEGORY_DESELECTED_KEY =
+  "breakdown:filter:deselected:expenseCategory:v1";
+const INCOMING_TYPE_DESELECTED_KEY =
+  "breakdown:filter:deselected:incomingType:v1";
 
 const BREAKDOWN_STORAGE_KEYS = [
   DATE_STATE_KEY,
@@ -58,7 +63,8 @@ function parseDateState(value: string) {
         ? parsed.customStart
         : "";
     const customEnd =
-      typeof parsed.customEnd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.customEnd)
+      typeof parsed.customEnd === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(parsed.customEnd)
         ? parsed.customEnd
         : "";
 
@@ -260,7 +266,12 @@ export function Breakdown() {
 
     const scopedLabels = expenses.map((row) => expenseCategoryLabel(row));
     return [...new Set([...globalLabels, ...scopedLabels])].sort();
-  }, [expenseCategoryLabel, expenses, userOptions?.category, userOptions?.subcategory]);
+  }, [
+    expenseCategoryLabel,
+    expenses,
+    userOptions?.category,
+    userOptions?.subcategory,
+  ]);
 
   const incomingTypeOptions = useMemo(() => {
     const incomeTypes = toOptionValues(userOptions?.incomeType)
@@ -281,7 +292,12 @@ export function Breakdown() {
 
     const scopedLabels = incomings.map((row) => incomingTypeLabel(row));
     return [...new Set([...globalLabels, ...scopedLabels])].sort();
-  }, [incomingTypeLabel, incomings, userOptions?.incomeSubtype, userOptions?.incomeType]);
+  }, [
+    incomingTypeLabel,
+    incomings,
+    userOptions?.incomeSubtype,
+    userOptions?.incomeType,
+  ]);
 
   const expenseAccountDeselectedSet = useMemo(
     () => new Set(parseStoredList(storedExpenseAccountDeselected)),
@@ -319,7 +335,10 @@ export function Breakdown() {
     [incomingAccountDeselectedSet, incomingAccountOptions],
   );
   const selectedExpenseTypes = useMemo(
-    () => expenseTypeOptions.filter((value) => !expenseTypeDeselectedSet.has(value)),
+    () =>
+      expenseTypeOptions.filter(
+        (value) => !expenseTypeDeselectedSet.has(value),
+      ),
     [expenseTypeDeselectedSet, expenseTypeOptions],
   );
   const selectedExpenseCategories = useMemo(
@@ -330,7 +349,10 @@ export function Breakdown() {
     [expenseCategoryDeselectedSet, expenseCategoryOptions],
   );
   const selectedIncomingTypes = useMemo(
-    () => incomingTypeOptions.filter((value) => !incomingTypeDeselectedSet.has(value)),
+    () =>
+      incomingTypeOptions.filter(
+        (value) => !incomingTypeDeselectedSet.has(value),
+      ),
     [incomingTypeDeselectedSet, incomingTypeOptions],
   );
 
@@ -379,7 +401,12 @@ export function Breakdown() {
           selectedIncomingAccountSet.has(row.account) &&
           selectedIncomingTypeSet.has(incomingTypeLabel(row)),
       ),
-    [incomings, incomingTypeLabel, selectedIncomingAccountSet, selectedIncomingTypeSet],
+    [
+      incomings,
+      incomingTypeLabel,
+      selectedIncomingAccountSet,
+      selectedIncomingTypeSet,
+    ],
   );
 
   const monthlyBuckets = useMemo(() => {
@@ -538,7 +565,9 @@ export function Breakdown() {
                   const nextSet = new Set(next);
                   setStoredExpenseAccountDeselected(
                     JSON.stringify(
-                      expenseAccountOptions.filter((value) => !nextSet.has(value)),
+                      expenseAccountOptions.filter(
+                        (value) => !nextSet.has(value),
+                      ),
                     ),
                   );
                 }}
@@ -564,7 +593,9 @@ export function Breakdown() {
                   const nextSet = new Set(next);
                   setStoredExpenseCategoryDeselected(
                     JSON.stringify(
-                      expenseCategoryOptions.filter((value) => !nextSet.has(value)),
+                      expenseCategoryOptions.filter(
+                        (value) => !nextSet.has(value),
+                      ),
                     ),
                   );
                 }}
@@ -583,7 +614,9 @@ export function Breakdown() {
                   const nextSet = new Set(next);
                   setStoredIncomingAccountDeselected(
                     JSON.stringify(
-                      incomingAccountOptions.filter((value) => !nextSet.has(value)),
+                      incomingAccountOptions.filter(
+                        (value) => !nextSet.has(value),
+                      ),
                     ),
                   );
                 }}
@@ -596,7 +629,9 @@ export function Breakdown() {
                   const nextSet = new Set(next);
                   setStoredIncomingTypeDeselected(
                     JSON.stringify(
-                      incomingTypeOptions.filter((value) => !nextSet.has(value)),
+                      incomingTypeOptions.filter(
+                        (value) => !nextSet.has(value),
+                      ),
                     ),
                   );
                 }}
@@ -719,9 +754,7 @@ export function Breakdown() {
                   <td>{formatMonthYearLabel(`${row.month}-01`)}</td>
                   <td>{formatMoney(row.incomings)}</td>
                   <td>{formatMoney(row.expenses)}</td>
-                  <td
-                    className={row.savings < 0 ? "negative" : "positive"}
-                  >
+                  <td className={row.savings < 0 ? "negative" : "positive"}>
                     {formatMoney(row.savings)}
                   </td>
                 </tr>

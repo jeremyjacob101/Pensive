@@ -44,10 +44,7 @@ export function useSingleMonthScope(
     initialState?.mode === "custom" ? "custom" : "month",
   );
   const [activeMonth, setActiveMonth] = useState<string | null>(() =>
-    validMonth(initialState?.activeMonth)
-      ? initialState?.activeMonth
-      : null,
-  );
+    validMonth(initialState?.activeMonth) ? initialState?.activeMonth : null);
   const [customRange, setCustomRange] = useState<DateWindow | null>(() => {
     const range = initialState?.customRange;
     if (

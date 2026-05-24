@@ -809,62 +809,62 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       {activeItem !== "options" &&
         activeItem !== "recurrings" &&
         activeItem !== "breakdown" && (
-        <div className="add-entry-launcher-row">
-          <button
-            type="button"
-            className="add-entry-launcher"
-            aria-label={`Add ${activeItem.slice(0, -1)}`}
-            onClick={openModalFromActiveTab}
-          >
-            +
-          </button>
-          {activeItem === "expenses" ? (
+          <div className="add-entry-launcher-row">
             <button
               type="button"
-              className="split-entry-launcher"
-              onClick={openSplitExpenseForm}
+              className="add-entry-launcher"
+              aria-label={`Add ${activeItem.slice(0, -1)}`}
+              onClick={openModalFromActiveTab}
             >
-              + Split
+              +
             </button>
-          ) : null}
-          {activeItem === "incomings" ? (
-            <button
-              type="button"
-              className="split-entry-launcher"
-              onClick={openSplitIncomingForm}
-            >
-              + Split
-            </button>
-          ) : null}
-          {activeItem === "expenses" || activeItem === "incomings" ? (
-            <>
+            {activeItem === "expenses" ? (
               <button
                 type="button"
                 className="split-entry-launcher"
-                disabled={visibleCount === 0}
-                onClick={() => {
-                  resetBulkState();
-                  setBulkModalOpen(true);
-                }}
+                onClick={openSplitExpenseForm}
               >
-                Edit/Apply All
+                + Split
               </button>
-              <input
-                type="search"
-                className="top-row-search-input"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => onSearchQueryChange(e.target.value)}
-              />
-              <SearchFieldDropdown
-                options={searchFieldOptions}
-                selected={selectedSearchFields}
-                onChange={onSearchFieldsChange}
-              />
-            </>
-          ) : null}
-        </div>
-      )}
+            ) : null}
+            {activeItem === "incomings" ? (
+              <button
+                type="button"
+                className="split-entry-launcher"
+                onClick={openSplitIncomingForm}
+              >
+                + Split
+              </button>
+            ) : null}
+            {activeItem === "expenses" || activeItem === "incomings" ? (
+              <>
+                <button
+                  type="button"
+                  className="split-entry-launcher"
+                  disabled={visibleCount === 0}
+                  onClick={() => {
+                    resetBulkState();
+                    setBulkModalOpen(true);
+                  }}
+                >
+                  Edit/Apply All
+                </button>
+                <input
+                  type="search"
+                  className="top-row-search-input"
+                  placeholder="Search"
+                  value={searchQuery}
+                  onChange={(e) => onSearchQueryChange(e.target.value)}
+                />
+                <SearchFieldDropdown
+                  options={searchFieldOptions}
+                  selected={selectedSearchFields}
+                  onChange={onSearchFieldsChange}
+                />
+              </>
+            ) : null}
+          </div>
+        )}
 
       {bulkModalOpen &&
         (activeItem === "expenses" || activeItem === "incomings") &&
