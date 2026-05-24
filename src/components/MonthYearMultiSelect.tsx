@@ -113,11 +113,13 @@ export function MonthYearMultiSelect({ value, onChange, label = "Months", requir
   );
 
   const timelineMonths = useMemo(() => {
-    const total = 24;
-    const half = Math.floor(total / 2);
-    const start = shiftMonth(currentMonth, -half);
-    return getMonthsBetween(start, shiftMonth(start, total - 1));
-  }, [currentMonth]);
+    const edgeBufferMonths = 24;
+    const startSeed = range.start < currentMonth ? range.start : currentMonth;
+    const endSeed = range.end > currentMonth ? range.end : currentMonth;
+    const start = shiftMonth(startSeed, -edgeBufferMonths);
+    const end = shiftMonth(endSeed, edgeBufferMonths);
+    return getMonthsBetween(start, end);
+  }, [currentMonth, range.end, range.start]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
