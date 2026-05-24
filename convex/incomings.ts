@@ -379,6 +379,52 @@ export const update = mutation({
   },
 });
 
+export const bulkPatchVisible = mutation({
+  args: {
+    ids: v.array(v.id("incomings")),
+    patch: v.object({
+      incomeType: v.optional(v.string()),
+      incomeSubtype: v.optional(v.union(v.string(), v.null())),
+      account: v.optional(v.string()),
+      paidBy: v.optional(v.string()),
+      notes: v.optional(v.union(v.string(), v.null())),
+      comments: v.optional(v.union(v.string(), v.null())),
+    }),
+  },
+  handler: async (ctx, { ids, patch }) => {
+    const userId = await requireUserId(ctx);
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) return { updatedCount: 0 };
+
+    const rows = await Promise.all(uniqueIds.map((id) => ctx.db.get(id)));
+    if (rows.some((row) => !row || row.userId !== userId)) {
+      throw new Error("One or more selected incomings were not found");
+    }
+
+    const entries = Object.entries(patch).filter(
+      ([, value]) => value !== undefined,
+    );
+    if (entries.length === 0) return { updatedCount: 0 };
+    const normalizedPatch = Object.fromEntries(
+      entries.map(([key, value]) => [
+        key,
+        value === null
+          ? undefined
+          : typeof value === "string"
+            ? value.trim()
+            : value,
+      ]),
+    ) as Record<string, string | undefined>;
+
+    for (const row of rows) {
+      if (!row) continue;
+      await ctx.db.patch(row._id, normalizedPatch);
+    }
+
+    return { updatedCount: uniqueIds.length };
+  },
+});
+
 export const addPartnerIncoming = mutation({
   args: {
     anchorIncomingId: v.id("incomings"),

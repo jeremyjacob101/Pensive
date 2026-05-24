@@ -5,11 +5,7 @@ type SearchFieldOption = {
   label: string;
 };
 
-export function SearchFieldDropdown({
-  options,
-  selected,
-  onChange,
-}: {
+export function SearchFieldDropdown({ options, selected, onChange }: {
   options: SearchFieldOption[];
   selected: string[];
   onChange: (next: string[]) => void;

@@ -1,37 +1,36 @@
+import { formatMoney, getDisplayEffectiveAmount, getEffectiveAmount, getMonthSpanCount } from "../helpers/formatters";
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
 import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
+import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
 import { IncomingPaybackLinkManager } from "../components/PaybackLinkManager";
 import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
-import {
-  formatMoney,
-  getDisplayEffectiveAmount,
-  getEffectiveAmount,
-  getMonthSpanCount,
-} from "../helpers/formatters";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
-import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useOutletContext } from "react-router-dom";
 import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useLocalStorage } from "../hooks/useLocalStorage";
 import { OptionPicker } from "../components/OptionPicker";
 import { useMutation, useQuery } from "convex/react";
 import type { EditValues } from "../types/workspace";
+import type { TopRowSearchState } from "./AppLayout";
+import { useOutletContext } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
 import { parseSubId } from "../helpers/subId";
 import { CreditCard } from "lucide-react";
 import { createPortal } from "react-dom";
 import { saveOption } from "./actions";
-import type { TopRowSearchState } from "./AppLayout";
 
 export function Incomings() {
-  const { incomingSearchQuery, incomingSelectedSearchFields } =
-    useOutletContext<TopRowSearchState>();
+  const {
+    incomingSearchQuery,
+    incomingSelectedSearchFields,
+    setVisibleIncomingIds,
+    setVisibleIncomingTypes,
+  } = useOutletContext<TopRowSearchState>();
   const [editingIncomingId, setEditingIncomingId] = useState<string | null>(
     null,
   );
@@ -135,7 +134,9 @@ export function Incomings() {
   const parseStoredList = useCallback((value: string) => {
     try {
       const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((v) => typeof v === "string")
+        : [];
     } catch {
       return [];
     }
@@ -172,12 +173,7 @@ export function Incomings() {
           selectedAccountSet.has(row.account) &&
           selectedCategorySet.has(incomingCategoryLabel(row)),
       ),
-    [
-      incomings,
-      incomingCategoryLabel,
-      selectedAccountSet,
-      selectedCategorySet,
-    ],
+    [incomings, incomingCategoryLabel, selectedAccountSet, selectedCategorySet],
   );
   const normalizedSearchQuery = useMemo(
     () => incomingSearchQuery.trim().toLowerCase(),
@@ -188,8 +184,8 @@ export function Incomings() {
     if (incomingSelectedSearchFields.length === 0) return [];
     return filteredIncomings.filter((row) =>
       incomingSelectedSearchFields.some((field) => {
-        const value = (
-          field === "incoming"
+        const value =
+          (field === "incoming"
             ? row.incoming
             : field === "paidBy"
               ? row.paidBy
@@ -203,16 +199,16 @@ export function Incomings() {
                       ? row.notes
                       : field === "comments"
                         ? row.comments
-                        : ""
-        ) ?? "";
+                        : "") ?? "";
         return value.toLowerCase().includes(normalizedSearchQuery);
-      }),
-    );
-  }, [
-    filteredIncomings,
-    incomingSelectedSearchFields,
-    normalizedSearchQuery,
-  ]);
+      }));
+  }, [filteredIncomings, incomingSelectedSearchFields, normalizedSearchQuery]);
+  useEffect(() => {
+    setVisibleIncomingIds(searchFilteredIncomings.map((row) => row._id));
+    setVisibleIncomingTypes([
+      ...new Set(searchFilteredIncomings.map((row) => row.incomeType)),
+    ]);
+  }, [searchFilteredIncomings, setVisibleIncomingIds, setVisibleIncomingTypes]);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const monthOverlapSet = useMemo(
@@ -532,56 +528,440 @@ export function Incomings() {
               <p>No incomings match current filters/search.</p>
             ) : (
               displayItems.map((item) => {
-              if (item.kind === "group") {
-                const group = item.group;
-                const firstRow = group.rows[0];
-                const groupHasMonthYearsOnly = group.rows.some(
-                  (row) => getRowMatchState(row) === "monthYearsOnly",
-                );
-                const groupHasDateOnly = group.rows.some(
-                  (row) => getRowMatchState(row) === "dateOnly",
-                );
-                const groupTitle = firstRow?.incoming || "Shared Incoming";
-                const accountColor = getOptionColor(
-                  userOptions,
-                  "account",
-                  firstRow.account,
-                );
-                const typeColor = getOptionColor(
+                if (item.kind === "group") {
+                  const group = item.group;
+                  const firstRow = group.rows[0];
+                  const groupHasMonthYearsOnly = group.rows.some(
+                    (row) => getRowMatchState(row) === "monthYearsOnly",
+                  );
+                  const groupHasDateOnly = group.rows.some(
+                    (row) => getRowMatchState(row) === "dateOnly",
+                  );
+                  const groupTitle = firstRow?.incoming || "Shared Incoming";
+                  const accountColor = getOptionColor(
+                    userOptions,
+                    "account",
+                    firstRow.account,
+                  );
+                  const typeColor = getOptionColor(
+                    userOptions,
+                    "incomeType",
+                    firstRow.incomeType,
+                  );
+                  const incomeSubtypeColor = firstRow.incomeSubtype
+                    ? getOptionColor(
+                        userOptions,
+                        "incomeSubtype",
+                        firstRow.incomeSubtype,
+                      )
+                    : null;
+                  const dotColor = incomeSubtypeColor ?? typeColor;
+                  const amountTooltip = group.rows
+                    .map(
+                      (row) =>
+                        `${row.incoming}: ${formatMoney(row.amount)} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
+                    )
+                    .join("\n");
+
+                  return (
+                    <div
+                      key={item.id}
+                      data-row-date={item.date}
+                      className={`entry-card grouped-expense-card${groupHasMonthYearsOnly ? " row-match-monthYearsOnly" : ""}${groupHasDateOnly ? " row-match-dateOnly" : ""}`}
+                    >
+                      <div className="entry-card-main grouped-expense-main">
+                        <div className="entry-card-primary">
+                          <div
+                            className="entry-card-amount"
+                            title={amountTooltip}
+                          >
+                            <span
+                              className="entry-card-account-icon-wrap"
+                              data-tooltip={firstRow.account}
+                            >
+                              <CreditCard
+                                className="entry-card-account-icon"
+                                style={{ color: accountColor }}
+                                aria-hidden="true"
+                              />
+                            </span>
+                            <span>
+                              {formatMoney(group.totalEffectiveAmount)}
+                            </span>
+                          </div>
+                          <span
+                            className="entry-card-primary-divider"
+                            style={{ backgroundColor: typeColor, opacity: 0.8 }}
+                            data-tooltip={firstRow.incomeType}
+                            aria-hidden="true"
+                          />
+                          <div className="entry-card-title-wrap">
+                            <span className="entry-card-title">
+                              {groupTitle}
+                            </span>
+                            <span
+                              className="entry-card-color-dot"
+                              style={{ backgroundColor: dotColor }}
+                              data-tooltip={
+                                firstRow.incomeSubtype
+                                  ? `${firstRow.incomeType} / ${firstRow.incomeSubtype}`
+                                  : firstRow.incomeType
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="entry-card-date">
+                          {formatShortDisplayDate(group.latestDate)}
+                        </div>
+                      </div>
+
+                      <div className="entry-card-details grouped-expense-details">
+                        {group.rows.map((row, index) => {
+                          const isEditing = editingIncomingId === row._id;
+                          const incomeTypeColor = getOptionColor(
+                            userOptions,
+                            "incomeType",
+                            row.incomeType,
+                          );
+                          const incomeSubtypeColor = row.incomeSubtype
+                            ? getOptionColor(
+                                userOptions,
+                                "incomeSubtype",
+                                row.incomeSubtype,
+                              )
+                            : null;
+                          const dotColor =
+                            incomeSubtypeColor ?? incomeTypeColor;
+
+                          return (
+                            <div
+                              key={row._id}
+                              className={`grouped-expense-row${index > 0 ? " has-divider" : ""}${partnerPickAnchorId ? " partner-pick-target" : ""}${getRowMatchState(row) === "monthYearsOnly" ? " row-match-monthYearsOnly" : ""}${getRowMatchState(row) === "dateOnly" ? " row-match-dateOnly" : ""}`}
+                              onClick={() =>
+                                partnerPickAnchorId
+                                  ? void handlePickPartner(row._id)
+                                  : undefined
+                              }
+                            >
+                              <div className="grouped-expense-row-main">
+                                <div className="grouped-expense-row-title-wrap">
+                                  {getRowMatchDisclaimer(row) ? (
+                                    <span className="row-match-disclaimer">
+                                      {getRowMatchDisclaimer(row)}
+                                    </span>
+                                  ) : null}
+                                  <span className="grouped-expense-row-title">
+                                    {row.incoming}
+                                  </span>
+                                  <span
+                                    className="entry-card-color-dot"
+                                    style={{ backgroundColor: dotColor }}
+                                  />
+                                </div>
+                                <div className="grouped-expense-row-meta">
+                                  {row.incomeType}
+                                  {row.incomeSubtype
+                                    ? ` / ${row.incomeSubtype}`
+                                    : ""}{" "}
+                                  · {row.paidBy} · {row.account}
+                                </div>
+                              </div>
+
+                              <div className="grouped-expense-row-amount-date">
+                                <span className="grouped-expense-row-amount">
+                                  {formatMoney(row.amount)}
+                                </span>
+                                <span className="grouped-expense-row-effective">
+                                  {getMonthSpanCount(row) > 1
+                                    ? `(${formatMoney(getDisplayEffectiveAmount(row))}) effective`
+                                    : `${formatMoney(getDisplayEffectiveAmount(row))} effective`}
+                                </span>
+                                {getMonthSpanCount(row) > 1 ? (
+                                  <span className="entry-effective-original">
+                                    {formatMoney(getEffectiveAmount(row))}{" "}
+                                    effective
+                                  </span>
+                                ) : null}
+                                <span className="grouped-expense-row-date">
+                                  {formatShortDisplayDate(row.date)}
+                                </span>
+                              </div>
+
+                              <div className="entry-row-controls grouped-expense-row-controls">
+                                <EditableRowActions
+                                  isEditing={false}
+                                  saving={saving}
+                                  onSave={() => {}}
+                                  onCancel={() => {}}
+                                  onEdit={() =>
+                                    handleStartEditIncoming(
+                                      row,
+                                      setEditingIncomingId,
+                                      setEditValues,
+                                    )
+                                  }
+                                  onDelete={() =>
+                                    handleDeleteIncoming(
+                                      row,
+                                      deleteIncoming,
+                                      setSaving,
+                                    )
+                                  }
+                                />
+                              </div>
+
+                              {isEditing
+                                ? createPortal(
+                                    <div
+                                      className="modal-overlay"
+                                      onClick={() => setEditingIncomingId(null)}
+                                    >
+                                      <div
+                                        className="modal-card"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="modal-header">
+                                          <h3>Edit Incoming</h3>
+                                          <button
+                                            type="button"
+                                            className="modal-close"
+                                            onClick={() =>
+                                              setEditingIncomingId(null)
+                                            }
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                        <div className="entry-form modal-form">
+                                          <input
+                                            value={editValues.incoming ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                incoming: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          <input
+                                            value={editValues.paidBy ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                paidBy: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          <OptionPicker
+                                            kind="incomeType"
+                                            label="Income Type"
+                                            value={editValues.incomeType ?? ""}
+                                            options={toOptionValues(
+                                              userOptions?.incomeType,
+                                            )}
+                                            placeholder="Income Type"
+                                            onChange={(value) =>
+                                              setEditValues((v) => {
+                                                const next: EditValues = {
+                                                  ...v,
+                                                  incomeType: value,
+                                                };
+                                                const scoped =
+                                                  getScopedOptionValues(
+                                                    userOptions,
+                                                    "incomeSubtype",
+                                                    value,
+                                                  );
+                                                if (
+                                                  (next.incomeSubtype ?? "") &&
+                                                  !scoped.includes(
+                                                    next.incomeSubtype ?? "",
+                                                  )
+                                                ) {
+                                                  next.incomeSubtype = "";
+                                                }
+                                                return next;
+                                              })
+                                            }
+                                            onCreateOption={saveOption.bind(
+                                              null,
+                                              addUserOption,
+                                            )}
+                                          />
+                                          <OptionPicker
+                                            kind="incomeSubtype"
+                                            label="Income Subtype"
+                                            value={
+                                              editValues.incomeSubtype ?? ""
+                                            }
+                                            options={getScopedOptionValues(
+                                              userOptions,
+                                              "incomeSubtype",
+                                              editValues.incomeType ?? "",
+                                            )}
+                                            placeholder="Income Subtype"
+                                            onChange={(value) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                incomeSubtype: value,
+                                              }))
+                                            }
+                                            onCreateOption={saveOption.bind(
+                                              null,
+                                              addUserOption,
+                                            )}
+                                            parentValue={
+                                              editValues.incomeType ?? ""
+                                            }
+                                          />
+                                          <OptionPicker
+                                            kind="account"
+                                            label="Account"
+                                            value={editValues.account ?? ""}
+                                            options={toOptionValues(
+                                              userOptions?.account,
+                                            )}
+                                            placeholder="Account"
+                                            onChange={(value) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                account: value,
+                                              }))
+                                            }
+                                            onCreateOption={saveOption.bind(
+                                              null,
+                                              addUserOption,
+                                            )}
+                                          />
+                                          <input
+                                            value={editValues.amount ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                amount: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          <EffectiveAmountControls
+                                            editValues={editValues}
+                                            setEditValues={setEditValues}
+                                          />
+                                          <input
+                                            type="date"
+                                            value={editValues.date ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                date: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          <MonthYearMultiSelect
+                                            value={parseMonthYears(
+                                              editValues.monthYears,
+                                              editValues.date ?? row.date,
+                                            )}
+                                            onChange={(value) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                monthYears:
+                                                  JSON.stringify(value),
+                                              }))
+                                            }
+                                            required
+                                          />
+                                          <input
+                                            value={editValues.notes ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                notes: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          <input
+                                            value={editValues.comments ?? ""}
+                                            onChange={(e) =>
+                                              setEditValues((v) => ({
+                                                ...v,
+                                                comments: e.target.value,
+                                              }))
+                                            }
+                                          />
+                                          {renderPartnerEditor(row)}
+                                          <IncomingPaybackLinkManager
+                                            incomingId={row._id}
+                                            disabled={saving}
+                                          />
+                                          <button
+                                            type="button"
+                                            className="save-plus-btn"
+                                            aria-label="Save incoming changes"
+                                            disabled={saving}
+                                            onClick={() =>
+                                              handleUpdateIncoming(row, {
+                                                updateIncoming,
+                                                editValues,
+                                                setSaving,
+                                                setEditingIncomingId,
+                                              })
+                                            }
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>,
+                                    document.body,
+                                  )
+                                : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const row = item.row;
+                const isExpanded = expandedIncomingId === row._id;
+                const isEditing = editingIncomingId === row._id;
+                const incomeTypeColor = getOptionColor(
                   userOptions,
                   "incomeType",
-                  firstRow.incomeType,
+                  row.incomeType,
                 );
-                const incomeSubtypeColor = firstRow.incomeSubtype
+                const incomeSubtypeColor = row.incomeSubtype
                   ? getOptionColor(
                       userOptions,
                       "incomeSubtype",
-                      firstRow.incomeSubtype,
+                      row.incomeSubtype,
                     )
                   : null;
-                const dotColor = incomeSubtypeColor ?? typeColor;
-                const amountTooltip = group.rows
-                  .map(
-                    (row) =>
-                      `${row.incoming}: ${formatMoney(row.amount)} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
-                  )
-                  .join("\n");
+                const dotColor = incomeSubtypeColor ?? incomeTypeColor;
+                const accountColor = getOptionColor(
+                  userOptions,
+                  "account",
+                  row.account,
+                );
 
                 return (
                   <div
                     key={item.id}
                     data-row-date={item.date}
-                    className={`entry-card grouped-expense-card${groupHasMonthYearsOnly ? " row-match-monthYearsOnly" : ""}${groupHasDateOnly ? " row-match-dateOnly" : ""}`}
+                    className={`entry-card${isExpanded ? " is-expanded" : ""}${partnerPickAnchorId ? " partner-pick-target" : ""}${getRowMatchState(row) === "monthYearsOnly" ? " row-match-monthYearsOnly" : ""}${getRowMatchState(row) === "dateOnly" ? " row-match-dateOnly" : ""}`}
+                    onClick={() =>
+                      partnerPickAnchorId
+                        ? void handlePickPartner(row._id)
+                        : undefined
+                    }
                   >
-                    <div className="entry-card-main grouped-expense-main">
+                    <div className="entry-card-main">
                       <div className="entry-card-primary">
-                        <div
-                          className="entry-card-amount"
-                          title={amountTooltip}
-                        >
+                        <div className="entry-card-amount">
                           <span
                             className="entry-card-account-icon-wrap"
-                            data-tooltip={firstRow.account}
+                            data-tooltip={row.account}
                           >
                             <CreditCard
                               className="entry-card-account-icon"
@@ -589,696 +969,325 @@ export function Incomings() {
                               aria-hidden="true"
                             />
                           </span>
-                          <span>{formatMoney(group.totalEffectiveAmount)}</span>
+                          <span className="entry-card-amount-values">
+                            <span>
+                              {getMonthSpanCount(row) > 1
+                                ? `(${formatMoney(getDisplayEffectiveAmount(row))})`
+                                : formatMoney(getDisplayEffectiveAmount(row))}
+                            </span>
+                            {getMonthSpanCount(row) > 1 ? (
+                              <span className="entry-effective-original">
+                                {formatMoney(getEffectiveAmount(row))}
+                              </span>
+                            ) : null}
+                          </span>
                         </div>
                         <span
                           className="entry-card-primary-divider"
-                          style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                          data-tooltip={firstRow.incomeType}
+                          style={{
+                            backgroundColor: incomeTypeColor,
+                            opacity: 0.8,
+                          }}
+                          data-tooltip={row.incomeType}
                           aria-hidden="true"
                         />
                         <div className="entry-card-title-wrap">
-                          <span className="entry-card-title">{groupTitle}</span>
+                          {getRowMatchDisclaimer(row) ? (
+                            <span className="row-match-disclaimer">
+                              {getRowMatchDisclaimer(row)}
+                            </span>
+                          ) : null}
+                          <span className="entry-card-title">
+                            {row.incoming}
+                          </span>
                           <span
                             className="entry-card-color-dot"
                             style={{ backgroundColor: dotColor }}
                             data-tooltip={
-                              firstRow.incomeSubtype
-                                ? `${firstRow.incomeType} / ${firstRow.incomeSubtype}`
-                                : firstRow.incomeType
+                              row.incomeSubtype
+                                ? `${row.incomeType} / ${row.incomeSubtype}`
+                                : row.incomeType
                             }
                           />
                         </div>
                       </div>
-
                       <div className="entry-card-date">
-                        {formatShortDisplayDate(group.latestDate)}
+                        {formatShortDisplayDate(row.date)}
                       </div>
-                    </div>
-
-                    <div className="entry-card-details grouped-expense-details">
-                      {group.rows.map((row, index) => {
-                        const isEditing = editingIncomingId === row._id;
-                        const incomeTypeColor = getOptionColor(
-                          userOptions,
-                          "incomeType",
-                          row.incomeType,
-                        );
-                        const incomeSubtypeColor = row.incomeSubtype
-                          ? getOptionColor(
-                              userOptions,
-                              "incomeSubtype",
-                              row.incomeSubtype,
+                      <div className="entry-row-controls">
+                        <EditableRowActions
+                          isEditing={false}
+                          saving={saving}
+                          onSave={() => {}}
+                          onCancel={() => {}}
+                          onEdit={() =>
+                            handleStartEditIncoming(
+                              row,
+                              setEditingIncomingId,
+                              setEditValues,
                             )
-                          : null;
-                        const dotColor = incomeSubtypeColor ?? incomeTypeColor;
-
-                        return (
-                          <div
-                            key={row._id}
-                            className={`grouped-expense-row${index > 0 ? " has-divider" : ""}${partnerPickAnchorId ? " partner-pick-target" : ""}${getRowMatchState(row) === "monthYearsOnly" ? " row-match-monthYearsOnly" : ""}${getRowMatchState(row) === "dateOnly" ? " row-match-dateOnly" : ""}`}
-                            onClick={() =>
-                              partnerPickAnchorId
-                                ? void handlePickPartner(row._id)
-                                : undefined
-                            }
-                          >
-                            <div className="grouped-expense-row-main">
-                              <div className="grouped-expense-row-title-wrap">
-                                {getRowMatchDisclaimer(row) ? (
-                                  <span className="row-match-disclaimer">
-                                    {getRowMatchDisclaimer(row)}
-                                  </span>
-                                ) : null}
-                                <span className="grouped-expense-row-title">
-                                  {row.incoming}
-                                </span>
-                                <span
-                                  className="entry-card-color-dot"
-                                  style={{ backgroundColor: dotColor }}
-                                />
-                              </div>
-                              <div className="grouped-expense-row-meta">
-                                {row.incomeType}
-                                {row.incomeSubtype
-                                  ? ` / ${row.incomeSubtype}`
-                                  : ""}{" "}
-                                · {row.paidBy} · {row.account}
-                              </div>
-                            </div>
-
-                            <div className="grouped-expense-row-amount-date">
-                              <span className="grouped-expense-row-amount">
-                                {formatMoney(row.amount)}
-                              </span>
-                              <span className="grouped-expense-row-effective">
-                                {getMonthSpanCount(row) > 1
-                                  ? `(${formatMoney(getDisplayEffectiveAmount(row))}) effective`
-                                  : `${formatMoney(getDisplayEffectiveAmount(row))} effective`}
-                              </span>
-                              {getMonthSpanCount(row) > 1 ? (
-                                <span className="entry-effective-original">
-                                  {formatMoney(getEffectiveAmount(row))}{" "}
-                                  effective
-                                </span>
-                              ) : null}
-                              <span className="grouped-expense-row-date">
-                                {formatShortDisplayDate(row.date)}
-                              </span>
-                            </div>
-
-                            <div className="entry-row-controls grouped-expense-row-controls">
-                              <EditableRowActions
-                                isEditing={false}
-                                saving={saving}
-                                onSave={() => {}}
-                                onCancel={() => {}}
-                                onEdit={() =>
-                                  handleStartEditIncoming(
-                                    row,
-                                    setEditingIncomingId,
-                                    setEditValues,
-                                  )
-                                }
-                                onDelete={() =>
-                                  handleDeleteIncoming(
-                                    row,
-                                    deleteIncoming,
-                                    setSaving,
-                                  )
-                                }
-                              />
-                            </div>
-
-                            {isEditing
-                              ? createPortal(
-                                  <div
-                                    className="modal-overlay"
-                                    onClick={() => setEditingIncomingId(null)}
-                                  >
-                                    <div
-                                      className="modal-card"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <div className="modal-header">
-                                        <h3>Edit Incoming</h3>
-                                        <button
-                                          type="button"
-                                          className="modal-close"
-                                          onClick={() =>
-                                            setEditingIncomingId(null)
-                                          }
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                      <div className="entry-form modal-form">
-                                        <input
-                                          value={editValues.incoming ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              incoming: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <input
-                                          value={editValues.paidBy ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              paidBy: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <OptionPicker
-                                          kind="incomeType"
-                                          label="Income Type"
-                                          value={editValues.incomeType ?? ""}
-                                          options={toOptionValues(
-                                            userOptions?.incomeType,
-                                          )}
-                                          placeholder="Income Type"
-                                          onChange={(value) =>
-                                            setEditValues((v) => {
-                                              const next: EditValues = {
-                                                ...v,
-                                                incomeType: value,
-                                              };
-                                              const scoped =
-                                                getScopedOptionValues(
-                                                  userOptions,
-                                                  "incomeSubtype",
-                                                  value,
-                                                );
-                                              if (
-                                                (next.incomeSubtype ?? "") &&
-                                                !scoped.includes(
-                                                  next.incomeSubtype ?? "",
-                                                )
-                                              ) {
-                                                next.incomeSubtype = "";
-                                              }
-                                              return next;
-                                            })
-                                          }
-                                          onCreateOption={saveOption.bind(
-                                            null,
-                                            addUserOption,
-                                          )}
-                                        />
-                                        <OptionPicker
-                                          kind="incomeSubtype"
-                                          label="Income Subtype"
-                                          value={editValues.incomeSubtype ?? ""}
-                                          options={getScopedOptionValues(
-                                            userOptions,
-                                            "incomeSubtype",
-                                            editValues.incomeType ?? "",
-                                          )}
-                                          placeholder="Income Subtype"
-                                          onChange={(value) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              incomeSubtype: value,
-                                            }))
-                                          }
-                                          onCreateOption={saveOption.bind(
-                                            null,
-                                            addUserOption,
-                                          )}
-                                          parentValue={
-                                            editValues.incomeType ?? ""
-                                          }
-                                        />
-                                        <OptionPicker
-                                          kind="account"
-                                          label="Account"
-                                          value={editValues.account ?? ""}
-                                          options={toOptionValues(
-                                            userOptions?.account,
-                                          )}
-                                          placeholder="Account"
-                                          onChange={(value) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              account: value,
-                                            }))
-                                          }
-                                          onCreateOption={saveOption.bind(
-                                            null,
-                                            addUserOption,
-                                          )}
-                                        />
-                                        <input
-                                          value={editValues.amount ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              amount: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <EffectiveAmountControls
-                                          editValues={editValues}
-                                          setEditValues={setEditValues}
-                                        />
-                                        <input
-                                          type="date"
-                                          value={editValues.date ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              date: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <MonthYearMultiSelect
-                                          value={parseMonthYears(
-                                            editValues.monthYears,
-                                            editValues.date ?? row.date,
-                                          )}
-                                          onChange={(value) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              monthYears: JSON.stringify(value),
-                                            }))
-                                          }
-                                          required
-                                        />
-                                        <input
-                                          value={editValues.notes ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              notes: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        <input
-                                          value={editValues.comments ?? ""}
-                                          onChange={(e) =>
-                                            setEditValues((v) => ({
-                                              ...v,
-                                              comments: e.target.value,
-                                            }))
-                                          }
-                                        />
-                                        {renderPartnerEditor(row)}
-                                        <IncomingPaybackLinkManager
-                                          incomingId={row._id}
-                                          disabled={saving}
-                                        />
-                                        <button
-                                          type="button"
-                                          className="save-plus-btn"
-                                          aria-label="Save incoming changes"
-                                          disabled={saving}
-                                          onClick={() =>
-                                            handleUpdateIncoming(row, {
-                                              updateIncoming,
-                                              editValues,
-                                              setSaving,
-                                              setEditingIncomingId,
-                                            })
-                                          }
-                                        >
-                                          +
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>,
-                                  document.body,
-                                )
-                              : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
-
-              const row = item.row;
-              const isExpanded = expandedIncomingId === row._id;
-              const isEditing = editingIncomingId === row._id;
-              const incomeTypeColor = getOptionColor(
-                userOptions,
-                "incomeType",
-                row.incomeType,
-              );
-              const incomeSubtypeColor = row.incomeSubtype
-                ? getOptionColor(
-                    userOptions,
-                    "incomeSubtype",
-                    row.incomeSubtype,
-                  )
-                : null;
-              const dotColor = incomeSubtypeColor ?? incomeTypeColor;
-              const accountColor = getOptionColor(
-                userOptions,
-                "account",
-                row.account,
-              );
-
-              return (
-                <div
-                  key={item.id}
-                  data-row-date={item.date}
-                  className={`entry-card${isExpanded ? " is-expanded" : ""}${partnerPickAnchorId ? " partner-pick-target" : ""}${getRowMatchState(row) === "monthYearsOnly" ? " row-match-monthYearsOnly" : ""}${getRowMatchState(row) === "dateOnly" ? " row-match-dateOnly" : ""}`}
-                  onClick={() =>
-                    partnerPickAnchorId
-                      ? void handlePickPartner(row._id)
-                      : undefined
-                  }
-                >
-                  <div className="entry-card-main">
-                    <div className="entry-card-primary">
-                      <div className="entry-card-amount">
-                        <span
-                          className="entry-card-account-icon-wrap"
-                          data-tooltip={row.account}
-                        >
-                          <CreditCard
-                            className="entry-card-account-icon"
-                            style={{ color: accountColor }}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        <span className="entry-card-amount-values">
-                          <span>
-                            {getMonthSpanCount(row) > 1
-                              ? `(${formatMoney(getDisplayEffectiveAmount(row))})`
-                              : formatMoney(getDisplayEffectiveAmount(row))}
-                          </span>
-                          {getMonthSpanCount(row) > 1 ? (
-                            <span className="entry-effective-original">
-                              {formatMoney(getEffectiveAmount(row))}
-                            </span>
-                          ) : null}
-                        </span>
-                      </div>
-                      <span
-                        className="entry-card-primary-divider"
-                        style={{
-                          backgroundColor: incomeTypeColor,
-                          opacity: 0.8,
-                        }}
-                        data-tooltip={row.incomeType}
-                        aria-hidden="true"
-                      />
-                      <div className="entry-card-title-wrap">
-                        {getRowMatchDisclaimer(row) ? (
-                          <span className="row-match-disclaimer">
-                            {getRowMatchDisclaimer(row)}
-                          </span>
-                        ) : null}
-                        <span className="entry-card-title">{row.incoming}</span>
-                        <span
-                          className="entry-card-color-dot"
-                          style={{ backgroundColor: dotColor }}
-                          data-tooltip={
-                            row.incomeSubtype
-                              ? `${row.incomeType} / ${row.incomeSubtype}`
-                              : row.incomeType
+                          }
+                          onDelete={() =>
+                            handleDeleteIncoming(row, deleteIncoming, setSaving)
                           }
                         />
-                      </div>
-                    </div>
-                    <div className="entry-card-date">
-                      {formatShortDisplayDate(row.date)}
-                    </div>
-                    <div className="entry-row-controls">
-                      <EditableRowActions
-                        isEditing={false}
-                        saving={saving}
-                        onSave={() => {}}
-                        onCancel={() => {}}
-                        onEdit={() =>
-                          handleStartEditIncoming(
-                            row,
-                            setEditingIncomingId,
-                            setEditValues,
-                          )
-                        }
-                        onDelete={() =>
-                          handleDeleteIncoming(row, deleteIncoming, setSaving)
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="icon-action-btn"
-                        onClick={() =>
-                          setExpandedIncomingId((prev) =>
-                            prev === row._id ? null : row._id)
-                        }
-                      >
-                        {isExpanded ? "▴" : "▾"}
-                      </button>
-                    </div>
-                  </div>
-
-                  {isExpanded ? (
-                    <div className="entry-card-details">
-                      <div className="entry-detail-grid static">
-                        <div>
-                          <strong>Income Type:</strong> {row.incomeType}
-                        </div>
-                        <div>
-                          <strong>Income Subtype:</strong>{" "}
-                          {row.incomeSubtype || "-"}
-                        </div>
-                        <div>
-                          <strong>Paid By:</strong> {row.paidBy}
-                        </div>
-                        <div>
-                          <strong>Account:</strong> {row.account}
-                        </div>
-                        <div>
-                          <strong>Months:</strong>{" "}
-                          {(row.monthYears ?? [])
-                            .map((month) => {
-                              const parsed = new Date(`${month}-01T00:00:00`);
-                              if (Number.isNaN(parsed.getTime())) return month;
-                              return new Intl.DateTimeFormat("en-US", {
-                                month: "long",
-                                year: "numeric",
-                              }).format(parsed);
-                            })
-                            .join(", ") || "-"}
-                        </div>
-                        <div>
-                          <strong>Amount:</strong> {formatMoney(row.amount)}
-                        </div>
-                        <div>
-                          <strong>Effective:</strong>{" "}
-                          {formatMoney(getEffectiveAmount(row))}
-                        </div>
-                        <div>
-                          <strong>Notes:</strong> {row.notes ?? "-"}
-                        </div>
-                        <div>
-                          <strong>Comments:</strong> {row.comments ?? "-"}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {isEditing
-                    ? createPortal(
-                        <div
-                          className="modal-overlay"
-                          onClick={() => setEditingIncomingId(null)}
+                        <button
+                          type="button"
+                          className="icon-action-btn"
+                          onClick={() =>
+                            setExpandedIncomingId((prev) =>
+                              prev === row._id ? null : row._id)
+                          }
                         >
-                          <div
-                            className="modal-card"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="modal-header">
-                              <h3>Edit Incoming</h3>
-                              <button
-                                type="button"
-                                className="modal-close"
-                                onClick={() => setEditingIncomingId(null)}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="entry-form modal-form">
-                              <input
-                                value={editValues.incoming ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    incoming: e.target.value,
-                                  }))
-                                }
-                              />
-                              <input
-                                value={editValues.paidBy ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    paidBy: e.target.value,
-                                  }))
-                                }
-                              />
-                              <OptionPicker
-                                kind="incomeType"
-                                label="Income Type"
-                                value={editValues.incomeType ?? ""}
-                                options={toOptionValues(
-                                  userOptions?.incomeType,
-                                )}
-                                placeholder="Income Type"
-                                onChange={(value) =>
-                                  setEditValues((v) => {
-                                    const next: EditValues = {
-                                      ...v,
-                                      incomeType: value,
-                                    };
-                                    const scoped = getScopedOptionValues(
-                                      userOptions,
-                                      "incomeSubtype",
-                                      value,
-                                    );
-                                    if (
-                                      (next.incomeSubtype ?? "") &&
-                                      !scoped.includes(next.incomeSubtype ?? "")
-                                    ) {
-                                      next.incomeSubtype = "";
-                                    }
-                                    return next;
-                                  })
-                                }
-                                onCreateOption={saveOption.bind(
-                                  null,
-                                  addUserOption,
-                                )}
-                              />
-                              <OptionPicker
-                                kind="incomeSubtype"
-                                label="Income Subtype"
-                                value={editValues.incomeSubtype ?? ""}
-                                options={getScopedOptionValues(
-                                  userOptions,
-                                  "incomeSubtype",
-                                  editValues.incomeType ?? "",
-                                )}
-                                placeholder="Income Subtype"
-                                onChange={(value) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    incomeSubtype: value,
-                                  }))
-                                }
-                                onCreateOption={saveOption.bind(
-                                  null,
-                                  addUserOption,
-                                )}
-                                parentValue={editValues.incomeType ?? ""}
-                              />
-                              <OptionPicker
-                                kind="account"
-                                label="Account"
-                                value={editValues.account ?? ""}
-                                options={toOptionValues(userOptions?.account)}
-                                placeholder="Account"
-                                onChange={(value) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    account: value,
-                                  }))
-                                }
-                                onCreateOption={saveOption.bind(
-                                  null,
-                                  addUserOption,
-                                )}
-                              />
-                              <input
-                                value={editValues.amount ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    amount: e.target.value,
-                                  }))
-                                }
-                              />
-                              <EffectiveAmountControls
-                                editValues={editValues}
-                                setEditValues={setEditValues}
-                              />
-                              <input
-                                type="date"
-                                value={editValues.date ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    date: e.target.value,
-                                  }))
-                                }
-                              />
-                              <MonthYearMultiSelect
-                                value={parseMonthYears(
-                                  editValues.monthYears,
-                                  editValues.date ?? row.date,
-                                )}
-                                onChange={(value) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    monthYears: JSON.stringify(value),
-                                  }))
-                                }
-                                required
-                              />
-                              <input
-                                value={editValues.notes ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    notes: e.target.value,
-                                  }))
-                                }
-                              />
-                              <input
-                                value={editValues.comments ?? ""}
-                                onChange={(e) =>
-                                  setEditValues((v) => ({
-                                    ...v,
-                                    comments: e.target.value,
-                                  }))
-                                }
-                              />
-                              {renderPartnerEditor(row)}
-                              <IncomingPaybackLinkManager
-                                incomingId={row._id}
-                                disabled={saving}
-                              />
-                              <button
-                                type="button"
-                                className="save-plus-btn"
-                                aria-label="Save incoming changes"
-                                disabled={saving}
-                                onClick={() =>
-                                  handleUpdateIncoming(row, {
-                                    updateIncoming,
-                                    editValues,
-                                    setSaving,
-                                    setEditingIncomingId,
-                                  })
-                                }
-                              >
-                                +
-                              </button>
-                            </div>
+                          {isExpanded ? "▴" : "▾"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded ? (
+                      <div className="entry-card-details">
+                        <div className="entry-detail-grid static">
+                          <div>
+                            <strong>Income Type:</strong> {row.incomeType}
                           </div>
-                        </div>,
-                        document.body,
-                      )
-                    : null}
-                </div>
-              );
-            })
+                          <div>
+                            <strong>Income Subtype:</strong>{" "}
+                            {row.incomeSubtype || "-"}
+                          </div>
+                          <div>
+                            <strong>Paid By:</strong> {row.paidBy}
+                          </div>
+                          <div>
+                            <strong>Account:</strong> {row.account}
+                          </div>
+                          <div>
+                            <strong>Months:</strong>{" "}
+                            {(row.monthYears ?? [])
+                              .map((month) => {
+                                const parsed = new Date(`${month}-01T00:00:00`);
+                                if (Number.isNaN(parsed.getTime()))
+                                  return month;
+                                return new Intl.DateTimeFormat("en-US", {
+                                  month: "long",
+                                  year: "numeric",
+                                }).format(parsed);
+                              })
+                              .join(", ") || "-"}
+                          </div>
+                          <div>
+                            <strong>Amount:</strong> {formatMoney(row.amount)}
+                          </div>
+                          <div>
+                            <strong>Effective:</strong>{" "}
+                            {formatMoney(getEffectiveAmount(row))}
+                          </div>
+                          <div>
+                            <strong>Notes:</strong> {row.notes ?? "-"}
+                          </div>
+                          <div>
+                            <strong>Comments:</strong> {row.comments ?? "-"}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {isEditing
+                      ? createPortal(
+                          <div
+                            className="modal-overlay"
+                            onClick={() => setEditingIncomingId(null)}
+                          >
+                            <div
+                              className="modal-card"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="modal-header">
+                                <h3>Edit Incoming</h3>
+                                <button
+                                  type="button"
+                                  className="modal-close"
+                                  onClick={() => setEditingIncomingId(null)}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="entry-form modal-form">
+                                <input
+                                  value={editValues.incoming ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      incoming: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <input
+                                  value={editValues.paidBy ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      paidBy: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <OptionPicker
+                                  kind="incomeType"
+                                  label="Income Type"
+                                  value={editValues.incomeType ?? ""}
+                                  options={toOptionValues(
+                                    userOptions?.incomeType,
+                                  )}
+                                  placeholder="Income Type"
+                                  onChange={(value) =>
+                                    setEditValues((v) => {
+                                      const next: EditValues = {
+                                        ...v,
+                                        incomeType: value,
+                                      };
+                                      const scoped = getScopedOptionValues(
+                                        userOptions,
+                                        "incomeSubtype",
+                                        value,
+                                      );
+                                      if (
+                                        (next.incomeSubtype ?? "") &&
+                                        !scoped.includes(
+                                          next.incomeSubtype ?? "",
+                                        )
+                                      ) {
+                                        next.incomeSubtype = "";
+                                      }
+                                      return next;
+                                    })
+                                  }
+                                  onCreateOption={saveOption.bind(
+                                    null,
+                                    addUserOption,
+                                  )}
+                                />
+                                <OptionPicker
+                                  kind="incomeSubtype"
+                                  label="Income Subtype"
+                                  value={editValues.incomeSubtype ?? ""}
+                                  options={getScopedOptionValues(
+                                    userOptions,
+                                    "incomeSubtype",
+                                    editValues.incomeType ?? "",
+                                  )}
+                                  placeholder="Income Subtype"
+                                  onChange={(value) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      incomeSubtype: value,
+                                    }))
+                                  }
+                                  onCreateOption={saveOption.bind(
+                                    null,
+                                    addUserOption,
+                                  )}
+                                  parentValue={editValues.incomeType ?? ""}
+                                />
+                                <OptionPicker
+                                  kind="account"
+                                  label="Account"
+                                  value={editValues.account ?? ""}
+                                  options={toOptionValues(userOptions?.account)}
+                                  placeholder="Account"
+                                  onChange={(value) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      account: value,
+                                    }))
+                                  }
+                                  onCreateOption={saveOption.bind(
+                                    null,
+                                    addUserOption,
+                                  )}
+                                />
+                                <input
+                                  value={editValues.amount ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      amount: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <EffectiveAmountControls
+                                  editValues={editValues}
+                                  setEditValues={setEditValues}
+                                />
+                                <input
+                                  type="date"
+                                  value={editValues.date ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      date: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <MonthYearMultiSelect
+                                  value={parseMonthYears(
+                                    editValues.monthYears,
+                                    editValues.date ?? row.date,
+                                  )}
+                                  onChange={(value) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      monthYears: JSON.stringify(value),
+                                    }))
+                                  }
+                                  required
+                                />
+                                <input
+                                  value={editValues.notes ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      notes: e.target.value,
+                                    }))
+                                  }
+                                />
+                                <input
+                                  value={editValues.comments ?? ""}
+                                  onChange={(e) =>
+                                    setEditValues((v) => ({
+                                      ...v,
+                                      comments: e.target.value,
+                                    }))
+                                  }
+                                />
+                                {renderPartnerEditor(row)}
+                                <IncomingPaybackLinkManager
+                                  incomingId={row._id}
+                                  disabled={saving}
+                                />
+                                <button
+                                  type="button"
+                                  className="save-plus-btn"
+                                  aria-label="Save incoming changes"
+                                  disabled={saving}
+                                  onClick={() =>
+                                    handleUpdateIncoming(row, {
+                                      updateIncoming,
+                                      editValues,
+                                      setSaving,
+                                      setEditingIncomingId,
+                                    })
+                                  }
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>,
+                          document.body,
+                        )
+                      : null}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

@@ -392,6 +392,53 @@ export const update = mutation({
   },
 });
 
+export const bulkPatchVisible = mutation({
+  args: {
+    ids: v.array(v.id("expenses")),
+    patch: v.object({
+      type: v.optional(v.string()),
+      account: v.optional(v.string()),
+      category: v.optional(v.string()),
+      subcategory: v.optional(v.union(v.string(), v.null())),
+      paidTo: v.optional(v.string()),
+      notes: v.optional(v.union(v.string(), v.null())),
+      comments: v.optional(v.union(v.string(), v.null())),
+    }),
+  },
+  handler: async (ctx, { ids, patch }) => {
+    const userId = await requireUserId(ctx);
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) return { updatedCount: 0 };
+
+    const rows = await Promise.all(uniqueIds.map((id) => ctx.db.get(id)));
+    if (rows.some((row) => !row || row.userId !== userId)) {
+      throw new Error("One or more selected expenses were not found");
+    }
+
+    const entries = Object.entries(patch).filter(
+      ([, value]) => value !== undefined,
+    );
+    if (entries.length === 0) return { updatedCount: 0 };
+    const normalizedPatch = Object.fromEntries(
+      entries.map(([key, value]) => [
+        key,
+        value === null
+          ? undefined
+          : typeof value === "string"
+            ? value.trim()
+            : value,
+      ]),
+    ) as Record<string, string | undefined>;
+
+    for (const row of rows) {
+      if (!row) continue;
+      await ctx.db.patch(row._id, normalizedPatch);
+    }
+
+    return { updatedCount: uniqueIds.length };
+  },
+});
+
 export const renameBaseExpense = mutation({
   args: {
     baseExpenseId: v.string(),

@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-export function MultiSelectFilterDropdown({
-  label,
-  options,
-  selected,
-  onChange,
-}: {
+export function MultiSelectFilterDropdown({ label, options, selected, onChange }: {
   label: string;
   options: string[];
   selected: string[];

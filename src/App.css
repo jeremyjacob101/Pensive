@@ -208,6 +208,20 @@ body {
   font-size: 14px;
 }
 
+.bulk-edit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bulk-edit-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .save-plus-btn {
   border: 1px solid #0f8a37 !important;
   background: #16a34a !important;

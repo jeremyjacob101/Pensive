@@ -20,6 +20,10 @@ export type TopRowSearchState = {
   setIncomingSearchQuery: (value: string) => void;
   incomingSelectedSearchFields: string[];
   setIncomingSelectedSearchFields: (value: string[]) => void;
+  setVisibleExpenseIds: (value: string[]) => void;
+  setVisibleIncomingIds: (value: string[]) => void;
+  setVisibleExpenseCategories: (value: string[]) => void;
+  setVisibleIncomingTypes: (value: string[]) => void;
 };
 
 export function AppLayout() {
@@ -35,6 +39,14 @@ export function AppLayout() {
     useState<string[]>(["expense"]);
   const [incomingSelectedSearchFields, setIncomingSelectedSearchFields] =
     useState<string[]>(["incoming"]);
+  const [visibleExpenseIds, setVisibleExpenseIds] = useState<string[]>([]);
+  const [visibleIncomingIds, setVisibleIncomingIds] = useState<string[]>([]);
+  const [visibleExpenseCategories, setVisibleExpenseCategories] = useState<
+    string[]
+  >([]);
+  const [visibleIncomingTypes, setVisibleIncomingTypes] = useState<string[]>(
+    [],
+  );
 
   const createExpense = useMutation(api.expenses.create);
   const bulkCreateExpenses = useMutation(api.expenses.bulkCreate);
@@ -42,6 +54,8 @@ export function AppLayout() {
   const bulkCreateIncomings = useMutation(api.incomings.bulkCreate);
   const createRecurring = useMutation(api.recurrings.create);
   const addUserOption = useMutation(api.userOptions.add);
+  const bulkPatchVisibleExpenses = useMutation(api.expenses.bulkPatchVisible);
+  const bulkPatchVisibleIncomings = useMutation(api.incomings.bulkPatchVisible);
 
   const userOptions = useQuery(api.userOptions.list);
 
@@ -134,6 +148,12 @@ export function AppLayout() {
                   ? setIncomingSelectedSearchFields
                   : setExpenseSelectedSearchFields
               }
+              visibleExpenseIds={visibleExpenseIds}
+              visibleIncomingIds={visibleIncomingIds}
+              visibleExpenseCategories={visibleExpenseCategories}
+              visibleIncomingTypes={visibleIncomingTypes}
+              onBulkPatchExpenses={bulkPatchVisibleExpenses}
+              onBulkPatchIncomings={bulkPatchVisibleIncomings}
               onAddExpense={(e) =>
                 handleAddExpense(e, {
                   createExpense,
@@ -166,16 +186,22 @@ export function AppLayout() {
               userOptions={userOptions}
             />
             <Outlet
-              context={{
-                expenseSearchQuery,
-                setExpenseSearchQuery,
-                expenseSelectedSearchFields,
-                setExpenseSelectedSearchFields,
-                incomingSearchQuery,
-                setIncomingSearchQuery,
-                incomingSelectedSearchFields,
-                setIncomingSelectedSearchFields,
-              } satisfies TopRowSearchState}
+              context={
+                {
+                  expenseSearchQuery,
+                  setExpenseSearchQuery,
+                  expenseSelectedSearchFields,
+                  setExpenseSelectedSearchFields,
+                  incomingSearchQuery,
+                  setIncomingSearchQuery,
+                  incomingSelectedSearchFields,
+                  setIncomingSelectedSearchFields,
+                  setVisibleExpenseIds,
+                  setVisibleIncomingIds,
+                  setVisibleExpenseCategories,
+                  setVisibleIncomingTypes,
+                } satisfies TopRowSearchState
+              }
             />
           </section>
         </div>
