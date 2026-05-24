@@ -17,7 +17,7 @@ export function ThemeToggle({ isDark, onToggle }: {
           viewBox="0 0 24 24"
           width="16"
           height="16"
-          style={{ color: isDark ? "#facc15" : "#0f172a" }}
+          style={{ color: "currentColor" }}
         >
           <circle cx="12" cy="12" r="5" fill="currentColor" />
           <path

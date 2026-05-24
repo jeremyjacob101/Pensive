@@ -1,4 +1,9 @@
-export type MenuItemKey = "expenses" | "incomings" | "recurrings" | "options";
+export type MenuItemKey =
+  | "expenses"
+  | "incomings"
+  | "breakdown"
+  | "recurrings"
+  | "options";
 
 export type MenuItem = {
   key: MenuItemKey;
@@ -8,6 +13,7 @@ export type MenuItem = {
 export const layoutMenuItems: MenuItem[] = [
   { key: "expenses", label: "Expenses" },
   { key: "incomings", label: "Incomings" },
+  { key: "breakdown", label: "Breakdown" },
   { key: "recurrings", label: "Recurrings" },
   { key: "options", label: "Options" },
 ];

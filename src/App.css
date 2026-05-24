@@ -1453,6 +1453,215 @@ thead th {
   opacity: 0.65;
 }
 
+.breakdown-filter-panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+}
+
+.breakdown-filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.breakdown-filter-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.breakdown-reset-btn {
+  height: 30px;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.breakdown-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breakdown-filter-group-title {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.breakdown-range-panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+}
+
+.breakdown-range-title {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.breakdown-range-panel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.breakdown-range-panel input[type="date"] {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 8px;
+}
+
+.breakdown-range-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.breakdown-range-actions .split-entry-launcher {
+  height: 34px;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.breakdown-content {
+  width: min(980px, 74vw);
+  min-width: 760px;
+}
+
+.breakdown-totals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.breakdown-total-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breakdown-total-card.incoming {
+  border-color: color-mix(in srgb, #22c55e 42%, var(--border) 58%);
+}
+
+.breakdown-total-card.expense {
+  border-color: color-mix(in srgb, #ef4444 42%, var(--border) 58%);
+}
+
+.breakdown-total-card.savings {
+  border-color: color-mix(in srgb, #3b82f6 42%, var(--border) 58%);
+}
+
+.breakdown-total-card.savings.negative {
+  border-color: color-mix(in srgb, #ef4444 42%, var(--border) 58%);
+}
+
+.breakdown-total-label {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.breakdown-total-value {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.breakdown-total-value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.breakdown-total-avg {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--text) 48%, transparent 52%);
+  white-space: nowrap;
+}
+
+.breakdown-monthly-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.breakdown-monthly-header {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.breakdown-monthly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-monthly-table th,
+.breakdown-monthly-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.breakdown-monthly-table th:first-child,
+.breakdown-monthly-table td:first-child {
+  text-align: left;
+}
+
+.breakdown-monthly-table tfoot th,
+.breakdown-monthly-table tfoot td {
+  border-bottom: none;
+  padding-top: 14px;
+}
+
+.breakdown-monthly-table .positive {
+  color: #22c55e;
+}
+
+.breakdown-monthly-table .negative {
+  color: #ef4444;
+}
+
+@media (max-width: 1280px) {
+  .breakdown-content {
+    width: min(900px, 72vw);
+    min-width: 620px;
+  }
+
+  .breakdown-totals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .link-select-check {
   display: inline-flex;
   align-items: center;

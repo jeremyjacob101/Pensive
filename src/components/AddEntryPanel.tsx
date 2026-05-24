@@ -806,7 +806,9 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
 
   return (
     <>
-      {activeItem !== "options" && activeItem !== "recurrings" && (
+      {activeItem !== "options" &&
+        activeItem !== "recurrings" &&
+        activeItem !== "breakdown" && (
         <div className="add-entry-launcher-row">
           <button
             type="button"

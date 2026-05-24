@@ -13,8 +13,18 @@ interface MonthBounds {
   oldestMonth: string | null;
 }
 
+interface UseSingleMonthScopeInitialState {
+  mode?: MonthScopeMode;
+  activeMonth?: string | null;
+  customRange?: DateWindow | null;
+}
+
 function validMonth(value: string | null | undefined): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
+}
+
+function validIsoDate(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function windowFromMonth(month: string): DateWindow {
@@ -26,10 +36,29 @@ function fallbackCurrentMonth(): string {
   return getMonthFromIsoDate(getTodayIsoDate());
 }
 
-export function useSingleMonthScope(monthBounds: MonthBounds | undefined) {
-  const [mode, setMode] = useState<MonthScopeMode>("month");
-  const [activeMonth, setActiveMonth] = useState<string | null>(null);
-  const [customRange, setCustomRange] = useState<DateWindow | null>(null);
+export function useSingleMonthScope(
+  monthBounds: MonthBounds | undefined,
+  initialState?: UseSingleMonthScopeInitialState,
+) {
+  const [mode, setMode] = useState<MonthScopeMode>(
+    initialState?.mode === "custom" ? "custom" : "month",
+  );
+  const [activeMonth, setActiveMonth] = useState<string | null>(() =>
+    validMonth(initialState?.activeMonth)
+      ? initialState?.activeMonth
+      : null,
+  );
+  const [customRange, setCustomRange] = useState<DateWindow | null>(() => {
+    const range = initialState?.customRange;
+    if (
+      !range ||
+      !validIsoDate(range.startDate) ||
+      !validIsoDate(range.endDate)
+    ) {
+      return null;
+    }
+    return range;
+  });
 
   const newestBoundMonth = monthBounds?.newestMonth;
   const oldestBoundMonth = monthBounds?.oldestMonth;
