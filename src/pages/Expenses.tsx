@@ -16,6 +16,7 @@ import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdo
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
 import { OptionPicker } from "../components/OptionPicker";
@@ -26,8 +27,11 @@ import { parseSubId } from "../helpers/subId";
 import { CreditCard } from "lucide-react";
 import { createPortal } from "react-dom";
 import { saveOption } from "./actions";
+import type { TopRowSearchState } from "./AppLayout";
 
 export function Expenses() {
+  const { expenseSearchQuery, expenseSelectedSearchFields } =
+    useOutletContext<TopRowSearchState>();
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expandedExpenseId, setExpandedExpenseId] = useState<string | null>(
     null,
@@ -170,6 +174,44 @@ export function Expenses() {
       ),
     [expenses, expenseCategoryLabel, selectedAccountSet, selectedCategorySet],
   );
+  const normalizedSearchQuery = useMemo(
+    () => expenseSearchQuery.trim().toLowerCase(),
+    [expenseSearchQuery],
+  );
+  const searchFilteredExpenses = useMemo(() => {
+    if (!normalizedSearchQuery) return filteredExpenses;
+    if (expenseSelectedSearchFields.length === 0) return [];
+    return filteredExpenses.filter((row) =>
+      expenseSelectedSearchFields.some((field) => {
+        const value = (
+          field === "expense"
+            ? row.expense
+            : field === "paidTo"
+              ? row.paidTo
+              : field === "category"
+                ? row.category
+                : field === "subcategory"
+                  ? row.subcategory
+                  : field === "type"
+                    ? row.type
+                    : field === "account"
+                      ? row.account
+                      : field === "notes"
+                        ? row.notes
+                        : field === "comments"
+                          ? row.comments
+                          : field === "baseExpenseLabel"
+                            ? row.baseExpenseLabel
+                            : ""
+        ) ?? "";
+        return value.toLowerCase().includes(normalizedSearchQuery);
+      }),
+    );
+  }, [
+    expenseSelectedSearchFields,
+    filteredExpenses,
+    normalizedSearchQuery,
+  ]);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const monthOverlapSet = useMemo(
@@ -223,13 +265,13 @@ export function Expenses() {
         latestCreation: number;
         totalAmount: number;
         totalEffectiveAmount: number;
-        rows: typeof filteredExpenses;
+        rows: typeof searchFilteredExpenses;
       }
     >();
 
-    const soloRows: typeof filteredExpenses = [];
+    const soloRows: typeof searchFilteredExpenses = [];
 
-    for (const row of filteredExpenses) {
+    for (const row of searchFilteredExpenses) {
       const sharedBaseId = (row.baseExpenseId ?? "").trim();
       if (!sharedBaseId) {
         soloRows.push(row);
@@ -315,7 +357,7 @@ export function Expenses() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [filteredExpenses, getRowMatchState]);
+  }, [getRowMatchState, searchFilteredExpenses]);
 
   const rangeLabelText =
     mode === "custom"
@@ -450,7 +492,7 @@ export function Expenses() {
               onJumpToNewest={jumpToNewest}
             />
             <RangePieChartPanel
-              rows={filteredExpenses.map((e) => ({
+              rows={searchFilteredExpenses.map((e) => ({
                 monthYears: e.monthYears ?? [],
                 effectiveAmount: getEffectiveAmount(e),
                 category: e.category,
@@ -489,7 +531,7 @@ export function Expenses() {
             {!hasAnyExpenses ? (
               <p>No expenses yet.</p>
             ) : displayItems.length === 0 ? (
-              <p>No expenses match current filters.</p>
+              <p>No expenses match current filters/search.</p>
             ) : (
               displayItems.map((item) => {
               if (item.kind === "group") {

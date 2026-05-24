@@ -5,6 +5,7 @@ import { getMonthFromIsoDate, getTodayIsoDate } from "../helpers/dates";
 import type { FormType, UserOptions } from "../types/workspace";
 import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 import { randomId16, toAmount } from "../helpers/formatters";
+import { SearchFieldDropdown } from "./SearchFieldDropdown";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import type { MenuItemKey } from "../types/ui";
@@ -12,11 +13,17 @@ import { OptionPicker } from "./OptionPicker";
 import { saveOption } from "../pages/actions";
 import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
+import { createPortal } from "react-dom";
 
-export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {
+export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, onSearchQueryChange, searchFieldOptions, selectedSearchFields, onSearchFieldsChange, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {
   activeItem: MenuItemKey;
   formType: FormType;
   setFormType: (value: FormType) => void;
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
+  searchFieldOptions: Array<{ value: string; label: string }>;
+  selectedSearchFields: string[];
+  onSearchFieldsChange: (value: string[]) => void;
   onAddExpense: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
   onAddIncoming: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
   onAddRecurring: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
@@ -522,13 +529,29 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
               + Split
             </button>
           ) : null}
+          {activeItem === "expenses" || activeItem === "incomings" ? (
+            <>
+              <input
+                type="search"
+                className="top-row-search-input"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={(e) => onSearchQueryChange(e.target.value)}
+              />
+              <SearchFieldDropdown
+                options={searchFieldOptions}
+                selected={selectedSearchFields}
+                onChange={onSearchFieldsChange}
+              />
+            </>
+          ) : null}
         </div>
       )}
 
-      {formType === "expense" && (
+      {formType === "expense" && createPortal(
         <div className="modal-overlay" onClick={closeForm}>
           <div
-            className={isSplitExpenseMode ? "split-modal-shell" : ""}
+            className={isSplitExpenseMode ? "split-modal-shell" : "single-modal-shell"}
             onClick={(e) => e.stopPropagation()}
           >
             {!isSplitExpenseMode ? (
@@ -806,12 +829,12 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {formType === "incoming" && (
+      {formType === "incoming" && createPortal(
         <div className="modal-overlay" onClick={closeForm}>
           <div
-            className={isSplitIncomingMode ? "split-modal-shell" : ""}
+            className={isSplitIncomingMode ? "split-modal-shell" : "single-modal-shell"}
             onClick={(e) => e.stopPropagation()}
           >
             {!isSplitIncomingMode ? (
@@ -1070,9 +1093,9 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
             )}
           </div>
         </div>
-      )}
+      , document.body)}
 
-      {formType === "recurring" && (
+      {formType === "recurring" && createPortal(
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -1217,7 +1240,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, onAddExpense,
             </form>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }

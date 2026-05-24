@@ -11,6 +11,17 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "../context/useAuth";
 import { useEffect, useState } from "react";
 
+export type TopRowSearchState = {
+  expenseSearchQuery: string;
+  setExpenseSearchQuery: (value: string) => void;
+  expenseSelectedSearchFields: string[];
+  setExpenseSelectedSearchFields: (value: string[]) => void;
+  incomingSearchQuery: string;
+  setIncomingSearchQuery: (value: string) => void;
+  incomingSelectedSearchFields: string[];
+  setIncomingSelectedSearchFields: (value: string[]) => void;
+};
+
 export function AppLayout() {
   const [storedThemeDark, setStoredThemeDark] = useLocalStorage(
     THEME_STORAGE_KEY,
@@ -18,6 +29,12 @@ export function AppLayout() {
   );
   const [formType, setFormType] = useState<FormType>(null);
   const [saving, setSaving] = useState(false);
+  const [expenseSearchQuery, setExpenseSearchQuery] = useState("");
+  const [incomingSearchQuery, setIncomingSearchQuery] = useState("");
+  const [expenseSelectedSearchFields, setExpenseSelectedSearchFields] =
+    useState<string[]>(["expense"]);
+  const [incomingSelectedSearchFields, setIncomingSelectedSearchFields] =
+    useState<string[]>(["incoming"]);
 
   const createExpense = useMutation(api.expenses.create);
   const bulkCreateExpenses = useMutation(api.expenses.bulkCreate);
@@ -35,6 +52,26 @@ export function AppLayout() {
 
   const activeItem = (location.pathname.slice(1).split("/")[0] ||
     "expenses") as MenuItemKey;
+  const expenseSearchFieldOptions = [
+    { value: "expense", label: "Name" },
+    { value: "paidTo", label: "Paid To" },
+    { value: "category", label: "Category" },
+    { value: "subcategory", label: "Subcategory" },
+    { value: "type", label: "Type" },
+    { value: "account", label: "Account" },
+    { value: "notes", label: "Notes" },
+    { value: "comments", label: "Comments" },
+    { value: "baseExpenseLabel", label: "Group Name" },
+  ];
+  const incomingSearchFieldOptions = [
+    { value: "incoming", label: "Name" },
+    { value: "paidBy", label: "Paid By" },
+    { value: "incomeType", label: "Income Type" },
+    { value: "incomeSubtype", label: "Income Subtype" },
+    { value: "account", label: "Account" },
+    { value: "notes", label: "Notes" },
+    { value: "comments", label: "Comments" },
+  ];
 
   useEffect(() => {
     document.documentElement.style.backgroundColor = "#000000";
@@ -72,6 +109,31 @@ export function AppLayout() {
               activeItem={activeItem}
               formType={formType}
               setFormType={setFormType}
+              searchQuery={
+                activeItem === "incomings"
+                  ? incomingSearchQuery
+                  : expenseSearchQuery
+              }
+              onSearchQueryChange={
+                activeItem === "incomings"
+                  ? setIncomingSearchQuery
+                  : setExpenseSearchQuery
+              }
+              searchFieldOptions={
+                activeItem === "incomings"
+                  ? incomingSearchFieldOptions
+                  : expenseSearchFieldOptions
+              }
+              selectedSearchFields={
+                activeItem === "incomings"
+                  ? incomingSelectedSearchFields
+                  : expenseSelectedSearchFields
+              }
+              onSearchFieldsChange={
+                activeItem === "incomings"
+                  ? setIncomingSelectedSearchFields
+                  : setExpenseSelectedSearchFields
+              }
               onAddExpense={(e) =>
                 handleAddExpense(e, {
                   createExpense,
@@ -103,7 +165,18 @@ export function AppLayout() {
               saving={saving}
               userOptions={userOptions}
             />
-            <Outlet />
+            <Outlet
+              context={{
+                expenseSearchQuery,
+                setExpenseSearchQuery,
+                expenseSelectedSearchFields,
+                setExpenseSelectedSearchFields,
+                incomingSearchQuery,
+                setIncomingSearchQuery,
+                incomingSelectedSearchFields,
+                setIncomingSelectedSearchFields,
+              } satisfies TopRowSearchState}
+            />
           </section>
         </div>
       </main>

@@ -16,6 +16,7 @@ import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdo
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
 import { OptionPicker } from "../components/OptionPicker";
@@ -26,8 +27,11 @@ import { parseSubId } from "../helpers/subId";
 import { CreditCard } from "lucide-react";
 import { createPortal } from "react-dom";
 import { saveOption } from "./actions";
+import type { TopRowSearchState } from "./AppLayout";
 
 export function Incomings() {
+  const { incomingSearchQuery, incomingSelectedSearchFields } =
+    useOutletContext<TopRowSearchState>();
   const [editingIncomingId, setEditingIncomingId] = useState<string | null>(
     null,
   );
@@ -175,6 +179,40 @@ export function Incomings() {
       selectedCategorySet,
     ],
   );
+  const normalizedSearchQuery = useMemo(
+    () => incomingSearchQuery.trim().toLowerCase(),
+    [incomingSearchQuery],
+  );
+  const searchFilteredIncomings = useMemo(() => {
+    if (!normalizedSearchQuery) return filteredIncomings;
+    if (incomingSelectedSearchFields.length === 0) return [];
+    return filteredIncomings.filter((row) =>
+      incomingSelectedSearchFields.some((field) => {
+        const value = (
+          field === "incoming"
+            ? row.incoming
+            : field === "paidBy"
+              ? row.paidBy
+              : field === "incomeType"
+                ? row.incomeType
+                : field === "incomeSubtype"
+                  ? row.incomeSubtype
+                  : field === "account"
+                    ? row.account
+                    : field === "notes"
+                      ? row.notes
+                      : field === "comments"
+                        ? row.comments
+                        : ""
+        ) ?? "";
+        return value.toLowerCase().includes(normalizedSearchQuery);
+      }),
+    );
+  }, [
+    filteredIncomings,
+    incomingSelectedSearchFields,
+    normalizedSearchQuery,
+  ]);
 
   const listRef = useRef<HTMLDivElement | null>(null);
   const monthOverlapSet = useMemo(
@@ -228,12 +266,12 @@ export function Incomings() {
         latestCreation: number;
         totalAmount: number;
         totalEffectiveAmount: number;
-        rows: typeof filteredIncomings;
+        rows: typeof searchFilteredIncomings;
       }
     >();
 
-    const soloRows: typeof filteredIncomings = [];
-    for (const row of filteredIncomings) {
+    const soloRows: typeof searchFilteredIncomings = [];
+    for (const row of searchFilteredIncomings) {
       const baseId = (row.baseIncomingId ?? "").trim();
       if (!baseId) {
         soloRows.push(row);
@@ -318,7 +356,7 @@ export function Incomings() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [filteredIncomings, getRowMatchState]);
+  }, [getRowMatchState, searchFilteredIncomings]);
 
   const rangeLabelText =
     mode === "custom"
@@ -453,7 +491,7 @@ export function Incomings() {
               onJumpToNewest={jumpToNewest}
             />
             <RangePieChartPanel
-              rows={filteredIncomings.map((i) => ({
+              rows={searchFilteredIncomings.map((i) => ({
                 monthYears: i.monthYears ?? [],
                 effectiveAmount: getEffectiveAmount(i),
                 category: i.incomeType,
@@ -491,7 +529,7 @@ export function Incomings() {
             {!hasAnyIncomings ? (
               <p>No incomings yet.</p>
             ) : displayItems.length === 0 ? (
-              <p>No incomings match current filters.</p>
+              <p>No incomings match current filters/search.</p>
             ) : (
               displayItems.map((item) => {
               if (item.kind === "group") {

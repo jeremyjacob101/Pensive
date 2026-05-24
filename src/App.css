@@ -164,6 +164,9 @@ body {
 .add-entry-launcher-row {
   display: flex;
   justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
   width: 100%;
   max-width: 820px;
   margin-left: auto;
@@ -192,6 +195,17 @@ body {
   padding: 0 12px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.top-row-search-input {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  height: 38px;
+  min-width: 240px;
+  padding: 0 12px;
+  font-size: 14px;
 }
 
 .save-plus-btn {
@@ -1219,12 +1233,15 @@ thead th {
 
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 40;
+  z-index: 2000;
   padding: 20px;
 }
 
@@ -1236,6 +1253,14 @@ thead th {
   border-radius: 14px;
   background: var(--surface);
   padding: 14px;
+}
+
+.single-modal-shell {
+  width: min(820px, calc(100vw - 40px));
+}
+
+.single-modal-shell .modal-card {
+  width: 100%;
 }
 
 .modal-header {
