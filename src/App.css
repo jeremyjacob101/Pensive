@@ -1111,6 +1111,45 @@ thead th {
   white-space: nowrap;
 }
 
+.row-match-section-header-wrap {
+  margin: 4px 0;
+}
+
+.row-match-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 74%, var(--accent) 26%);
+  background: color-mix(in srgb, var(--surface) 86%, var(--accent) 14%);
+  color: color-mix(in srgb, var(--text) 82%, var(--accent) 18%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-match-section-toggle:hover {
+  border-color: color-mix(in srgb, var(--border) 52%, var(--accent) 48%);
+  background: color-mix(in srgb, var(--surface) 82%, var(--accent) 18%);
+}
+
+.row-match-section-chevron {
+  width: 16px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.row-match-section-count {
+  margin-left: auto;
+  opacity: 0.78;
+  font-variant-numeric: tabular-nums;
+}
+
 .grouped-expense-row-title {
   font-size: 14px;
   font-weight: 600;

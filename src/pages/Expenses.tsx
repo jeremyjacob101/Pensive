@@ -35,6 +35,8 @@ export function Expenses() {
   const [expandedExpenseId, setExpandedExpenseId] = useState<string | null>(
     null,
   );
+  const [isMonthYearsSectionOpen, setIsMonthYearsSectionOpen] = useState(false);
+  const [isDateOnlySectionOpen, setIsDateOnlySectionOpen] = useState(false);
   const [partnerPickAnchorId, setPartnerPickAnchorId] =
     useState<Id<"expenses"> | null>(null);
   const [editValues, setEditValues] = useState<EditValues>({});
@@ -358,8 +360,8 @@ export function Expenses() {
 
     const matchStatePriority: Record<string, number> = {
       monthYearsOnly: 0,
-      full: 1,
-      dateOnly: 2,
+      dateOnly: 1,
+      full: 2,
     };
 
     return [...groupedItems, ...soloItems].sort((a, b) => {
@@ -372,6 +374,66 @@ export function Expenses() {
       return b.date.localeCompare(a.date);
     });
   }, [getRowMatchState, scope.targetMonths, searchFilteredExpenses]);
+
+  const monthYearsOnlyItems = useMemo(
+    () => displayItems.filter((item) => item.matchState === "monthYearsOnly"),
+    [displayItems],
+  );
+  const dateOnlyItems = useMemo(
+    () => displayItems.filter((item) => item.matchState === "dateOnly"),
+    [displayItems],
+  );
+  const regularItems = useMemo(
+    () => displayItems.filter((item) => item.matchState === "full"),
+    [displayItems],
+  );
+  const renderedListItems = useMemo(() => {
+    const items: Array<
+      | {
+          kind: "section";
+          id: "monthYearsOnly" | "dateOnly";
+          label: string;
+          isOpen: boolean;
+          count: number;
+        }
+      | (typeof displayItems)[number]
+    > = [];
+
+    if (monthYearsOnlyItems.length > 0) {
+      items.push({
+        kind: "section",
+        id: "monthYearsOnly",
+        label: "Applies to this month, paid in other month/s",
+        isOpen: isMonthYearsSectionOpen,
+        count: monthYearsOnlyItems.length,
+      });
+      if (isMonthYearsSectionOpen) {
+        items.push(...monthYearsOnlyItems);
+      }
+    }
+
+    if (dateOnlyItems.length > 0) {
+      items.push({
+        kind: "section",
+        id: "dateOnly",
+        label: "Paid this month, applied to other month/s",
+        isOpen: isDateOnlySectionOpen,
+        count: dateOnlyItems.length,
+      });
+      if (isDateOnlySectionOpen) {
+        items.push(...dateOnlyItems);
+      }
+    }
+
+    items.push(...regularItems);
+    return items;
+  }, [
+    dateOnlyItems,
+    isDateOnlySectionOpen,
+    isMonthYearsSectionOpen,
+    monthYearsOnlyItems,
+    regularItems,
+  ]);
 
   const rangeLabelText =
     mode === "custom"
@@ -547,7 +609,36 @@ export function Expenses() {
             ) : displayItems.length === 0 ? (
               <p>No expenses match current filters/search.</p>
             ) : (
-              displayItems.map((item) => {
+              renderedListItems.map((item) => {
+                if (item.kind === "section") {
+                  return (
+                    <div key={item.id} className="row-match-section-header-wrap">
+                      <button
+                        type="button"
+                        className="row-match-section-toggle"
+                        onClick={() => {
+                          if (item.id === "monthYearsOnly") {
+                            setIsMonthYearsSectionOpen((prev) => !prev);
+                          } else {
+                            setIsDateOnlySectionOpen((prev) => !prev);
+                          }
+                        }}
+                        aria-label={
+                          item.isOpen ? "Collapse section" : "Expand section"
+                        }
+                      >
+                        <span className="row-match-section-chevron">
+                          {item.isOpen ? "▴" : "▾"}
+                        </span>
+                        <span>{item.label}</span>
+                        <span className="row-match-section-count">
+                          ({item.count})
+                        </span>
+                      </button>
+                    </div>
+                  );
+                }
+                const shouldShowRowMatchDisclaimer = item.matchState === "full";
                 if (item.kind === "group") {
                   const group = item.group;
                   const firstRow = group.rows[0];
@@ -721,7 +812,8 @@ export function Expenses() {
                             >
                               <div className="grouped-expense-row-main">
                                 <div className="grouped-expense-row-title-wrap">
-                                  {getRowMatchDisclaimer(row) ? (
+                                  {shouldShowRowMatchDisclaimer &&
+                                  getRowMatchDisclaimer(row) ? (
                                     <span className="row-match-disclaimer">
                                       {getRowMatchDisclaimer(row)}
                                     </span>
@@ -1086,7 +1178,8 @@ export function Expenses() {
                           aria-hidden="true"
                         />
                         <div className="entry-card-title-wrap">
-                          {getRowMatchDisclaimer(row) ? (
+                          {shouldShowRowMatchDisclaimer &&
+                          getRowMatchDisclaimer(row) ? (
                             <span className="row-match-disclaimer">
                               {getRowMatchDisclaimer(row)}
                             </span>
