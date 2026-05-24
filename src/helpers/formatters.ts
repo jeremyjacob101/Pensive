@@ -48,3 +48,35 @@ export function getDisplayEffectiveAmount(row: {
   const spanCount = getMonthSpanCount(row);
   return spanCount > 1 ? effective / spanCount : effective;
 }
+
+export function getProportionalEffectiveDisplay(
+  row: {
+    amount: number;
+    effectiveAmount?: number;
+    monthYears?: string[];
+  },
+  targetMonths: string[],
+) {
+  const totalEffectiveAmount = getEffectiveAmount(row);
+  const rowMonths = row.monthYears ?? [];
+  const totalRowMonths = Math.max(1, rowMonths.length);
+  const targetMonthSet = new Set(targetMonths);
+  const matchingSelectedMonths = rowMonths.filter((month) =>
+    targetMonthSet.has(month)).length;
+
+  const hasMonthYears = rowMonths.length > 0;
+  const appliedMatchingMonths = hasMonthYears
+    ? matchingSelectedMonths
+    : Math.min(1, targetMonths.length);
+  const ratio = appliedMatchingMonths / totalRowMonths;
+  const displayAmount = totalEffectiveAmount * ratio;
+  const isPartial = hasMonthYears && matchingSelectedMonths < totalRowMonths;
+
+  return {
+    totalRowMonths,
+    matchingSelectedMonths: appliedMatchingMonths,
+    displayAmount,
+    totalEffectiveAmount,
+    isPartial,
+  };
+}

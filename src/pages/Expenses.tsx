@@ -1,4 +1,4 @@
-import { formatMoney, getDisplayEffectiveAmount, getEffectiveAmount, getMonthSpanCount } from "../helpers/formatters";
+import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
@@ -270,6 +270,7 @@ export function Expenses() {
         latestCreation: number;
         totalAmount: number;
         totalEffectiveAmount: number;
+        totalDisplayAmount: number;
         rows: typeof searchFilteredExpenses;
       }
     >();
@@ -293,6 +294,10 @@ export function Expenses() {
           latestCreation: row._creationTime,
           totalAmount: row.amount,
           totalEffectiveAmount: getEffectiveAmount(row),
+          totalDisplayAmount: getProportionalEffectiveDisplay(
+            row,
+            scope.targetMonths,
+          ).displayAmount,
           rows: [row],
         });
         continue;
@@ -301,6 +306,10 @@ export function Expenses() {
       existing.rows.push(row);
       existing.totalAmount += row.amount;
       existing.totalEffectiveAmount += getEffectiveAmount(row);
+      existing.totalDisplayAmount += getProportionalEffectiveDisplay(
+        row,
+        scope.targetMonths,
+      ).displayAmount;
       if (
         row.date > existing.latestDate ||
         (row.date === existing.latestDate &&
@@ -362,7 +371,7 @@ export function Expenses() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [getRowMatchState, searchFilteredExpenses]);
+  }, [getRowMatchState, scope.targetMonths, searchFilteredExpenses]);
 
   const rangeLabelText =
     mode === "custom"
@@ -604,9 +613,7 @@ export function Expenses() {
                                 aria-hidden="true"
                               />
                             </span>
-                            <span>
-                              {formatMoney(group.totalEffectiveAmount)}
-                            </span>
+                            <span>{formatMoney(group.totalDisplayAmount)}</span>
                           </div>
                           <span
                             className="entry-card-primary-divider"
@@ -684,6 +691,10 @@ export function Expenses() {
                       <div className="entry-card-details grouped-expense-details">
                         {group.rows.map((row, index) => {
                           const isEditing = editingExpenseId === row._id;
+                          const proportional = getProportionalEffectiveDisplay(
+                            row,
+                            scope.targetMonths,
+                          );
                           const categoryColor = getOptionColor(
                             userOptions,
                             "category",
@@ -737,11 +748,11 @@ export function Expenses() {
                                   {formatMoney(row.amount)}
                                 </span>
                                 <span className="grouped-expense-row-effective">
-                                  {getMonthSpanCount(row) > 1
-                                    ? `(${formatMoney(getDisplayEffectiveAmount(row))}) effective`
-                                    : `${formatMoney(getDisplayEffectiveAmount(row))} effective`}
+                                  {proportional.isPartial
+                                    ? `(${formatMoney(proportional.displayAmount)}) effective`
+                                    : `${formatMoney(proportional.displayAmount)} effective`}
                                 </span>
-                                {getMonthSpanCount(row) > 1 ? (
+                                {proportional.isPartial ? (
                                   <span className="entry-effective-original">
                                     {formatMoney(getEffectiveAmount(row))}{" "}
                                     effective
@@ -1026,6 +1037,10 @@ export function Expenses() {
                   "account",
                   row.account,
                 );
+                const proportional = getProportionalEffectiveDisplay(
+                  row,
+                  scope.targetMonths,
+                );
 
                 return (
                   <div
@@ -1053,11 +1068,11 @@ export function Expenses() {
                           </span>
                           <span className="entry-card-amount-values">
                             <span>
-                              {getMonthSpanCount(row) > 1
-                                ? `(${formatMoney(getDisplayEffectiveAmount(row))})`
-                                : formatMoney(getDisplayEffectiveAmount(row))}
+                              {proportional.isPartial
+                                ? `(${formatMoney(proportional.displayAmount)})`
+                                : formatMoney(proportional.displayAmount)}
                             </span>
-                            {getMonthSpanCount(row) > 1 ? (
+                            {proportional.isPartial ? (
                               <span className="entry-effective-original">
                                 {formatMoney(getEffectiveAmount(row))}
                               </span>
