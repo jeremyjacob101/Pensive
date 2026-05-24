@@ -43,6 +43,7 @@ body {
     sans-serif;
   color: var(--text);
   background: var(--bg);
+  overflow-x: auto;
 }
 
 #root {
@@ -68,8 +69,8 @@ body {
 
 .app-content {
   margin-left: 70px;
-  width: calc(100vw - 86px);
-  min-width: 0;
+  width: max-content;
+  min-width: calc(100vw - 86px);
 }
 
 .left-menu {
@@ -409,15 +410,22 @@ thead th {
   align-items: flex-start;
   gap: 18px;
   width: 100%;
-  padding-right: 64px;
+  min-width: max-content;
+  padding-right: 18px;
   box-sizing: border-box;
+}
+
+.entries-with-month > .entry-card-list {
+  width: 62vw;
+  min-width: 700px;
+  max-width: none;
 }
 
 .entries-without-month {
   display: flex;
   justify-content: flex-end;
   width: 100%;
-  padding-right: 64px;
+  padding-right: 18px;
   box-sizing: border-box;
 }
 
@@ -1717,155 +1725,6 @@ thead th {
   border-radius: 10px;
   padding: 10px;
   font-size: 13px;
-}
-
-@media (max-width: 900px) {
-  .app-shell {
-    position: static;
-  }
-
-  .left-menu,
-  .left-menu:hover {
-    width: 100%;
-    min-width: 100%;
-  }
-
-  .left-menu {
-    position: static;
-    top: auto;
-    left: auto;
-    height: auto;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .left-menu-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    flex: 1;
-  }
-
-  .left-menu-label,
-  .left-menu:hover .left-menu-label {
-    max-width: none;
-  }
-
-  .left-menu-item,
-  .left-menu-user {
-    width: auto;
-    min-width: 120px;
-  }
-
-  .left-menu-footer {
-    flex-direction: row;
-    align-items: center;
-  }
-
-  .app-content {
-    margin-left: 0;
-  }
-
-  .entry-card-main {
-    grid-template-columns: minmax(120px, 1fr) auto;
-    grid-template-areas:
-      "primary controls"
-      "date controls";
-    row-gap: 8px;
-  }
-
-  .recurring-entry-card-main {
-    grid-template-columns: auto minmax(120px, 1fr) auto;
-    grid-template-areas:
-      "toggle primary controls"
-      "toggle date controls";
-  }
-
-  .recurring-status-toggle-wrap {
-    grid-area: toggle;
-    align-self: center;
-  }
-
-  .entries-with-month,
-  .entries-without-month {
-    display: block;
-    padding-right: 0;
-  }
-
-  .recurrings-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .month-indicator,
-  .month-indicator-area {
-    display: none;
-  }
-
-  .entry-card-primary {
-    grid-area: primary;
-  }
-
-  .entry-card-amount {
-    width: 120px;
-    font-size: 18px;
-  }
-
-  .entry-card-date {
-    grid-area: date;
-  }
-
-  .entry-row-controls {
-    grid-area: controls;
-    text-align: right;
-  }
-
-  .grouped-expense-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "main controls"
-      "amount controls";
-    row-gap: 8px;
-  }
-
-  .grouped-expense-row-main {
-    grid-area: main;
-  }
-
-  .grouped-expense-row-amount-date {
-    grid-area: amount;
-    justify-items: start;
-  }
-
-  .grouped-expense-row-controls {
-    grid-area: controls;
-  }
-
-  .entry-detail-grid {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-
-  .payback-link-form {
-    grid-template-columns: 1fr;
-  }
-
-  .options-page {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .options-add-form {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-}
-
-@media (max-width: 560px) {
-  .options-page {
-    grid-template-columns: 1fr;
-  }
-
-  .entry-detail-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .month-multi-select {
