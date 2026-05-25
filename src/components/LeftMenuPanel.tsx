@@ -1,6 +1,6 @@
+import { ChartNoAxesColumnDecreasing, ListChecks, MoveDownLeft, MoveUpRight, RotateCw, SlidersHorizontal, User } from "lucide-react";
 import type { MenuItem, MenuItemKey } from "../types/ui";
 import { ThemeToggle } from "./ThemeToggle";
-import { ChartNoAxesColumnDecreasing, ListChecks, MoveDownLeft, MoveUpRight, RotateCw, SlidersHorizontal, User } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function LeftMenuPanel({ items, activeItem, onSelect, onUserClick, isDark, onToggleTheme }: {
@@ -77,7 +77,9 @@ function RecurringsGlyph() {
 }
 
 function BreakdownGlyph() {
-  return <ChartNoAxesColumnDecreasing size={16} strokeWidth={2.2} color="#38bdf8" />;
+  return (
+    <ChartNoAxesColumnDecreasing size={16} strokeWidth={2.2} color="#38bdf8" />
+  );
 }
 
 function OptionsGlyph() {
