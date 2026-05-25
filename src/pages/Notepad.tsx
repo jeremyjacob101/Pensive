@@ -1,5 +1,5 @@
+import { columnLabel, makeClientNoteId, normalizeCells, parseNumberArray, parseSizeMap } from "../helpers/notepad";
 import { NOTEPAD_COL_WIDTHS_BY_TABLE_KEY, NOTEPAD_ROW_HEIGHTS_BY_TABLE_KEY } from "../keys/notepad";
-import { columnLabel, normalizeCells, parseNumberArray, parseSizeMap } from "../helpers/notepad";
 import type { NotepadNote, NotepadTable } from "../types/notepad";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -155,7 +155,13 @@ export function Notepad() {
             title="Add note"
             onClick={() => {
               setSaveError(null);
-              void addNote({}).catch(() => {
+              const noteId = makeClientNoteId();
+              const title = `Note ${notes.length + 1}`;
+              setNotes((current) => [
+                ...current,
+                { id: noteId, title, content: "" },
+              ]);
+              void addNote({ noteId, title }).catch(() => {
                 setSaveError("Could not add a note right now.");
               });
             }}

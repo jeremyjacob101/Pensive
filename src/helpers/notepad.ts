@@ -68,3 +68,7 @@ export function columnLabel(index: number) {
   } while (value >= 0);
   return label;
 }
+
+export function makeClientNoteId() {
+  return `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}

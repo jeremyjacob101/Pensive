@@ -75,13 +75,11 @@ function normalizeNotes(input: {
 }): NotepadNote[] {
   const rawNotes = Array.isArray(input.notes) ? input.notes : [];
   if (rawNotes.length > 0) {
-    return rawNotes
-      .map((note, index) => ({
-        id: note.id?.trim() || `legacy-note-${index + 1}`,
-        title: (note.title ?? "").trim() || `Note ${index + 1}`,
-        content: note.content ?? "",
-      }))
-      .filter((note) => note.content.trim().length > 0);
+    return rawNotes.map((note, index) => ({
+      id: note.id?.trim() || `legacy-note-${index + 1}`,
+      title: (note.title ?? "").trim() || `Note ${index + 1}`,
+      content: note.content ?? "",
+    }));
   }
 
   const legacyText = (input.notesText ?? "").trim();
@@ -225,16 +223,19 @@ export const saveNotes = mutation({
 });
 
 export const addNote = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    noteId: v.optional(v.string()),
+    title: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const workspace = await getOrCreateWorkspace(ctx, userId);
     if (workspace.userId !== userId) throw new Error("Workspace not found");
 
     const notes = normalizeNotes(workspace);
     notes.push({
-      id: makeId("note"),
-      title: `Note ${notes.length + 1}`,
+      id: args.noteId?.trim() || makeId("note"),
+      title: args.title?.trim() || `Note ${notes.length + 1}`,
       content: "",
     });
 
@@ -253,8 +254,10 @@ export const cleanupEmptyNotes = mutation({
     const workspace = await getOrCreateWorkspace(ctx, userId);
     if (workspace.userId !== userId) throw new Error("Workspace not found");
 
-    const notes = normalizeNotes(workspace);
-    const rawNotes = Array.isArray(workspace.notes) ? workspace.notes : [];
+    const notes = normalizeNotes(workspace).filter(
+      (note) => note.content.trim().length > 0,
+    );
+    const rawNotes = normalizeNotes(workspace);
     if (notes.length === rawNotes.length) return;
 
     await ctx.db.patch(workspace._id, {
