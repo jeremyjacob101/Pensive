@@ -83,6 +83,7 @@ export default defineSchema({
     parentValue: v.optional(v.string()),
     color: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
+    isTracking: v.optional(v.boolean()),
   })
     .index("by_user_kind", ["userId", "kind"])
     .index("by_user_kind_value", ["userId", "kind", "value"]),

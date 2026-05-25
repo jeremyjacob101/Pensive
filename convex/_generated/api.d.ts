@@ -19,6 +19,7 @@ import type * as paybackHelpers from "../paybackHelpers.js";
 import type * as paybackLinks from "../paybackLinks.js";
 import type * as recurrings from "../recurrings.js";
 import type * as summaries from "../summaries.js";
+import type * as tracking from "../tracking.js";
 import type * as userOptions from "../userOptions.js";
 
 import type {
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   paybackLinks: typeof paybackLinks;
   recurrings: typeof recurrings;
   summaries: typeof summaries;
+  tracking: typeof tracking;
   userOptions: typeof userOptions;
 }>;
 

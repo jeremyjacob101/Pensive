@@ -3,6 +3,7 @@ import type { DragPayload } from "../types/optionsDnD";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { optionKinds } from "../types/schema";
+import { ListChecks } from "lucide-react";
 import type { CSSProperties } from "react";
 import { saveOption } from "./actions";
 import { useState } from "react";
@@ -16,6 +17,7 @@ export function Options() {
   const moveSubtype = useMutation(api.userOptions.moveSubtype);
   const renameUserOption = useMutation(api.userOptions.rename);
   const promoteSubtype = useMutation(api.userOptions.promoteSubtype);
+  const setUserOptionTracking = useMutation(api.userOptions.setTracking);
   const userOptions = useQuery(api.userOptions.list);
   const [draggedOption, setDraggedOption] = useState<{
     kind: "category" | "incomeType" | "subcategory" | "incomeSubtype";
@@ -168,6 +170,8 @@ export function Options() {
 
               <div className="options-row-list">
                 {options.map((option) => {
+                  const isTrackableParent =
+                    key === "category" || key === "incomeType";
                   const children = childKind
                     ? childOptions.filter(
                         (child) => (child.parentValue ?? "") === option.value,
@@ -236,6 +240,8 @@ export function Options() {
                           key === "category" || key === "incomeType"
                             ? " option-draggable"
                             : ""
+                        }${isTrackableParent ? " option-color-row-trackable-parent" : ""}${
+                          childKind ? " option-color-row-parent-with-children" : ""
                         }${draggingRowKey === `${key}:${option.value}` ? " is-dragging" : ""}`}
                         draggable={key === "category" || key === "incomeType"}
                         onDragOver={(event) => {
@@ -334,6 +340,23 @@ export function Options() {
                             +
                           </button>
                         ) : null}
+                        {isTrackableParent ? (
+                          <button
+                            className={`option-track-btn${option.isTracking ? " is-active" : ""}`}
+                            type="button"
+                            draggable={false}
+                            aria-label={`${option.isTracking ? "Disable" : "Enable"} tracking for ${option.value}`}
+                            onClick={() =>
+                              void setUserOptionTracking({
+                                kind: key,
+                                value: option.value,
+                                isTracking: !option.isTracking,
+                              })
+                            }
+                          >
+                            <ListChecks size={14} strokeWidth={2.2} />
+                          </button>
+                        ) : null}
                         <button
                           className="option-rename-btn"
                           type="button"
@@ -403,7 +426,7 @@ export function Options() {
                               `${childKind}:${option.value}:${child.value}`,
                             );
                           }}
-                          className={`option-color-row option-color-row-child option-color-row-compact option-draggable${
+                          className={`option-color-row option-color-row-child option-color-row-compact option-draggable option-color-row-trackable-child${
                             draggingRowKey ===
                             `${childKind}:${option.value}:${child.value}`
                               ? " is-dragging"
@@ -436,6 +459,22 @@ export function Options() {
                               {child.value}
                             </span>
                           </span>
+                          <button
+                            className={`option-track-btn${child.isTracking ? " is-active" : ""}`}
+                            type="button"
+                            draggable={false}
+                            aria-label={`${child.isTracking ? "Disable" : "Enable"} tracking for ${child.value}`}
+                            onClick={() =>
+                              void setUserOptionTracking({
+                                kind: childKind!,
+                                value: child.value,
+                                parentValue: option.value,
+                                isTracking: !child.isTracking,
+                              })
+                            }
+                          >
+                            <ListChecks size={14} strokeWidth={2.2} />
+                          </button>
                           <button
                             className="option-rename-btn"
                             type="button"

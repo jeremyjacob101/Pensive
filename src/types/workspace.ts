@@ -6,6 +6,7 @@ export type UserOption = {
   value: string;
   color: string;
   isDefault?: boolean;
+  isTracking?: boolean;
   parentValue?: string;
 };
 export type UserOptions = Partial<Record<OptionKind, UserOption[]>>;

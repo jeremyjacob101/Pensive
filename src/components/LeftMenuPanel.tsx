@@ -1,4 +1,5 @@
 import type { MenuItem, MenuItemKey } from "../types/ui";
+import { ListChecks } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import type { ReactNode } from "react";
 
@@ -55,6 +56,7 @@ function menuIcon(key: MenuItemKey): ReactNode {
   if (key === "incomings") return <IncomingsGlyph />;
   if (key === "breakdown") return <BreakdownGlyph />;
   if (key === "recurrings") return <RecurringsGlyph />;
+  if (key === "tracking") return <TrackingGlyph />;
   return <OptionsGlyph />;
 }
 
@@ -153,4 +155,8 @@ function OptionsGlyph() {
       <circle cx="11" cy="18" r="2.2" fill="#ec4899" />
     </svg>
   );
+}
+
+function TrackingGlyph() {
+  return <ListChecks size={16} strokeWidth={2.2} color="#a855f7" />;
 }

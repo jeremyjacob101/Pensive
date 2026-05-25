@@ -29,6 +29,12 @@ const OPTION_KINDS: OptionKind[] = [
   "incomeSubtype",
 ];
 const SUBTYPE_KINDS: OptionKind[] = ["subcategory", "incomeSubtype"];
+const TRACKING_KINDS: OptionKind[] = [
+  "category",
+  "subcategory",
+  "incomeType",
+  "incomeSubtype",
+];
 
 const MAX_OPTIONS_PER_KIND = 250;
 const COLOR_REGEX = /^#?[0-9A-Fa-f]{6}$/;
@@ -279,6 +285,7 @@ function formatOptionList(
     value: string;
     color?: string;
     isDefault?: boolean;
+    isTracking?: boolean;
     parentValue?: string;
   }>,
 ) {
@@ -299,6 +306,7 @@ function formatOptionList(
         value: row.value,
         color: normalizedColor,
         isDefault: row.isDefault === true,
+        isTracking: row.isTracking === true,
         parentValue: row.parentValue,
       };
     }
@@ -312,6 +320,7 @@ function formatOptionList(
       value: row.value,
       color: deterministicColor,
       isDefault: row.isDefault === true,
+      isTracking: row.isTracking === true,
       parentValue: row.parentValue,
     };
   });
@@ -321,6 +330,7 @@ type OptionRow = {
   value: string;
   color?: string;
   isDefault?: boolean;
+  isTracking?: boolean;
   parentValue?: string;
 };
 
@@ -352,6 +362,7 @@ export const list = query({
           value: row.value,
           color: (row as { color?: string }).color,
           isDefault: (row as { isDefault?: boolean }).isDefault,
+          isTracking: (row as { isTracking?: boolean }).isTracking,
         })),
       ),
       account: formatOptionList(
@@ -360,6 +371,7 @@ export const list = query({
           value: row.value,
           color: (row as { color?: string }).color,
           isDefault: (row as { isDefault?: boolean }).isDefault,
+          isTracking: (row as { isTracking?: boolean }).isTracking,
         })),
       ),
       category: formatOptionList(
@@ -368,6 +380,7 @@ export const list = query({
           value: row.value,
           color: (row as { color?: string }).color,
           isDefault: (row as { isDefault?: boolean }).isDefault,
+          isTracking: (row as { isTracking?: boolean }).isTracking,
         })),
       ),
       subcategory: formatOptionList(
@@ -376,6 +389,7 @@ export const list = query({
           value: row.value,
           color: (row as OptionRow).color,
           isDefault: (row as OptionRow).isDefault,
+          isTracking: (row as OptionRow).isTracking,
           parentValue: (row as OptionRow).parentValue,
         })),
       ),
@@ -385,6 +399,7 @@ export const list = query({
           value: row.value,
           color: (row as { color?: string }).color,
           isDefault: (row as { isDefault?: boolean }).isDefault,
+          isTracking: (row as { isTracking?: boolean }).isTracking,
         })),
       ),
       incomeSubtype: formatOptionList(
@@ -393,6 +408,7 @@ export const list = query({
           value: row.value,
           color: (row as OptionRow).color,
           isDefault: (row as OptionRow).isDefault,
+          isTracking: (row as OptionRow).isTracking,
           parentValue: (row as OptionRow).parentValue,
         })),
       ),
@@ -533,6 +549,42 @@ export const setDefault = mutation({
         continue;
       await ctx.db.patch(row._id, { isDefault: nextIsDefault });
     }
+  },
+});
+
+export const setTracking = mutation({
+  args: {
+    kind: optionKind,
+    value: v.string(),
+    isTracking: v.boolean(),
+    parentValue: v.optional(v.string()),
+  },
+  handler: async (ctx, { kind, value, isTracking, parentValue }) => {
+    const userId = await requireUserId(ctx);
+    if (!TRACKING_KINDS.includes(kind)) {
+      throw new Error("Tracking is only supported for category and type options");
+    }
+
+    const trimmedValue = value.trim();
+    const normalizedParent = parentValue?.trim() ?? "";
+    if (!trimmedValue) throw new Error("Option value is required");
+    if (SUBTYPE_KINDS.includes(kind) && !normalizedParent) {
+      throw new Error("parentValue is required for subtypes");
+    }
+
+    const rows = await ctx.db
+      .query("userOptions")
+      .withIndex("by_user_kind_value", (q) =>
+        q.eq("userId", userId).eq("kind", kind).eq("value", trimmedValue))
+      .collect();
+    const selected = rows.find(
+      (row) =>
+        ((row as { parentValue?: string }).parentValue ?? "") ===
+        normalizedParent,
+    );
+    if (!selected) throw new Error("Option not found");
+
+    await ctx.db.patch(selected._id, { isTracking });
   },
 });
 
@@ -829,6 +881,8 @@ export const moveToSubtype = mutation({
     if (!sourceRow || !targetRow) {
       throw new Error("Source or target option was not found");
     }
+    const sourceIsTracking =
+      (sourceRow as { isTracking?: boolean }).isTracking === true;
 
     const subtypeRows = await ctx.db
       .query("userOptions")
@@ -863,7 +917,14 @@ export const moveToSubtype = mutation({
         parentValue: target,
         color: assignedColor,
         isDefault: false,
+        isTracking: sourceIsTracking,
       });
+    } else if (
+      sourceIsTracking &&
+      (existingDestinationSubtype as { isTracking?: boolean }).isTracking !==
+        true
+    ) {
+      await ctx.db.patch(existingDestinationSubtype._id, { isTracking: true });
     }
 
     for (const subtypeRow of subtypeRows) {
@@ -966,6 +1027,8 @@ export const promoteSubtype = mutation({
         ((row as { parentValue?: string }).parentValue ?? "") === sourceParent,
     );
     if (!subtypeRow) throw new Error("Subtype option not found");
+    const sourceIsTracking =
+      (subtypeRow as { isTracking?: boolean }).isTracking === true;
 
     const topKind: OptionKind =
       kind === "subcategory" ? "category" : "incomeType";
@@ -984,7 +1047,13 @@ export const promoteSubtype = mutation({
           normalizeHexColor((subtypeRow as { color?: string }).color ?? "") ??
           "#6B7280",
         isDefault: false,
+        isTracking: sourceIsTracking,
       });
+    } else if (
+      sourceIsTracking &&
+      (existingTop as { isTracking?: boolean }).isTracking !== true
+    ) {
+      await ctx.db.patch(existingTop._id, { isTracking: true });
     }
 
     await ctx.db.delete(subtypeRow._id);

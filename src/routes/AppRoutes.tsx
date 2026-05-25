@@ -5,6 +5,7 @@ import { AppLayout } from "../pages/AppLayout";
 import { LoginPage } from "../pages/LoginPage";
 import { Incomings } from "../pages/Incomings";
 import { Breakdown } from "../pages/Breakdown";
+import { Tracking } from "../pages/Tracking";
 import { useAuth } from "../context/useAuth";
 import { Expenses } from "../pages/Expenses";
 import { Options } from "../pages/Options";
@@ -23,6 +24,7 @@ export function AppRoutes() {
           <Route path="/incomings" element={<Incomings />} />
           <Route path="/breakdown" element={<Breakdown />} />
           <Route path="/recurrings" element={<Recurrings />} />
+          <Route path="/tracking" element={<Tracking />} />
           <Route path="/options" element={<Options />} />
         </Route>
         <Route path="/app/*" element={<LegacyAppPathRedirect />} />
