@@ -1,3 +1,6 @@
+import { NOTEPAD_COL_WIDTHS_BY_TABLE_KEY, NOTEPAD_ROW_HEIGHTS_BY_TABLE_KEY } from "../keys/notepad";
+import { columnLabel, normalizeCells, parseNumberArray, parseSizeMap } from "../helpers/notepad";
+import type { NotepadNote, NotepadTable } from "../types/notepad";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useMutation, useQuery } from "convex/react";
@@ -9,89 +12,6 @@ const DEFAULT_COL_WIDTH = 104;
 const DEFAULT_ROW_HEIGHT = 30;
 const MIN_COL_WIDTH = 36;
 const MIN_ROW_HEIGHT = 10;
-
-type NotepadTable = {
-  id: string;
-  title: string;
-  cells: string[][];
-};
-
-type NotepadNote = {
-  id: string;
-  title: string;
-  content: string;
-};
-
-type SizeMap = Record<string, number[]>;
-
-function normalizeCells(cells: string[][] | undefined) {
-  const source = Array.isArray(cells) ? cells : [];
-  const rowCount = Math.max(1, source.length || 0);
-  const colCount = Math.max(
-    1,
-    source.reduce((max, row) => {
-      if (!Array.isArray(row)) return max;
-      return Math.max(max, row.length);
-    }, 0),
-  );
-
-  return Array.from({ length: rowCount }, (_, rowIndex) => {
-    const row = Array.isArray(source[rowIndex]) ? source[rowIndex] : [];
-    return Array.from({ length: colCount }, (_, colIndex) => {
-      const value = row[colIndex];
-      return typeof value === "string" ? value : "";
-    });
-  });
-}
-
-function parseNumberArray(
-  value: string,
-  length: number,
-  fallback: number,
-  min: number,
-) {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    if (!Array.isArray(parsed)) {
-      return Array.from({ length }, () => fallback);
-    }
-    return Array.from({ length }, (_, index) => {
-      const raw = parsed[index];
-      if (typeof raw !== "number" || Number.isNaN(raw)) return fallback;
-      return Math.max(min, Math.round(raw));
-    });
-  } catch {
-    return Array.from({ length }, () => fallback);
-  }
-}
-
-function parseSizeMap(raw: string): SizeMap {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    const output: SizeMap = {};
-    for (const [key, value] of Object.entries(parsed)) {
-      if (Array.isArray(value)) {
-        output[key] = value.filter((v) => typeof v === "number") as number[];
-      }
-    }
-    return output;
-  } catch {
-    return {};
-  }
-}
-
-function columnLabel(index: number) {
-  let value = index;
-  let label = "";
-  do {
-    label = String.fromCharCode(65 + (value % 26)) + label;
-    value = Math.floor(value / 26) - 1;
-  } while (value >= 0);
-  return label;
-}
 
 export function Notepad() {
   const workspace = useQuery(api.notepad.getMine);
@@ -109,11 +29,11 @@ export function Notepad() {
   const removeLastColumn = useMutation(api.notepad.removeLastColumn);
 
   const [storedColWidths, setStoredColWidths] = useLocalStorage(
-    "notepad:col-widths-by-table:v1",
+    NOTEPAD_COL_WIDTHS_BY_TABLE_KEY,
     "{}",
   );
   const [storedRowHeights, setStoredRowHeights] = useLocalStorage(
-    "notepad:row-heights-by-table:v1",
+    NOTEPAD_ROW_HEIGHTS_BY_TABLE_KEY,
     "{}",
   );
 

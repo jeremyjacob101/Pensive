@@ -1,28 +1,6 @@
 import { PieChart, Pie, Sector, Tooltip, ResponsiveContainer, type SectorProps } from "recharts";
 import type { PieSlice } from "../types/pieChart";
 
-function CustomTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: { name: string; value: number }[];
-}) {
-  if (!active || !payload?.length) return null;
-
-  const item = payload[0];
-
-  return (
-    <div className="pie-chart-tooltip">
-      <span className="pie-tooltip-label">{item.name}</span>
-      <span className="pie-tooltip-value">
-        ₪
-        {item.value.toLocaleString("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}
-      </span>
-    </div>
-  );
-}
-
 export function CategoryPieChart({ data, width = 320, height = 320 }: {
   data: PieSlice[];
   width?: number;
@@ -75,7 +53,30 @@ export function CategoryPieChart({ data, width = 320, height = 320 }: {
               )}
             />
 
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={({ active, payload }) => {
+                const item = payload?.[0]?.payload as
+                  | { label?: string; value?: number }
+                  | undefined;
+                if (!active || !item || typeof item.value !== "number") {
+                  return null;
+                }
+                return (
+                  <div className="pie-chart-tooltip">
+                    <span className="pie-tooltip-label">
+                      {item.label ?? ""}
+                    </span>
+                    <span className="pie-tooltip-value">
+                      ₪
+                      {item.value.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                );
+              }}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>

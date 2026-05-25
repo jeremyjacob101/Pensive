@@ -1,4 +1,5 @@
 import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
+import { EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY } from "../keys/expenses";
 import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
@@ -86,11 +87,11 @@ export function Expenses() {
     scopeArgs === "skip" || scopedExpenses === undefined;
   const hasAnyExpenses = expenses.length > 0;
   const [storedAccountDeselected, setStoredAccountDeselected] = useLocalStorage(
-    "expenses:filter:deselected:accounts:v1",
+    EXPENSE_ACCOUNT_DESELECTED_KEY,
     "[]",
   );
   const [storedCategoryDeselected, setStoredCategoryDeselected] =
-    useLocalStorage("expenses:filter:deselected:category:v1", "[]");
+    useLocalStorage(EXPENSE_CATEGORY_DESELECTED_KEY, "[]");
 
   const expenseCategoryLabel = useCallback(
     (row: { category: string; subcategory?: string }) =>

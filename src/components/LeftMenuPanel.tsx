@@ -42,7 +42,7 @@ export function LeftMenuPanel({ items, activeItem, onSelect, onUserClick, isDark
           aria-label="Sign Out"
         >
           <span className="left-menu-icon" aria-hidden="true">
-            <UserGlyph />
+            <User size={16} strokeWidth={2.2} color="currentColor" />
           </span>
           <span className="left-menu-label">Sign Out</span>
         </button>
@@ -52,45 +52,29 @@ export function LeftMenuPanel({ items, activeItem, onSelect, onUserClick, isDark
 }
 
 function menuIcon(key: MenuItemKey): ReactNode {
-  if (key === "expenses") return <ExpensesGlyph />;
-  if (key === "incomings") return <IncomingsGlyph />;
-  if (key === "breakdown") return <BreakdownGlyph />;
-  if (key === "recurrings") return <RecurringsGlyph />;
-  if (key === "tracking") return <TrackingGlyph />;
-  if (key === "notepad") return <NotepadGlyph />;
-  return <OptionsGlyph />;
-}
-
-function UserGlyph() {
-  return <User size={16} strokeWidth={2.2} color="currentColor" />;
-}
-
-function ExpensesGlyph() {
-  return <MoveUpRight size={16} strokeWidth={2.4} color="#ef4444" />;
-}
-
-function IncomingsGlyph() {
-  return <MoveDownLeft size={16} strokeWidth={2.4} color="#22c55e" />;
-}
-
-function RecurringsGlyph() {
-  return <RotateCw size={16} strokeWidth={2.2} color="#f97316" />;
-}
-
-function BreakdownGlyph() {
-  return (
-    <ChartNoAxesColumnDecreasing size={16} strokeWidth={2.2} color="#38bdf8" />
-  );
-}
-
-function OptionsGlyph() {
+  if (key === "expenses") {
+    return <MoveUpRight size={16} strokeWidth={2.4} color="#ef4444" />;
+  }
+  if (key === "incomings") {
+    return <MoveDownLeft size={16} strokeWidth={2.4} color="#22c55e" />;
+  }
+  if (key === "breakdown") {
+    return (
+      <ChartNoAxesColumnDecreasing
+        size={16}
+        strokeWidth={2.2}
+        color="#38bdf8"
+      />
+    );
+  }
+  if (key === "recurrings") {
+    return <RotateCw size={16} strokeWidth={2.2} color="#f97316" />;
+  }
+  if (key === "tracking") {
+    return <ListChecks size={16} strokeWidth={2.2} color="#a855f7" />;
+  }
+  if (key === "notepad") {
+    return <NotebookPen size={16} strokeWidth={2.2} color="#eab308" />;
+  }
   return <SlidersHorizontal size={16} strokeWidth={2.2} color="#ec4899" />;
-}
-
-function TrackingGlyph() {
-  return <ListChecks size={16} strokeWidth={2.2} color="#a855f7" />;
-}
-
-function NotepadGlyph() {
-  return <NotebookPen size={16} strokeWidth={2.2} color="#eab308" />;
 }

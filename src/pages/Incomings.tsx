@@ -1,4 +1,5 @@
 import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
+import { INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_CATEGORY_DESELECTED_KEY } from "../keys/incomings";
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
 import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
@@ -86,11 +87,11 @@ export function Incomings() {
     scopeArgs === "skip" || scopedIncomings === undefined;
   const hasAnyIncomings = incomings.length > 0;
   const [storedAccountDeselected, setStoredAccountDeselected] = useLocalStorage(
-    "incomings:filter:deselected:accounts:v1",
+    INCOMING_ACCOUNT_DESELECTED_KEY,
     "[]",
   );
   const [storedCategoryDeselected, setStoredCategoryDeselected] =
-    useLocalStorage("incomings:filter:deselected:category:v1", "[]");
+    useLocalStorage(INCOMING_CATEGORY_DESELECTED_KEY, "[]");
 
   const incomingCategoryLabel = useCallback(
     (row: { incomeType: string; incomeSubtype?: string }) =>

@@ -2,8 +2,8 @@ import { type SyntheticEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getRedirectTarget } from "../helpers/authRedirect";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { THEME_STORAGE_KEY } from "../keys/localStorage";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { THEME_STORAGE_KEY } from "../keys/theme";
 import { useAuth } from "../context/useAuth";
 
 export function LoginPage() {

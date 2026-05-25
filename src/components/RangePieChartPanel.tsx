@@ -1,4 +1,5 @@
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { PIE_CHART_PINNED_KEY } from "../keys/pieChart";
 import type { UserOptions } from "../types/workspace";
 import { CategoryPieChart } from "./CategoryPieChart";
 import { useEffect, useMemo, useState } from "react";
@@ -24,7 +25,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
   const [customEnd, setCustomEnd] = useState("");
   const [showSubcategories, setShowSubcategories] = useState(false);
   const [storedPinned, setStoredPinned] = useLocalStorage(
-    "pie-chart:pinned:v1",
+    PIE_CHART_PINNED_KEY,
     "false",
   );
   const isPinned = storedPinned === "true";

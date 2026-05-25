@@ -1,4 +1,5 @@
 import { formatMonthShort, getMonthsBetween, MAX_BUFFER_MONTHS, monthInTrailingBuffer, parseBufferByRow, parseStartByRow, snapToNewestMonth, TRACKING_VISIBLE_SEGMENTS } from "../helpers/tracking";
+import { TRACKING_BUFFER_BY_ROW_KEY, TRACKING_START_BY_ROW_KEY } from "../keys/tracking";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useEffect, useMemo, useRef } from "react";
 import { api } from "../../convex/_generated/api";
@@ -7,11 +8,11 @@ import { useQuery } from "convex/react";
 export function Tracking() {
   const tracking = useQuery(api.tracking.list);
   const [storedStartByRow, setStoredStartByRow] = useLocalStorage(
-    "tracking:start-by-row:v1",
+    TRACKING_START_BY_ROW_KEY,
     "{}",
   );
   const [storedBufferByRow, setStoredBufferByRow] = useLocalStorage(
-    "tracking:buffer-by-row:v1",
+    TRACKING_BUFFER_BY_ROW_KEY,
     "{}",
   );
   const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
