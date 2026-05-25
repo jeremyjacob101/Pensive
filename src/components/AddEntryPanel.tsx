@@ -178,6 +178,39 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     notes: false,
     comments: false,
   });
+  const [launcherPortalTarget, setLauncherPortalTarget] =
+    useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      setLauncherPortalTarget(null);
+      return;
+    }
+    if (activeItem !== "expenses" && activeItem !== "incomings") {
+      setLauncherPortalTarget(null);
+      return;
+    }
+
+    const resolveTarget = () => {
+      const target = document.getElementById("entry-top-controls-anchor");
+      setLauncherPortalTarget(target);
+    };
+
+    resolveTarget();
+    const frame = window.requestAnimationFrame(resolveTarget);
+    const observer = new MutationObserver(() => {
+      const target = document.getElementById("entry-top-controls-anchor");
+      if (target) {
+        setLauncherPortalTarget(target);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [activeItem]);
 
   const resetBulkState = () => {
     setExpenseBulkValues({
@@ -804,67 +837,74 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     }
   };
 
-  return (
-    <>
-      {activeItem !== "options" &&
-        activeItem !== "recurrings" &&
-        activeItem !== "breakdown" && (
-          <div className="add-entry-launcher-row">
+  const launcherRow =
+    activeItem !== "options" &&
+    activeItem !== "recurrings" &&
+    activeItem !== "breakdown" ? (
+      <div
+        className={`add-entry-launcher-row${launcherPortalTarget ? " docked-right" : ""}`}
+      >
+        <button
+          type="button"
+          className="add-entry-launcher"
+          aria-label={`Add ${activeItem.slice(0, -1)}`}
+          onClick={openModalFromActiveTab}
+        >
+          +
+        </button>
+        {activeItem === "expenses" ? (
+          <button
+            type="button"
+            className="split-entry-launcher"
+            onClick={openSplitExpenseForm}
+          >
+            + Split
+          </button>
+        ) : null}
+        {activeItem === "incomings" ? (
+          <button
+            type="button"
+            className="split-entry-launcher"
+            onClick={openSplitIncomingForm}
+          >
+            + Split
+          </button>
+        ) : null}
+        {activeItem === "expenses" || activeItem === "incomings" ? (
+          <>
             <button
               type="button"
-              className="add-entry-launcher"
-              aria-label={`Add ${activeItem.slice(0, -1)}`}
-              onClick={openModalFromActiveTab}
+              className="split-entry-launcher"
+              disabled={visibleCount === 0}
+              onClick={() => {
+                resetBulkState();
+                setBulkModalOpen(true);
+              }}
             >
-              +
+              Edit/Apply All
             </button>
-            {activeItem === "expenses" ? (
-              <button
-                type="button"
-                className="split-entry-launcher"
-                onClick={openSplitExpenseForm}
-              >
-                + Split
-              </button>
-            ) : null}
-            {activeItem === "incomings" ? (
-              <button
-                type="button"
-                className="split-entry-launcher"
-                onClick={openSplitIncomingForm}
-              >
-                + Split
-              </button>
-            ) : null}
-            {activeItem === "expenses" || activeItem === "incomings" ? (
-              <>
-                <button
-                  type="button"
-                  className="split-entry-launcher"
-                  disabled={visibleCount === 0}
-                  onClick={() => {
-                    resetBulkState();
-                    setBulkModalOpen(true);
-                  }}
-                >
-                  Edit/Apply All
-                </button>
-                <input
-                  type="search"
-                  className="top-row-search-input"
-                  placeholder="Search"
-                  value={searchQuery}
-                  onChange={(e) => onSearchQueryChange(e.target.value)}
-                />
-                <SearchFieldDropdown
-                  options={searchFieldOptions}
-                  selected={selectedSearchFields}
-                  onChange={onSearchFieldsChange}
-                />
-              </>
-            ) : null}
-          </div>
-        )}
+            <input
+              type="search"
+              className="top-row-search-input"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => onSearchQueryChange(e.target.value)}
+            />
+            <SearchFieldDropdown
+              options={searchFieldOptions}
+              selected={selectedSearchFields}
+              onChange={onSearchFieldsChange}
+            />
+          </>
+        ) : null}
+      </div>
+    ) : null;
+
+  return (
+    <>
+      {launcherPortalTarget && launcherRow
+        ? createPortal(launcherRow, launcherPortalTarget)
+        : launcherRow}
 
       {bulkModalOpen &&
         (activeItem === "expenses" || activeItem === "incomings") &&

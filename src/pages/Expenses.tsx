@@ -576,6 +576,10 @@ export function Expenses() {
           </aside>
 
           <div ref={listRef} className="entry-card-list">
+            <div
+              id="entry-top-controls-anchor"
+              className="entry-top-controls-anchor"
+            />
             <div className="expense-link-toolbar">
               {partnerPickAnchorId ? (
                 <>

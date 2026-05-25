@@ -183,6 +183,12 @@ body {
   margin-bottom: 12px;
 }
 
+.add-entry-launcher-row.docked-right {
+  max-width: none;
+  margin: 0;
+  justify-content: flex-start;
+}
+
 .add-entry-launcher {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -394,6 +400,11 @@ thead th {
     transform 180ms ease;
 }
 
+.entry-top-controls-anchor {
+  width: 100%;
+  margin-bottom: 2px;
+}
+
 .entry-card-list.is-month-transitioning {
   opacity: 0.72;
   transform: translateY(6px);
@@ -501,7 +512,6 @@ thead th {
 
 .month-indicator-area {
   position: sticky;
-  top: 88px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
