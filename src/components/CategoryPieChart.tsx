@@ -42,6 +42,9 @@ export function CategoryPieChart({
     ...entry,
     fill: entry.color,
   }));
+  const baseRadius = Math.min(width, height);
+  const outerRadius = baseRadius / 2 - 18;
+  const innerRadius = baseRadius / 4 + 4;
 
   return (
     <>
@@ -63,8 +66,8 @@ export function CategoryPieChart({
               data={chartData}
               cx="50%"
               cy="50%"
-              outerRadius={Math.min(width, height) / 2 - 10}
-              innerRadius={Math.min(width, height) / 4}
+              outerRadius={outerRadius}
+              innerRadius={innerRadius}
               dataKey="value"
               nameKey="label"
               shape={(props: SectorProps) => (

@@ -511,16 +511,27 @@ thead th {
 }
 
 .month-indicator-area {
-  position: sticky;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  top: 1px;
   width: max-content;
   min-width: 146px;
   pointer-events: auto;
   z-index: 20;
   align-self: flex-start;
+}
+
+.month-indicator-area.month-indicator-area-pinned {
+  position: sticky;
+  top: 1px;
+}
+
+.month-indicator-area.month-indicator-area-unpinned {
+  position: relative;
+  top: auto;
 }
 
 .month-indicator-range {
@@ -674,6 +685,38 @@ thead th {
   opacity: 0.8;
   cursor: pointer;
   align-self: flex-start;
+}
+
+.pie-panel-toggle-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pie-pin-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pie-pin-btn.active {
+  background: var(--text);
+  color: var(--surface);
+  border-color: var(--text);
+}
+
+.pie-pin-btn.active svg {
+  fill: currentColor;
 }
 
 .pie-chart-container {

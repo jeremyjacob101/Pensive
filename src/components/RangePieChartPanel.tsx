@@ -1,7 +1,9 @@
 import type { RangePieChartPanelProps } from "../types/pieChart";
 import { CategoryPieChart } from "./CategoryPieChart";
 import { getOptionColor } from "../helpers/options";
-import { useMemo, useState } from "react";
+import { useLocalStorage } from "../hooks/useLocalStorage";
+import { Pin } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 export function RangePieChartPanel({
   rows,
@@ -20,6 +22,11 @@ export function RangePieChartPanel({
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [showSubcategories, setShowSubcategories] = useState(false);
+  const [storedPinned, setStoredPinned] = useLocalStorage(
+    "pie-chart:pinned:v1",
+    "false",
+  );
+  const isPinned = storedPinned === "true";
   const editorMode =
     isCustomEditorOpen || mode === "custom" ? "custom" : "month";
 
@@ -75,6 +82,19 @@ export function RangePieChartPanel({
     setShowSubcategories(false);
     onReset();
   };
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const panel = document.querySelector(".month-indicator-area");
+    if (!panel) return;
+    panel.classList.toggle("month-indicator-area-pinned", isPinned);
+    panel.classList.toggle("month-indicator-area-unpinned", !isPinned);
+
+    return () => {
+      panel.classList.remove("month-indicator-area-pinned");
+      panel.classList.remove("month-indicator-area-unpinned");
+    };
+  }, [isPinned]);
 
   return (
     <div className="pie-chart-panel">
@@ -137,14 +157,27 @@ export function RangePieChartPanel({
         </div>
       )}
 
-      <label className="pie-subcategory-toggle">
-        <input
-          type="checkbox"
-          checked={showSubcategories}
-          onChange={(e) => setShowSubcategories(e.target.checked)}
-        />
-        Show subcategories
-      </label>
+      <div className="pie-panel-toggle-row">
+        <label className="pie-subcategory-toggle">
+          <input
+            type="checkbox"
+            checked={showSubcategories}
+            onChange={(e) => setShowSubcategories(e.target.checked)}
+          />
+          Show subcategories
+        </label>
+
+        <button
+          type="button"
+          className={`pie-pin-btn${isPinned ? " active" : ""}`}
+          onClick={() => setStoredPinned(isPinned ? "false" : "true")}
+          aria-pressed={isPinned}
+          aria-label={isPinned ? "Unpin pie chart" : "Pin pie chart"}
+          title={isPinned ? "Unpin pie chart" : "Pin pie chart"}
+        >
+          <Pin size={14} strokeWidth={2} />
+        </button>
+      </div>
 
       <CategoryPieChart data={pieData} />
     </div>
