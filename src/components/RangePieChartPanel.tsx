@@ -1,21 +1,22 @@
-import type { RangePieChartPanelProps } from "../types/pieChart";
-import { CategoryPieChart } from "./CategoryPieChart";
-import { getOptionColor } from "../helpers/options";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { Pin } from "lucide-react";
+import type { UserOptions } from "../types/workspace";
+import { CategoryPieChart } from "./CategoryPieChart";
 import { useEffect, useMemo, useState } from "react";
+import { getOptionColor } from "../helpers/options";
+import type { PieRow } from "../types/pieChart";
+import { Pin } from "lucide-react";
 
-export function RangePieChartPanel({
-  rows,
-  userOptions,
-  mode,
-  startDate,
-  endDate,
-  targetMonths,
-  kind,
-  onRangeChange,
-  onReset,
-}: RangePieChartPanelProps) {
+export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onReset }: {
+  rows: PieRow[];
+  userOptions: UserOptions | undefined;
+  mode: "month" | "custom";
+  startDate: string;
+  endDate: string;
+  targetMonths: string[];
+  kind: "expense" | "incoming";
+  onRangeChange: (start: string, end: string) => void;
+  onReset: () => void;
+}) {
   const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(
     mode === "custom",
   );

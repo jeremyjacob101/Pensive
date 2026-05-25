@@ -1,6 +1,6 @@
 import type { MenuItem, MenuItemKey } from "../types/ui";
-import { ListChecks } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
+import { ListChecks } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function LeftMenuPanel({ items, activeItem, onSelect, onUserClick, isDark, onToggleTheme }: {

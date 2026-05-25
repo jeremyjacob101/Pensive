@@ -3,8 +3,8 @@ import type { DragPayload } from "../types/optionsDnD";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { optionKinds } from "../types/schema";
-import { ListChecks } from "lucide-react";
 import type { CSSProperties } from "react";
+import { ListChecks } from "lucide-react";
 import { saveOption } from "./actions";
 import { useState } from "react";
 
@@ -241,7 +241,9 @@ export function Options() {
                             ? " option-draggable"
                             : ""
                         }${isTrackableParent ? " option-color-row-trackable-parent" : ""}${
-                          childKind ? " option-color-row-parent-with-children" : ""
+                          childKind
+                            ? " option-color-row-parent-with-children"
+                            : ""
                         }${draggingRowKey === `${key}:${option.value}` ? " is-dragging" : ""}`}
                         draggable={key === "category" || key === "incomeType"}
                         onDragOver={(event) => {

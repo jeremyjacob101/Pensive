@@ -3,8 +3,6 @@ import { fallbackCurrentMonth, validIsoDate, validMonth, windowFromMonth } from 
 import { getMonthsInRange, shiftMonth } from "../helpers/dates";
 import { useCallback, useMemo, useState } from "react";
 
-export type { DateWindow, MonthScopeMode } from "../types/monthScope";
-
 export function useSingleMonthScope(
   monthBounds: MonthBounds | undefined,
   initialState?: UseSingleMonthScopeInitialState,

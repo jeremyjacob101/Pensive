@@ -15,17 +15,3 @@ export interface UseSingleMonthScopeInitialState {
   activeMonth?: string | null;
   customRange?: DateWindow | null;
 }
-
-export interface MonthNavigatorProps {
-  activeMonth: string | null;
-  mode: "month" | "custom";
-  customRangeLabel: string;
-  canGoPrevious: boolean;
-  canGoNext: boolean;
-  canJumpToOldest: boolean;
-  canJumpToNewest: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-  onJumpToOldest: () => void;
-  onJumpToNewest: () => void;
-}

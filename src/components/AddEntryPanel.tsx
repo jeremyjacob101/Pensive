@@ -179,15 +179,18 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     comments: false,
   });
   const [launcherPortalTarget, setLauncherPortalTarget] =
-    useState<HTMLElement | null>(null);
+    useState<HTMLElement | null>(() => {
+      if (typeof document === "undefined") {
+        return null;
+      }
+      if (activeItem !== "expenses" && activeItem !== "incomings") {
+        return null;
+      }
+      return document.getElementById("entry-top-controls-anchor");
+    });
 
   useEffect(() => {
-    if (typeof document === "undefined") {
-      setLauncherPortalTarget(null);
-      return;
-    }
     if (activeItem !== "expenses" && activeItem !== "incomings") {
-      setLauncherPortalTarget(null);
       return;
     }
 
@@ -196,7 +199,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       setLauncherPortalTarget(target);
     };
 
-    resolveTarget();
     const frame = window.requestAnimationFrame(resolveTarget);
     const observer = new MutationObserver(() => {
       const target = document.getElementById("entry-top-controls-anchor");
@@ -211,6 +213,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       observer.disconnect();
     };
   }, [activeItem]);
+
+  const portalTargetForActiveItem =
+    activeItem === "expenses" || activeItem === "incomings"
+      ? launcherPortalTarget
+      : null;
 
   const resetBulkState = () => {
     setExpenseBulkValues({
@@ -843,7 +850,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     activeItem !== "breakdown" &&
     activeItem !== "tracking" ? (
       <div
-        className={`add-entry-launcher-row${launcherPortalTarget ? " docked-right" : ""}`}
+        className={`add-entry-launcher-row${portalTargetForActiveItem ? " docked-right" : ""}`}
       >
         <button
           type="button"
@@ -903,8 +910,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
 
   return (
     <>
-      {launcherPortalTarget && launcherRow
-        ? createPortal(launcherRow, launcherPortalTarget)
+      {portalTargetForActiveItem && launcherRow
+        ? createPortal(launcherRow, portalTargetForActiveItem)
         : launcherRow}
 
       {bulkModalOpen &&

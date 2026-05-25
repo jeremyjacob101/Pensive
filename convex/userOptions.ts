@@ -562,7 +562,9 @@ export const setTracking = mutation({
   handler: async (ctx, { kind, value, isTracking, parentValue }) => {
     const userId = await requireUserId(ctx);
     if (!TRACKING_KINDS.includes(kind)) {
-      throw new Error("Tracking is only supported for category and type options");
+      throw new Error(
+        "Tracking is only supported for category and type options",
+      );
     }
 
     const trimmedValue = value.trim();

@@ -3,8 +3,6 @@ import { getMonthFromIsoDate, getMonthsInRange, getTodayIsoDate, shiftMonth } fr
 import type { DateWindow, MonthBounds, MonthScopeMode } from "../types/monthScope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export type { DateWindow, MonthScopeMode } from "../types/monthScope";
-
 export function useMonthScope(monthBounds: MonthBounds | undefined) {
   const [mode, setMode] = useState<MonthScopeMode>("month");
   const [selectedWindows, setSelectedWindows] = useState<DateWindow[]>([]);

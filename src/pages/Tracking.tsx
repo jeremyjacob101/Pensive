@@ -1,102 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { formatMonthShort, getMonthsBetween, MAX_BUFFER_MONTHS, monthInTrailingBuffer, parseBufferByRow, parseStartByRow, snapToNewestMonth, TRACKING_VISIBLE_SEGMENTS } from "../helpers/tracking";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useQuery } from "convex/react";
+import { useEffect, useMemo, useRef } from "react";
 import { api } from "../../convex/_generated/api";
-
-function formatMonthShort(value: string) {
-  const parsed = new Date(`${value}-01T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
-  const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(
-    parsed,
-  );
-  const year = String(parsed.getFullYear()).slice(2);
-  return `${month} '${year}`;
-}
-
-function shiftMonth(month: string, delta: number): string {
-  const match = month.trim().match(/^(\d{4})-(\d{2})$/);
-  if (!match) return month;
-  const year = Number.parseInt(match[1], 10);
-  const monthNum = Number.parseInt(match[2], 10) - 1;
-  const totalMonths = year * 12 + monthNum + delta;
-  const nextYear = Math.floor(totalMonths / 12);
-  const nextMonth = ((totalMonths % 12) + 12) % 12;
-  return `${nextYear}-${String(nextMonth + 1).padStart(2, "0")}`;
-}
-
-function getMonthsBetween(start: string, end: string) {
-  if (!start || !end || start > end) return [];
-  const months: string[] = [];
-  let current = start;
-  while (current <= end) {
-    months.push(current);
-    current = shiftMonth(current, 1);
-  }
-  return months;
-}
-
-const TRACKING_VISIBLE_SEGMENTS = 10;
-const MAX_BUFFER_MONTHS = 12;
-
-function parseStartByRow(value: string): Record<string, string> {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    const entries = Object.entries(parsed);
-    const out: Record<string, string> = {};
-    for (const [key, rowStart] of entries) {
-      if (typeof rowStart !== "string") continue;
-      if (!/^\d{4}-\d{2}$/.test(rowStart.trim())) continue;
-      out[key] = rowStart.trim();
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function parseBufferByRow(value: string): Record<string, number> {
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    const entries = Object.entries(parsed);
-    const out: Record<string, number> = {};
-    for (const [key, rowBuffer] of entries) {
-      const numeric =
-        typeof rowBuffer === "number"
-          ? rowBuffer
-          : Number.parseInt(String(rowBuffer), 10);
-      if (!Number.isFinite(numeric)) continue;
-      out[key] = Math.max(0, Math.min(MAX_BUFFER_MONTHS, Math.trunc(numeric)));
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-function monthInTrailingBuffer(
-  month: string,
-  currentMonth: string,
-  bufferMonths: number,
-) {
-  if (bufferMonths <= 0) return false;
-  const bufferStart = shiftMonth(currentMonth, -(bufferMonths - 1));
-  return month >= bufferStart && month <= currentMonth;
-}
-
-function snapToNewestMonth(node: HTMLDivElement | null) {
-  if (!node) return;
-  const target = Math.max(0, node.scrollWidth - node.clientWidth);
-  node.scrollLeft = target;
-  requestAnimationFrame(() => {
-    node.scrollLeft = target;
-  });
-}
+import { useQuery } from "convex/react";
 
 export function Tracking() {
   const tracking = useQuery(api.tracking.list);
@@ -136,8 +42,7 @@ export function Tracking() {
 
     for (const row of tracking.rows) {
       const paidMonths = [...(row.paidMonths ?? [])].sort((a, b) =>
-        a.localeCompare(b),
-      );
+        a.localeCompare(b));
       const paidSet = new Set(paidMonths);
       if (paidMonths.length === 0) {
         out[row.key] = { rangeMonths: [], startOptions: [], paidSet };
@@ -146,7 +51,8 @@ export function Tracking() {
 
       const earliest = paidMonths[0];
       const latest = paidMonths[paidMonths.length - 1];
-      const end = earliest > tracking.currentMonth ? latest : tracking.currentMonth;
+      const end =
+        earliest > tracking.currentMonth ? latest : tracking.currentMonth;
       const startOptions = getMonthsBetween(earliest, end);
       const selectedStart = startByRow[row.key] ?? earliest;
       const effectiveStart = startOptions.includes(selectedStart)
@@ -177,8 +83,7 @@ export function Tracking() {
 
       for (const row of tracking.rows) {
         const paidMonths = [...(row.paidMonths ?? [])].sort((a, b) =>
-          a.localeCompare(b),
-        );
+          a.localeCompare(b));
         if (paidMonths.length === 0) continue;
         if (!next[row.key] || !/^\d{4}-\d{2}$/.test(next[row.key])) {
           next[row.key] = paidMonths[0];
@@ -271,10 +176,18 @@ export function Tracking() {
                               [row.key]: event.target.value,
                             }))
                         }
-                        disabled={(timelineByRow[row.key]?.startOptions.length ?? 0) === 0}
+                        disabled={
+                          (timelineByRow[row.key]?.startOptions.length ?? 0) ===
+                          0
+                        }
                       >
-                        {(timelineByRow[row.key]?.startOptions ?? []).map((month) => (
-                          <option key={`${row.key}:start:${month}`} value={month}>
+                        {(timelineByRow[row.key]?.startOptions ?? []).map((
+                          month,
+                        ) => (
+                          <option
+                            key={`${row.key}:start:${month}`}
+                            value={month}
+                          >
                             {formatMonthShort(month)}
                           </option>
                         ))}
@@ -295,7 +208,8 @@ export function Tracking() {
                   >
                     <div className="tracking-pipeline">
                       {(() => {
-                        const rangeMonths = timelineByRow[row.key]?.rangeMonths ?? [];
+                        const rangeMonths =
+                          timelineByRow[row.key]?.rangeMonths ?? [];
                         const leftEmptyCount = Math.max(
                           0,
                           TRACKING_VISIBLE_SEGMENTS - rangeMonths.length,
@@ -364,8 +278,7 @@ export function Tracking() {
                                     key={`${row.key}:empty-label:${index}`}
                                     className="tracking-pipeline-month-label is-empty"
                                   />
-                                ),
-                              )}
+                                ))}
                             </div>
                           </>
                         );
@@ -391,7 +304,10 @@ export function Tracking() {
                         }))
                     }
                   >
-                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (_, count) => (
+                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (
+                      _,
+                      count,
+                    ) => (
                       <option key={`${row.key}:buffer:${count}`} value={count}>
                         {count}m
                       </option>
@@ -432,10 +348,18 @@ export function Tracking() {
                               [row.key]: event.target.value,
                             }))
                         }
-                        disabled={(timelineByRow[row.key]?.startOptions.length ?? 0) === 0}
+                        disabled={
+                          (timelineByRow[row.key]?.startOptions.length ?? 0) ===
+                          0
+                        }
                       >
-                        {(timelineByRow[row.key]?.startOptions ?? []).map((month) => (
-                          <option key={`${row.key}:start:${month}`} value={month}>
+                        {(timelineByRow[row.key]?.startOptions ?? []).map((
+                          month,
+                        ) => (
+                          <option
+                            key={`${row.key}:start:${month}`}
+                            value={month}
+                          >
                             {formatMonthShort(month)}
                           </option>
                         ))}
@@ -456,7 +380,8 @@ export function Tracking() {
                   >
                     <div className="tracking-pipeline">
                       {(() => {
-                        const rangeMonths = timelineByRow[row.key]?.rangeMonths ?? [];
+                        const rangeMonths =
+                          timelineByRow[row.key]?.rangeMonths ?? [];
                         const leftEmptyCount = Math.max(
                           0,
                           TRACKING_VISIBLE_SEGMENTS - rangeMonths.length,
@@ -525,8 +450,7 @@ export function Tracking() {
                                     key={`${row.key}:empty-label:${index}`}
                                     className="tracking-pipeline-month-label is-empty"
                                   />
-                                ),
-                              )}
+                                ))}
                             </div>
                           </>
                         );
@@ -552,7 +476,10 @@ export function Tracking() {
                         }))
                     }
                   >
-                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (_, count) => (
+                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (
+                      _,
+                      count,
+                    ) => (
                       <option key={`${row.key}:buffer:${count}`} value={count}>
                         {count}m
                       </option>

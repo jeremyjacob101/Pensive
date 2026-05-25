@@ -1,11 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query } from "./_generated/server";
 
-type TrackingKind =
-  | "category"
-  | "subcategory"
-  | "incomeType"
-  | "incomeSubtype";
+type TrackingKind = "category" | "subcategory" | "incomeType" | "incomeSubtype";
 
 const TRACKING_KINDS: TrackingKind[] = [
   "category",
@@ -114,9 +110,10 @@ export const list = query({
 
     const rows = trackedOptions.map((tracked) => {
       const paidMonthSet = new Set<string>();
-      const source = tracked.kind === "category" || tracked.kind === "subcategory"
-        ? "expense"
-        : "incoming";
+      const source =
+        tracked.kind === "category" || tracked.kind === "subcategory"
+          ? "expense"
+          : "incoming";
 
       if (source === "expense") {
         for (const expenseRow of expenseRows) {
@@ -161,7 +158,9 @@ export const list = query({
       }
 
       const label =
-        tracked.parentValue && tracked.kind !== "category" && tracked.kind !== "incomeType"
+        tracked.parentValue &&
+        tracked.kind !== "category" &&
+        tracked.kind !== "incomeType"
           ? `${tracked.parentValue} / ${tracked.value}`
           : tracked.value;
 

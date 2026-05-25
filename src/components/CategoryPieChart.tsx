@@ -1,5 +1,5 @@
 import { PieChart, Pie, Sector, Tooltip, ResponsiveContainer, type SectorProps } from "recharts";
-import type { CategoryPieChartProps } from "../types/pieChart";
+import type { PieSlice } from "../types/pieChart";
 
 function CustomTooltip({ active, payload }: {
   active?: boolean;
@@ -23,11 +23,11 @@ function CustomTooltip({ active, payload }: {
   );
 }
 
-export function CategoryPieChart({
-  data,
-  width = 320,
-  height = 320,
-}: CategoryPieChartProps) {
+export function CategoryPieChart({ data, width = 320, height = 320 }: {
+  data: PieSlice[];
+  width?: number;
+  height?: number;
+}) {
   if (data.length === 0) {
     return (
       <div className="pie-chart-empty" style={{ width, height }}>

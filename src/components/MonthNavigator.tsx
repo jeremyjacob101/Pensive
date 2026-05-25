@@ -1,20 +1,19 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import type { MonthNavigatorProps } from "../types/monthScope";
 import { formatMonthYearLabel } from "../helpers/dates";
 
-export function MonthNavigator({
-  activeMonth,
-  mode,
-  customRangeLabel,
-  canGoPrevious,
-  canGoNext,
-  canJumpToOldest,
-  canJumpToNewest,
-  onPrevious,
-  onNext,
-  onJumpToOldest,
-  onJumpToNewest,
-}: MonthNavigatorProps) {
+export function MonthNavigator({ activeMonth, mode, customRangeLabel, canGoPrevious, canGoNext, canJumpToOldest, canJumpToNewest, onPrevious, onNext, onJumpToOldest, onJumpToNewest }: {
+  activeMonth: string | null;
+  mode: "month" | "custom";
+  customRangeLabel: string;
+  canGoPrevious: boolean;
+  canGoNext: boolean;
+  canJumpToOldest: boolean;
+  canJumpToNewest: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+  onJumpToOldest: () => void;
+  onJumpToNewest: () => void;
+}) {
   const displayLabel =
     mode === "custom"
       ? customRangeLabel
