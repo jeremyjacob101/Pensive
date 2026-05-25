@@ -848,7 +848,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     activeItem !== "options" &&
     activeItem !== "recurrings" &&
     activeItem !== "breakdown" &&
-    activeItem !== "tracking" ? (
+    activeItem !== "tracking" &&
+    activeItem !== "notepad" ? (
       <div
         className={`add-entry-launcher-row${portalTargetForActiveItem ? " docked-right" : ""}`}
       >

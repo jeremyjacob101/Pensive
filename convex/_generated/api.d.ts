@@ -15,6 +15,7 @@ import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
 import type * as incomings from "../incomings.js";
 import type * as monthYears from "../monthYears.js";
+import type * as notepad from "../notepad.js";
 import type * as paybackHelpers from "../paybackHelpers.js";
 import type * as paybackLinks from "../paybackLinks.js";
 import type * as recurrings from "../recurrings.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   incomings: typeof incomings;
   monthYears: typeof monthYears;
+  notepad: typeof notepad;
   paybackHelpers: typeof paybackHelpers;
   paybackLinks: typeof paybackLinks;
   recurrings: typeof recurrings;

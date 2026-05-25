@@ -1,4 +1,4 @@
-import { ChartNoAxesColumnDecreasing, ListChecks, MoveDownLeft, MoveUpRight, RotateCw, SlidersHorizontal, User } from "lucide-react";
+import { ChartNoAxesColumnDecreasing, ListChecks, MoveDownLeft, MoveUpRight, NotebookPen, RotateCw, SlidersHorizontal, User } from "lucide-react";
 import type { MenuItem, MenuItemKey } from "../types/ui";
 import { ThemeToggle } from "./ThemeToggle";
 import type { ReactNode } from "react";
@@ -57,6 +57,7 @@ function menuIcon(key: MenuItemKey): ReactNode {
   if (key === "breakdown") return <BreakdownGlyph />;
   if (key === "recurrings") return <RecurringsGlyph />;
   if (key === "tracking") return <TrackingGlyph />;
+  if (key === "notepad") return <NotepadGlyph />;
   return <OptionsGlyph />;
 }
 
@@ -88,4 +89,8 @@ function OptionsGlyph() {
 
 function TrackingGlyph() {
   return <ListChecks size={16} strokeWidth={2.2} color="#a855f7" />;
+}
+
+function NotepadGlyph() {
+  return <NotebookPen size={16} strokeWidth={2.2} color="#eab308" />;
 }

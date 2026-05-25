@@ -4,6 +4,7 @@ export type MenuItemKey =
   | "breakdown"
   | "recurrings"
   | "tracking"
+  | "notepad"
   | "options";
 
 export type MenuItem = {
@@ -17,5 +18,6 @@ export const layoutMenuItems: MenuItem[] = [
   { key: "breakdown", label: "Breakdown" },
   { key: "recurrings", label: "Recurrings" },
   { key: "tracking", label: "Tracking" },
+  { key: "notepad", label: "Notepad" },
   { key: "options", label: "Options" },
 ];

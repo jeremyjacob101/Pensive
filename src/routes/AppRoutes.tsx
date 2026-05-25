@@ -9,6 +9,7 @@ import { Tracking } from "../pages/Tracking";
 import { useAuth } from "../context/useAuth";
 import { Expenses } from "../pages/Expenses";
 import { Options } from "../pages/Options";
+import { Notepad } from "../pages/Notepad";
 
 export function AppRoutes() {
   return (
@@ -25,6 +26,7 @@ export function AppRoutes() {
           <Route path="/breakdown" element={<Breakdown />} />
           <Route path="/recurrings" element={<Recurrings />} />
           <Route path="/tracking" element={<Tracking />} />
+          <Route path="/notepad" element={<Notepad />} />
           <Route path="/options" element={<Options />} />
         </Route>
         <Route path="/app/*" element={<LegacyAppPathRedirect />} />

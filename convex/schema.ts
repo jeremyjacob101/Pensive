@@ -113,4 +113,28 @@ export default defineSchema({
     .index("by_day_of_month", ["dayOfMonth"])
     .index("by_user_id_day_of_month", ["userId", "dayOfMonth"])
     .index("by_user_id", ["userId"]),
+  notepadWorkspaces: defineTable({
+    userId: v.optional(v.id("users")),
+    notesText: v.string(),
+    notes: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          content: v.string(),
+        }),
+      ),
+    ),
+    cells: v.array(v.array(v.string())),
+    tables: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          cells: v.array(v.array(v.string())),
+        }),
+      ),
+    ),
+    updatedAt: v.number(),
+  }).index("by_user_id", ["userId"]),
 });
