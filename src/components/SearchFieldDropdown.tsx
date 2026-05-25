@@ -38,13 +38,22 @@ export function SearchFieldDropdown({ options, selected, onChange }: {
       </button>
       {open ? (
         <div className="filter-dropdown-menu">
-          <button
-            type="button"
-            className="filter-select-all-btn"
-            onClick={() => onChange(options.map((option) => option.value))}
-          >
-            Select all
-          </button>
+          <div className="filter-dropdown-actions">
+            <button
+              type="button"
+              className="filter-select-all-btn"
+              onClick={() => onChange(options.map((option) => option.value))}
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              className="filter-select-all-btn"
+              onClick={() => onChange([])}
+            >
+              Deselect all
+            </button>
+          </div>
           <div className="filter-dropdown-options">
             {options.map((option) => {
               const isChecked = selectedSet.has(option.value);

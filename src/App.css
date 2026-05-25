@@ -1525,6 +1525,12 @@ thead th {
   cursor: pointer;
 }
 
+.filter-dropdown-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .filter-dropdown-options {
   margin-top: 8px;
   display: flex;
