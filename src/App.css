@@ -2073,7 +2073,7 @@ thead th {
     var(--tracking-segment-width) * var(--tracking-visible-segments) + 6px
   );
   --tracking-row-title-width: 380px;
-  --tracking-buffer-width: 92px;
+  --tracking-buffer-width: 138px;
   --tracking-row-min-width: calc(
     var(--tracking-row-title-width) + 12px + var(--tracking-pipeline-width) +
       12px + var(--tracking-buffer-width) + 24px
@@ -2283,12 +2283,14 @@ thead th {
 
 .tracking-buffer-inline {
   display: inline-flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
   font-size: 11px;
   font-weight: 700;
   color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+  width: 100%;
+  align-self: start;
 }
 
 .tracking-buffer-inline select {
@@ -2299,7 +2301,6 @@ thead th {
   height: 30px;
   font-size: 12px;
   padding: 0 8px;
-  width: 100%;
   min-width: 84px;
 }
 
