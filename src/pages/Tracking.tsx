@@ -36,6 +36,7 @@ function getMonthsBetween(start: string, end: string) {
 }
 
 const TRACKING_VISIBLE_SEGMENTS = 10;
+const MAX_BUFFER_MONTHS = 12;
 
 function parseStartByRow(value: string): Record<string, string> {
   try {
@@ -56,6 +57,38 @@ function parseStartByRow(value: string): Record<string, string> {
   }
 }
 
+function parseBufferByRow(value: string): Record<string, number> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    const entries = Object.entries(parsed);
+    const out: Record<string, number> = {};
+    for (const [key, rowBuffer] of entries) {
+      const numeric =
+        typeof rowBuffer === "number"
+          ? rowBuffer
+          : Number.parseInt(String(rowBuffer), 10);
+      if (!Number.isFinite(numeric)) continue;
+      out[key] = Math.max(0, Math.min(MAX_BUFFER_MONTHS, Math.trunc(numeric)));
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function monthInTrailingBuffer(
+  month: string,
+  currentMonth: string,
+  bufferMonths: number,
+) {
+  if (bufferMonths <= 0) return false;
+  const bufferStart = shiftMonth(currentMonth, -(bufferMonths - 1));
+  return month >= bufferStart && month <= currentMonth;
+}
+
 function snapToNewestMonth(node: HTMLDivElement | null) {
   if (!node) return;
   const target = Math.max(0, node.scrollWidth - node.clientWidth);
@@ -71,10 +104,18 @@ export function Tracking() {
     "tracking:start-by-row:v1",
     "{}",
   );
+  const [storedBufferByRow, setStoredBufferByRow] = useLocalStorage(
+    "tracking:buffer-by-row:v1",
+    "{}",
+  );
   const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const startByRow = useMemo(
     () => parseStartByRow(storedStartByRow),
     [storedStartByRow],
+  );
+  const bufferByRow = useMemo(
+    () => parseBufferByRow(storedBufferByRow),
+    [storedBufferByRow],
   );
 
   const grouped = useMemo(() => {
@@ -147,6 +188,33 @@ export function Tracking() {
       return changed ? JSON.stringify(next) : currentRaw;
     });
   }, [setStoredStartByRow, tracking]);
+
+  useEffect(() => {
+    if (!tracking) return;
+    setStoredBufferByRow((currentRaw) => {
+      const current = parseBufferByRow(currentRaw);
+      const next: Record<string, number> = {};
+      let changed = false;
+      const validKeys = new Set(tracking.rows.map((row) => row.key));
+
+      for (const [key, value] of Object.entries(current)) {
+        if (!validKeys.has(key)) {
+          changed = true;
+          continue;
+        }
+        next[key] = Math.max(0, Math.min(MAX_BUFFER_MONTHS, Math.trunc(value)));
+      }
+
+      for (const row of tracking.rows) {
+        if (next[row.key] === undefined) {
+          next[row.key] = 0;
+          changed = true;
+        }
+      }
+
+      return changed ? JSON.stringify(next) : currentRaw;
+    });
+  }, [setStoredBufferByRow, tracking]);
 
   useEffect(() => {
     if (!tracking) return;
@@ -252,14 +320,32 @@ export function Tracking() {
                                 const isPaid =
                                   timelineByRow[row.key]?.paidSet.has(month) ??
                                   false;
+                                const bufferMonths = bufferByRow[row.key] ?? 0;
+                                const isBuffer =
+                                  !isPaid &&
+                                  monthInTrailingBuffer(
+                                    month,
+                                    tracking.currentMonth,
+                                    bufferMonths,
+                                  );
                                 const isStart = index === leftEmptyCount;
                                 return (
                                   <span
                                     key={`${row.key}:${month}:segment`}
                                     className={`tracking-pipeline-segment${
-                                      isPaid ? " is-paid" : " is-unpaid"
+                                      isPaid
+                                        ? " is-paid"
+                                        : isBuffer
+                                          ? " is-buffer"
+                                          : " is-unpaid"
                                     }${isStart ? " is-start" : ""}`}
-                                    title={`${row.label} · ${formatMonthShort(month)} · ${isPaid ? "paid" : "unpaid"}`}
+                                    title={`${row.label} · ${formatMonthShort(month)} · ${
+                                      isPaid
+                                        ? "paid"
+                                        : isBuffer
+                                          ? "buffer"
+                                          : "unpaid"
+                                    }`}
                                   />
                                 );
                               })}
@@ -287,6 +373,31 @@ export function Tracking() {
                     </div>
                   </div>
                 )}
+                <label className="tracking-buffer-inline">
+                  <span>Buffer</span>
+                  <select
+                    value={String(bufferByRow[row.key] ?? 0)}
+                    onChange={(event) =>
+                      setStoredBufferByRow((currentRaw) =>
+                        JSON.stringify({
+                          ...parseBufferByRow(currentRaw),
+                          [row.key]: Math.max(
+                            0,
+                            Math.min(
+                              MAX_BUFFER_MONTHS,
+                              Number.parseInt(event.target.value, 10) || 0,
+                            ),
+                          ),
+                        }))
+                    }
+                  >
+                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (_, count) => (
+                      <option key={`${row.key}:buffer:${count}`} value={count}>
+                        {count}m
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </article>
           ))
@@ -370,14 +481,32 @@ export function Tracking() {
                                 const isPaid =
                                   timelineByRow[row.key]?.paidSet.has(month) ??
                                   false;
+                                const bufferMonths = bufferByRow[row.key] ?? 0;
+                                const isBuffer =
+                                  !isPaid &&
+                                  monthInTrailingBuffer(
+                                    month,
+                                    tracking.currentMonth,
+                                    bufferMonths,
+                                  );
                                 const isStart = index === leftEmptyCount;
                                 return (
                                   <span
                                     key={`${row.key}:${month}:segment`}
                                     className={`tracking-pipeline-segment${
-                                      isPaid ? " is-paid" : " is-unpaid"
+                                      isPaid
+                                        ? " is-paid"
+                                        : isBuffer
+                                          ? " is-buffer"
+                                          : " is-unpaid"
                                     }${isStart ? " is-start" : ""}`}
-                                    title={`${row.label} · ${formatMonthShort(month)} · ${isPaid ? "paid" : "unpaid"}`}
+                                    title={`${row.label} · ${formatMonthShort(month)} · ${
+                                      isPaid
+                                        ? "paid"
+                                        : isBuffer
+                                          ? "buffer"
+                                          : "unpaid"
+                                    }`}
                                   />
                                 );
                               })}
@@ -405,6 +534,31 @@ export function Tracking() {
                     </div>
                   </div>
                 )}
+                <label className="tracking-buffer-inline">
+                  <span>Buffer</span>
+                  <select
+                    value={String(bufferByRow[row.key] ?? 0)}
+                    onChange={(event) =>
+                      setStoredBufferByRow((currentRaw) =>
+                        JSON.stringify({
+                          ...parseBufferByRow(currentRaw),
+                          [row.key]: Math.max(
+                            0,
+                            Math.min(
+                              MAX_BUFFER_MONTHS,
+                              Number.parseInt(event.target.value, 10) || 0,
+                            ),
+                          ),
+                        }))
+                    }
+                  >
+                    {Array.from({ length: MAX_BUFFER_MONTHS + 1 }, (_, count) => (
+                      <option key={`${row.key}:buffer:${count}`} value={count}>
+                        {count}m
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             </article>
           ))

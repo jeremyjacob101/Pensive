@@ -2060,9 +2060,10 @@ thead th {
     var(--tracking-segment-width) * var(--tracking-visible-segments) + 6px
   );
   --tracking-row-title-width: 380px;
+  --tracking-buffer-width: 92px;
   --tracking-row-min-width: calc(
     var(--tracking-row-title-width) + 12px + var(--tracking-pipeline-width) +
-      24px
+      12px + var(--tracking-buffer-width) + 24px
   );
   width: max-content;
   max-width: calc(100vw - 120px);
@@ -2107,7 +2108,7 @@ thead th {
 
 .tracking-row-body {
   display: grid;
-  grid-template-columns: var(--tracking-row-title-width) var(--tracking-pipeline-width);
+  grid-template-columns: var(--tracking-row-title-width) var(--tracking-pipeline-width) var(--tracking-buffer-width);
   gap: 12px;
   align-items: start;
 }
@@ -2218,6 +2219,14 @@ thead th {
   );
 }
 
+.tracking-pipeline-segment.is-buffer {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #94a3b8 58%, #ffffff 42%),
+    color-mix(in srgb, #64748b 72%, #0f172a 28%)
+  );
+}
+
 .tracking-pipeline-segment.is-empty {
   background: transparent;
   border-right-color: color-mix(in srgb, var(--border) 58%, transparent 42%);
@@ -2257,6 +2266,28 @@ thead th {
 
 .tracking-no-paid {
   width: var(--tracking-pipeline-width);
+}
+
+.tracking-buffer-inline {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text) 74%, transparent 26%);
+}
+
+.tracking-buffer-inline select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  height: 30px;
+  font-size: 12px;
+  padding: 0 8px;
+  width: 100%;
+  min-width: 84px;
 }
 
 @media (max-width: 980px) {
