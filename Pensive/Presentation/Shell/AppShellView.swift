@@ -73,6 +73,8 @@ private struct FeatureRootView: View {
                 ExpensesFeatureView(api: api)
             } else if tab == .incomings {
                 IncomingsFeatureView(api: api)
+            } else if tab == .breakdown {
+                BreakdownFeatureView(api: api)
             } else if tab == .recurrings {
                 RecurringsFeatureView(api: api)
             } else {
@@ -137,6 +139,151 @@ private struct FeatureRootView: View {
                 }
             }
         }
+    }
+}
+
+private struct BreakdownMetricCard: View {
+    let title: String
+    let total: String
+    let perMonth: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            HStack(alignment: .firstTextBaseline) {
+                Text(total).font(.title2.weight(.bold))
+                Spacer()
+                Text("\(perMonth) /month").font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(tint.opacity(0.45), lineWidth: 1)
+        )
+    }
+}
+
+@MainActor
+private final class BreakdownViewModel: ObservableObject {
+    @Published var state: ViewLoadState = .loading
+    @Published var searchText = ""
+    @Published var selectedFilters: Set<String> = []
+    @Published var month = Date()
+    @Published var startDate = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
+    @Published var endDate = Date()
+    @Published var summary: SummaryRangeResponse?
+
+    private let api: ConvexAPI
+    private let calendar = LedgerScopeLogic.calendar
+
+    init(api: ConvexAPI) {
+        self.api = api
+        let today = Date()
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
+        let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? today
+        startDate = monthStart
+        endDate = monthEnd
+    }
+
+    func onAppear() {
+        Task {
+            await load()
+        }
+    }
+
+    func syncMonthToRange() {
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) ?? month
+        let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? monthStart
+        startDate = monthStart
+        endDate = monthEnd
+        Task { await load() }
+    }
+
+    func load() async {
+        state = .loading
+        do {
+            summary = try await api.summaries.range(.init(startDate: LedgerScopeLogic.isoDate(startDate), endDate: LedgerScopeLogic.isoDate(endDate)))
+            state = .content
+        } catch {
+            state = .error(message: "Failed to load breakdown")
+        }
+    }
+}
+
+private struct BreakdownFeatureView: View {
+    @StateObject private var viewModel: BreakdownViewModel
+
+    init(api: ConvexAPI) {
+        _viewModel = StateObject(wrappedValue: BreakdownViewModel(api: api))
+    }
+
+    private let formatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "ILS"
+        f.locale = Locale(identifier: "he_IL")
+        return f
+    }()
+
+    var body: some View {
+        LoadStateView(state: viewModel.state, retry: { Task { await viewModel.load() } }) {
+            List {
+                Section {
+                    DebouncedSearchField(text: $viewModel.searchText) { _ in }
+                    MultiSelectFilterButton(title: "Filters", choices: [], selected: $viewModel.selectedFilters)
+                    MonthNavigator(month: $viewModel.month)
+                        .onChange(of: viewModel.month) { _, _ in viewModel.syncMonthToRange() }
+                    DateRangePickerButton(startDate: $viewModel.startDate, endDate: $viewModel.endDate)
+                        .onChange(of: viewModel.startDate) { _, _ in Task { await viewModel.load() } }
+                        .onChange(of: viewModel.endDate) { _, _ in Task { await viewModel.load() } }
+                }
+
+                if let summary = viewModel.summary {
+                    Section {
+                        BreakdownMetricCard(title: "TOTAL INCOMINGS", total: money(summary.totals.effectiveIncomings), perMonth: monthly(value: summary.totals.effectiveIncomings, count: summary.monthlyBuckets.count), tint: .green)
+                        BreakdownMetricCard(title: "TOTAL EXPENSES", total: money(summary.totals.effectiveExpenses), perMonth: monthly(value: summary.totals.effectiveExpenses, count: summary.monthlyBuckets.count), tint: .red)
+                        BreakdownMetricCard(title: "TOTAL SAVINGS", total: money(summary.totals.effectiveNet), perMonth: monthly(value: summary.totals.effectiveNet, count: summary.monthlyBuckets.count), tint: .blue)
+                    }
+                }
+
+                if let summary = viewModel.summary {
+                    Section("Per Month") {
+                        ForEach(summary.monthlyBuckets, id: \.month) { row in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(row.month).font(.headline)
+                                HStack {
+                                    Text("Incomings \(money(row.effectiveIncomings))")
+                                    Spacer()
+                                    Text("Expenses \(money(row.effectiveExpenses))")
+                                    Spacer()
+                                    Text("Savings \(money(row.effectiveNet))").foregroundStyle(row.effectiveNet >= 0 ? .green : .red)
+                                }
+                                .font(.footnote)
+                            }
+                        }
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Breakdown")
+            .refreshable { await viewModel.load() }
+        }
+        .task { viewModel.onAppear() }
+    }
+
+    private func money(_ value: Double) -> String {
+        formatter.string(from: NSNumber(value: value)) ?? "₪\(value)"
+    }
+
+    private func monthly(value: Double, count: Int) -> String {
+        guard count > 0 else { return money(value) }
+        return money(value / Double(count))
     }
 }
 

@@ -64,6 +64,61 @@ struct PaybackLinkViewData: Identifiable {
     let notes: String?
 }
 
+struct LedgerBreakdownSlice: Identifiable, Equatable {
+    let key: String
+    let label: String
+    let amount: Double
+    let colorToken: String?
+
+    var id: String { key }
+}
+
+struct LedgerBreakdownSummary: Equatable {
+    let totalRaw: Double
+    let totalEffective: Double
+    let slices: [LedgerBreakdownSlice]
+}
+
+enum LedgerBreakdownComputing {
+    static func expenses(rows: [Expense], mode: LedgerFeatureViewModel.BreakdownMode, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
+        let totalRaw = rows.reduce(0) { $0 + $1.amount }
+        let totalEffective = rows.reduce(0) { $0 + $1.effectiveAmount }
+        let grouped: [String: Double] = Dictionary(grouping: rows) { expense in
+            switch mode {
+            case .category:
+                return expense.category.isEmpty ? "Uncategorized" : expense.category
+            case .subcategory:
+                return expense.subcategory?.isEmpty == false ? expense.subcategory! : "Unspecified Subcategory"
+            }
+        }.mapValues { $0.reduce(0) { $0 + $1.effectiveAmount } }
+        let slices = grouped
+            .map { key, amount in
+                LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
+            }
+            .sorted { $0.amount > $1.amount }
+        return LedgerBreakdownSummary(totalRaw: totalRaw, totalEffective: totalEffective, slices: slices)
+    }
+
+    static func incomings(rows: [Incoming], mode: LedgerFeatureViewModel.BreakdownMode, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
+        let totalRaw = rows.reduce(0) { $0 + $1.amount }
+        let totalEffective = rows.reduce(0) { $0 + $1.effectiveAmount }
+        let grouped: [String: Double] = Dictionary(grouping: rows) { incoming in
+            switch mode {
+            case .category:
+                return incoming.incomeType.isEmpty ? "Uncategorized" : incoming.incomeType
+            case .subcategory:
+                return incoming.incomeSubtype?.isEmpty == false ? incoming.incomeSubtype! : "Unspecified Subtype"
+            }
+        }.mapValues { $0.reduce(0) { $0 + $1.effectiveAmount } }
+        let slices = grouped
+            .map { key, amount in
+                LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
+            }
+            .sorted { $0.amount > $1.amount }
+        return LedgerBreakdownSummary(totalRaw: totalRaw, totalEffective: totalEffective, slices: slices)
+    }
+}
+
 @MainActor
 final class LedgerFeatureViewModel: ObservableObject {
     @Published private(set) var state: ViewLoadState = .loading
@@ -74,6 +129,7 @@ final class LedgerFeatureViewModel: ObservableObject {
     @Published var isSaving = false
     @Published var alertText: String?
     @Published private(set) var optionsByKind: [String: [UserOptionRow]] = [:]
+    @Published var breakdownMode: BreakdownMode = .category
 
     let kind: LedgerKind
     let api: ConvexAPI
@@ -85,6 +141,11 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private var expenses: [Expense] = []
     private var incomings: [Incoming] = []
+
+    enum BreakdownMode: String, CaseIterable {
+        case category
+        case subcategory
+    }
 
     init(kind: LedgerKind, api: ConvexAPI, filterStore: LedgerFilterStoring = LedgerFilterStore(), calendar: Calendar = LedgerScopeLogic.calendar) {
         self.kind = kind
@@ -186,6 +247,21 @@ final class LedgerFeatureViewModel: ObservableObject {
     func applySearch(_ value: String) {
         searchText = value
         applyFiltersAndSearch()
+    }
+
+    func updateBreakdownMode(_ mode: BreakdownMode) {
+        breakdownMode = mode
+    }
+
+    var breakdownSummary: LedgerBreakdownSummary {
+        switch kind {
+        case .expense:
+            let filtered = LedgerFiltering.filterExpenses(expenses, selected: selectedFilters, searchText: searchText)
+            return makeExpenseBreakdownSummary(rows: filtered, mode: breakdownMode)
+        case .incoming:
+            let filtered = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText)
+            return makeIncomingBreakdownSummary(rows: filtered, mode: breakdownMode)
+        }
     }
 
     func createExpense(_ draft: ExpenseEditorDraft) {
@@ -522,6 +598,37 @@ final class LedgerFeatureViewModel: ObservableObject {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled { return true }
         return false
+    }
+
+    private func makeExpenseBreakdownSummary(rows: [Expense], mode: BreakdownMode) -> LedgerBreakdownSummary {
+        LedgerBreakdownComputing.expenses(rows: rows, mode: mode) { [weak self] key, resolvedMode in
+            self?.colorToken(for: key, mode: resolvedMode)
+        }
+    }
+
+    private func makeIncomingBreakdownSummary(rows: [Incoming], mode: BreakdownMode) -> LedgerBreakdownSummary {
+        LedgerBreakdownComputing.incomings(rows: rows, mode: mode) { [weak self] key, resolvedMode in
+            self?.colorToken(for: key, mode: resolvedMode)
+        }
+    }
+
+    private func colorToken(for key: String, mode: BreakdownMode) -> String? {
+        switch kind {
+        case .expense:
+            switch mode {
+            case .category:
+                return optionsByKind["category"]?.first(where: { $0.value == key })?.color
+            case .subcategory:
+                return optionsByKind["subcategory"]?.first(where: { $0.value == key })?.color
+            }
+        case .incoming:
+            switch mode {
+            case .category:
+                return optionsByKind["incomeType"]?.first(where: { $0.value == key })?.color
+            case .subcategory:
+                return optionsByKind["incomeSubtype"]?.first(where: { $0.value == key })?.color
+            }
+        }
     }
 }
 

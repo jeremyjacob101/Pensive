@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct ExpensesFeatureView: View {
     @StateObject private var viewModel: LedgerFeatureViewModel
@@ -48,6 +49,12 @@ private struct LedgerScreen: View {
                     DateRangePickerButton(startDate: $viewModel.scope.startDate, endDate: $viewModel.scope.endDate)
                     Toggle("Include month overlap", isOn: $viewModel.scope.includeMonthYearOverlapOutsideDate)
                         .onChange(of: viewModel.scope) { _, _ in viewModel.updateScope() }
+                }
+
+                Section {
+                    LedgerBreakdownCard(viewModel: viewModel)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .listRowBackground(Color.clear)
                 }
 
                 ForEach(viewModel.rows) { row in
@@ -148,6 +155,113 @@ private struct LedgerScreen: View {
         viewModel.rows.flatMap { row in
             row.subtitle.split(separator: "•").map { String($0).trimmingCharacters(in: .whitespaces) }
         }.reduce(into: Set<String>()) { $0.insert($1) }.sorted()
+    }
+}
+
+private struct LedgerBreakdownCard: View {
+    @ObservedObject var viewModel: LedgerFeatureViewModel
+    private let moneyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "ILS"
+        formatter.locale = Locale(identifier: "he_IL")
+        return formatter
+    }()
+
+    private let fallbackPalette: [Color] = [
+        Color(red: 0.71, green: 0.00, blue: 0.00),
+        Color(red: 0.18, green: 0.25, blue: 0.91),
+        Color(red: 0.16, green: 0.61, blue: 0.88),
+        Color(red: 0.92, green: 0.33, blue: 0.34),
+        Color(red: 0.98, green: 0.11, blue: 0.10),
+        Color(red: 0.10, green: 0.74, blue: 0.11),
+        Color(red: 0.82, green: 0.30, blue: 0.78),
+        Color(red: 0.29, green: 0.75, blue: 0.88),
+        Color(red: 0.53, green: 0.22, blue: 0.92),
+        Color(red: 0.35, green: 0.86, blue: 0.68),
+        Color(red: 0.95, green: 0.63, blue: 0.10),
+        Color(red: 0.84, green: 0.89, blue: 0.14)
+    ]
+
+    var body: some View {
+        let summary = viewModel.breakdownSummary
+        VStack(alignment: .leading, spacing: 16) {
+            Picker("Breakdown Mode", selection: Binding(get: { viewModel.breakdownMode }, set: { viewModel.updateBreakdownMode($0) })) {
+                Text("Category").tag(LedgerFeatureViewModel.BreakdownMode.category)
+                Text("Subcategory").tag(LedgerFeatureViewModel.BreakdownMode.subcategory)
+            }
+            .pickerStyle(.segmented)
+
+            if summary.slices.isEmpty {
+                Text("No rows available for this scope.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
+                Chart(summary.slices) { slice in
+                    SectorMark(
+                        angle: .value("Amount", slice.amount),
+                        innerRadius: .ratio(0.58),
+                        outerRadius: .inset(0)
+                    )
+                    .foregroundStyle(color(for: slice))
+                }
+                .frame(height: 240)
+                .chartBackground { _ in
+                    VStack(spacing: 4) {
+                        Text("TOTAL").font(.caption).foregroundStyle(.secondary)
+                        Text(money(summary.totalEffective)).font(.title3.weight(.bold))
+                    }
+                }
+
+                Divider()
+
+                VStack(spacing: 8) {
+                    ForEach(Array(summary.slices.enumerated()), id: \.element.id) { index, slice in
+                        HStack {
+                            Circle().fill(color(for: slice, fallbackIndex: index)).frame(width: 10, height: 10)
+                            Text(slice.label)
+                            Spacer()
+                            Text(money(slice.amount)).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
+            HStack {
+                Text("Raw: \(money(summary.totalRaw))")
+                Spacer()
+                Text("Effective: \(money(summary.totalEffective))")
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(.secondary)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+    }
+
+    private func money(_ value: Double) -> String {
+        moneyFormatter.string(from: NSNumber(value: value)) ?? "₪\(value)"
+    }
+
+    private func color(for slice: LedgerBreakdownSlice, fallbackIndex: Int = 0) -> Color {
+        if let token = slice.colorToken, let parsed = Color(hex: token) {
+            return parsed
+        }
+        return fallbackPalette[fallbackIndex % fallbackPalette.count]
+    }
+}
+
+private extension Color {
+    init?(hex: String) {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        self.init(red: red, green: green, blue: blue)
     }
 }
 
