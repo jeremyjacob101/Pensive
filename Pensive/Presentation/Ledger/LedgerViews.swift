@@ -53,6 +53,24 @@ private struct LedgerScreen: View {
 
                 ForEach(viewModel.rows) { row in
                     DisclosureGroup {
+                        HStack {
+                            Button {
+                                editingID = RowID(id: row.id)
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("ledger_edit_\(row.id)")
+
+                            Button(role: .destructive) {
+                                deleteID = row.id
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("ledger_delete_\(row.id)")
+                        }
+
                         ForEach(row.details, id: \.self) { detail in
                             Text(detail).font(.footnote).foregroundStyle(.secondary)
                         }
