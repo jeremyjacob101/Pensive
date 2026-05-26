@@ -120,6 +120,7 @@ Notes:
 - For simulator stability and reproducibility, follow `SIMULATOR.md` exactly for every iOS build/test run.
 - Prefer `./scripts/test-ios-stable.sh` to avoid repeated simulator/deployment drift issues.
 - Run the `SIMULATOR.md` proactive preflight sequence (`shutdown/erase/boot/bootstatus`) before each test session.
+- `.xcconfig` URL rule: do not set raw `https://...` directly (the `//` is treated as a comment). Use `$(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)...`.
 - In Codex environments, if CoreSimulator/Xcode connection errors appear, rerun the same command with escalated permissions before changing flags.
 - In Codex, prefer running `xcodebuild`/`simctl` with escalation from the start to avoid known simulator permission walls.
 - If the scheme/device name differs, update commands accordingly.

@@ -10,7 +10,6 @@ configs:
 
 settings:
   base:
-    PRODUCT_NAME: Pensive
     PRODUCT_BUNDLE_IDENTIFIER: com.pensive.app
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1,2"
@@ -32,6 +31,7 @@ targets:
       - path: Pensive
     settings:
       base:
+        PRODUCT_NAME: Pensive
         PRODUCT_MODULE_NAME: Pensive
         SWIFT_EMIT_LOC_STRINGS: YES
         INFOPLIST_FILE: Pensive/Resources/Info.plist
@@ -45,6 +45,7 @@ targets:
       - path: PensiveTests
     settings:
       base:
+        PRODUCT_NAME: PensiveTests
         PRODUCT_MODULE_NAME: PensiveTests
     dependencies:
       - target: Pensive
@@ -56,6 +57,7 @@ targets:
       - path: PensiveUITests
     settings:
       base:
+        PRODUCT_NAME: PensiveUITests
         PRODUCT_MODULE_NAME: PensiveUITests
     dependencies:
       - target: Pensive

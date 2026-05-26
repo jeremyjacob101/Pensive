@@ -432,7 +432,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
-				PRODUCT_NAME = Pensive;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -502,7 +502,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
-				PRODUCT_NAME = Pensive;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -521,6 +521,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
@@ -537,6 +538,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Pensive;
@@ -553,6 +555,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
@@ -570,6 +573,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -586,6 +590,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Pensive;
@@ -602,6 +607,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
@@ -619,6 +625,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -679,7 +686,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
-				PRODUCT_NAME = Pensive;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -699,6 +706,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -715,6 +723,7 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Pensive;

@@ -29,7 +29,6 @@ echo "==> 3/5 Build sanity"
 xcodebuild -scheme "$SCHEME" \
   -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath "$DERIVED_DATA" \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   build
 
 echo "==> 4/5 Unit tests (sequential, stable flags)"

@@ -159,3 +159,4 @@ Use the provided tasks directly for build/test runs to avoid drift.
 - For auth/API testing, always perform the backend live-route precheck first.
 - If adding/removing files, rerun `xcodegen generate` before tests.
 - If simulator tooling fails due to sandbox constraints, rerun with Codex escalation using the same command.
+- In `.xcconfig`, never write raw `https://...` values directly; `//` is treated as a comment. Use `$(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)...`.
