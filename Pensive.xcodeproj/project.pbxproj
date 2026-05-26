@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0C0A9CD9A2B5176DE940EC51 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F8155C7EF63E9520D985E5 /* SessionStore.swift */; };
 		2880EF2873615DD899935E23 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FC40024A84513ECC515CEC /* RootView.swift */; };
+		32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */; };
 		339F14E959BC67DD3B2A7286 /* PensiveUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */; };
 		570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1060E8EA814D7616BF2AC146 /* PensiveApp.swift */; };
 		9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCE0385815003415646F8C4 /* AuthState.swift */; };
@@ -65,6 +66,7 @@
 		D98F13E54929428601D27C98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		DA5D11103CBAE2749C0C86DA /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		E6F8155C7EF63E9520D985E5 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokenStore.swift; sourceTree = "<group>"; };
 		F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -213,6 +215,7 @@
 			isa = PBXGroup;
 			children = (
 				27991D4F555E429982C9C524 /* AppEnvironment.swift */,
+				E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */,
 			);
 			path = Infrastructure;
 			sourceTree = "<group>";
@@ -343,6 +346,7 @@
 				D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */,
 				EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */,
 				9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */,
+				32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */,
 				E6CDB1D2FD90169D1C4AB86E /* AuthViewModel.swift in Sources */,
 				9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */,
 				F3838279BB7FB0590509ECC2 /* ConvexTransport.swift in Sources */,

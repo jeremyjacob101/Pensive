@@ -13,6 +13,7 @@ protocol SessionStoring: AnyObject {
 
 final class SessionStore: SessionStoring {
     private let authAPI: AuthAPI
+    private let tokenStore: AuthTokenStoring
     private let cookieStorage: HTTPCookieStorage
     private let stateQueue = DispatchQueue(label: "pensive.session-store.state", qos: .userInitiated)
 
@@ -25,9 +26,11 @@ final class SessionStore: SessionStoring {
 
     init(
         authAPI: AuthAPI,
+        tokenStore: AuthTokenStoring = AuthTokenStore(),
         cookieStorage: HTTPCookieStorage = .shared
     ) {
         self.authAPI = authAPI
+        self.tokenStore = tokenStore
         self.cookieStorage = cookieStorage
     }
 
@@ -42,6 +45,9 @@ final class SessionStore: SessionStoring {
                 do {
                     let response = try await self.authAPI.session()
                     if response.authenticated, let userId = response.userId, !userId.isEmpty {
+                        if let token = response.token {
+                            self.tokenStore.setToken(token)
+                        }
                         self.authMessage = nil
                         self.transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
                     } else {
@@ -90,6 +96,7 @@ final class SessionStore: SessionStoring {
                     }
 
                     self.authMessage = nil
+                    self.tokenStore.setToken(response.token)
                     self.transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
                 } catch {
                     let mapped = self.mapAuthError(error)
@@ -150,6 +157,7 @@ final class SessionStore: SessionStoring {
 
     private func clearSessionArtifacts() {
         cookieStorage.cookies?.forEach { cookieStorage.deleteCookie($0) }
+        tokenStore.setToken(nil)
     }
 
     private func transition(to next: AuthState) {

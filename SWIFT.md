@@ -76,22 +76,41 @@ Use this section as the startup guardrail in a new workspace.
 ### Build Command Expectations
 Use these command expectations unless the workspace explicitly changes them.
 
+0. Preferred default for all routine iOS verification:
+```bash
+./scripts/test-ios-stable.sh
+```
+This is the canonical one-command path and should be used before manual command sequences.
+
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Convex codegen/dev sync (when backend changes or generated types are needed):
+2. Convex backend prerequisites (required for valid live auth/API tests in this iOS repo):
 ```bash
-npx convex dev
+npm run convex:deployments
+```
+Expected deployment:
+- URL: `https://marvelous-fish-603.convex.cloud`
+- Deployment: `marvelous-fish-603 (dev)`
+
+3. Convex codegen/dev sync (when backend changes or generated types are needed):
+```bash
+npm run convex:dev
 ```
 
-3. iOS build (CLI expectation):
+4. Convex deploy after changing `convex/` files (required before iOS runtime tests):
+```bash
+npm run convex:deploy
+```
+
+5. iOS build (CLI expectation):
 ```bash
 xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
-4. iOS test (CLI expectation):
+6. iOS test (CLI expectation):
 ```bash
 xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PensiveTests test
 xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PensiveUITests/PensiveUITests/testLaunchShowsRootView test
@@ -99,6 +118,7 @@ xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' 
 
 Notes:
 - For simulator stability and reproducibility, follow `SIMULATOR.md` exactly for every iOS build/test run.
+- Prefer `./scripts/test-ios-stable.sh` to avoid repeated simulator/deployment drift issues.
 - Run the `SIMULATOR.md` proactive preflight sequence (`shutdown/erase/boot/bootstatus`) before each test session.
 - In Codex environments, if CoreSimulator/Xcode connection errors appear, rerun the same command with escalated permissions before changing flags.
 - In Codex, prefer running `xcodebuild`/`simctl` with escalation from the start to avoid known simulator permission walls.
@@ -107,6 +127,11 @@ Notes:
 - Keep build/test commands reproducible for CI.
 - Run unit and UI test commands sequentially (not in parallel) to avoid simulator test-runner collisions.
 - Do not use `Any iOS Simulator Device` for tests; use a concrete simulator destination.
+- Before asserting auth failures in iOS, verify backend routes are live:
+```bash
+curl -i https://marvelous-fish-603.convex.site/api/auth/session
+```
+Expected: `200` JSON response, not `404 No matching routes found`.
 
 ### Prompt Templates For New Codex Window
 Kickoff prompt:

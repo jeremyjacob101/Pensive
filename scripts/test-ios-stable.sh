@@ -8,6 +8,14 @@ WORKDIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 cd "$WORKDIR"
 
+echo "==> 0/5 Backend live-route precheck"
+npm run convex:deployments
+curl -i https://marvelous-fish-603.convex.site/api/auth/session >/tmp/pensive-auth-session-check.out
+if ! rg -q "200" /tmp/pensive-auth-session-check.out; then
+  echo "Backend auth route check failed. See /tmp/pensive-auth-session-check.out"
+  exit 1
+fi
+
 echo "==> 1/5 Generating project"
 xcodegen generate
 

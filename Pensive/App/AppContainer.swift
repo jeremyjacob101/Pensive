@@ -9,13 +9,14 @@ struct AppContainer {
         if let userId = ProcessInfo.processInfo.environment["UI_TEST_AUTHENTICATED_USER_ID"], !userId.isEmpty {
             return AppContainer(environment: env, sessionStore: UITestSessionStore(userId: userId))
         }
-        let api = AppContainer.makeAPI(environment: env)
-        return AppContainer(environment: env, sessionStore: SessionStore(authAPI: api.auth))
+        let tokenStore = AuthTokenStore()
+        let api = AppContainer.makeAPI(environment: env, tokenStore: tokenStore)
+        return AppContainer(environment: env, sessionStore: SessionStore(authAPI: api.auth, tokenStore: tokenStore))
     }
 
-    private static func makeAPI(environment: AppEnvironment) -> ConvexAPI {
+    private static func makeAPI(environment: AppEnvironment, tokenStore: AuthTokenStoring) -> ConvexAPI {
         let base = URL(string: environment.convexHTTPActionBaseURL) ?? URL(string: environment.convexBaseURL)!
-        let transport = URLSessionConvexTransport(baseURL: base, authTokenProvider: { nil })
+        let transport = URLSessionConvexTransport(baseURL: base, authTokenProvider: { tokenStore.currentToken })
         let httpClient = HTTPClient(transport: transport)
         return ConvexService(client: httpClient)
     }

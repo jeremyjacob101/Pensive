@@ -3,6 +3,40 @@
 This is the canonical simulator/test runbook for this repo.
 Use this exact flow in every future chat.
 
+## 0) Default One-Command Flow (Preferred)
+
+Run this first:
+```bash
+./scripts/test-ios-stable.sh
+```
+
+This script includes:
+- Convex deployment binding check
+- Live auth route check
+- Project generation
+- Simulator preflight
+- Build sanity
+- Sequential unit + UI tests with stable flags
+
+If this succeeds, no additional manual steps are required.
+
+## 0) Backend Live-Route Precheck (Required)
+
+Run before simulator tests when auth/API behavior is under test:
+```bash
+npm run convex:deployments
+curl -i https://marvelous-fish-603.convex.site/api/auth/session
+```
+
+Pass criteria:
+- Deployment is `marvelous-fish-603 (dev)`.
+- `curl` returns `200` with JSON body (not `404 No matching routes found`).
+
+If backend `convex/` code changed:
+```bash
+npm run convex:deploy
+```
+
 ## 1) One-Time Project Sync
 
 Run:
@@ -44,7 +78,7 @@ xcrun simctl bootstatus 'iPhone 17' -b
 
 Reason: reduces `SBMainWorkspace ... Busy (Application failed preflight checks)` flakiness and makes first run deterministic.
 
-## 5) Canonical Commands
+## 5) Canonical Commands (Manual Fallback)
 
 Build sanity:
 ```bash
@@ -122,5 +156,6 @@ Use the provided tasks directly for build/test runs to avoid drift.
 - Keep `iPhone 17` destination unless SWIFT.md explicitly changes it.
 - Keep `/private/tmp/PensiveDerivedData` unless permissions model changes.
 - Always run the proactive preflight sequence before test commands.
+- For auth/API testing, always perform the backend live-route precheck first.
 - If adding/removing files, rerun `xcodegen generate` before tests.
 - If simulator tooling fails due to sandbox constraints, rerun with Codex escalation using the same command.

@@ -161,7 +161,12 @@ protocol PaybackLinksAPI {
 // MARK: - DTOs
 
 struct SignInRequest: Codable { let email: String; let password: String }
-struct SessionResponse: Codable { let authenticated: Bool; let userId: String? }
+struct SessionResponse: Codable {
+    let authenticated: Bool
+    let userId: String?
+    let token: String?
+    let refreshToken: String?
+}
 
 struct DateScopeRequest: Codable {
     let startDate: String
