@@ -49,7 +49,6 @@ function normalizeCells(cells: string[][] | undefined) {
 
 function normalizeTables(input: {
   tables?: Array<{ id?: string; title?: string; cells?: string[][] }>;
-  cells?: string[][];
 }): NotepadTable[] {
   const rawTables = Array.isArray(input.tables) ? input.tables : [];
   if (rawTables.length > 0) {
@@ -64,14 +63,13 @@ function normalizeTables(input: {
     {
       id: "legacy-table-1",
       title: "Table 1",
-      cells: normalizeCells(input.cells),
+      cells: makeDefaultCells(),
     },
   ];
 }
 
 function normalizeNotes(input: {
   notes?: Array<{ id?: string; title?: string; content?: string }>;
-  notesText?: string;
 }): NotepadNote[] {
   const rawNotes = Array.isArray(input.notes) ? input.notes : [];
   if (rawNotes.length > 0) {
@@ -81,17 +79,7 @@ function normalizeNotes(input: {
       content: note.content ?? "",
     }));
   }
-
-  const legacyText = (input.notesText ?? "").trim();
-  if (!legacyText) return [];
-
-  return [
-    {
-      id: "legacy-note-1",
-      title: "Note 1",
-      content: input.notesText ?? "",
-    },
-  ];
+  return [];
 }
 
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
@@ -117,9 +105,7 @@ async function getOrCreateWorkspace(
   const now = Date.now();
   const workspaceId = await ctx.db.insert("notepadWorkspaces", {
     userId,
-    notesText: "",
     notes: [],
-    cells: makeDefaultCells(),
     tables: [
       {
         id: makeId("table"),
@@ -141,10 +127,6 @@ function findTableIndex(tables: NotepadTable[], tableId: string) {
 
 function findNoteIndex(notes: NotepadNote[], noteId: string) {
   return notes.findIndex((note) => note.id === noteId);
-}
-
-function firstNoteText(notes: NotepadNote[]) {
-  return notes[0]?.content ?? "";
 }
 
 export const getMine = query({
@@ -170,9 +152,7 @@ export const getMine = query({
         _id: null,
         _creationTime: Date.now(),
         userId,
-        notesText: "",
         notes,
-        cells: makeDefaultCells(),
         tables,
         updatedAt: Date.now(),
       };
@@ -184,41 +164,8 @@ export const getMine = query({
     return {
       ...workspace,
       notes,
-      notesText: firstNoteText(notes),
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
     };
-  },
-});
-
-export const saveNotes = mutation({
-  args: {
-    notesText: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const workspace = await getOrCreateWorkspace(ctx, userId);
-    if (workspace.userId !== userId) throw new Error("Workspace not found");
-
-    const notes = normalizeNotes(workspace);
-    if (notes.length === 0) {
-      const trimmed = args.notesText.trim();
-      if (trimmed) {
-        notes.push({
-          id: makeId("note"),
-          title: "Note 1",
-          content: args.notesText,
-        });
-      }
-    } else {
-      notes[0] = { ...notes[0], content: args.notesText };
-    }
-
-    await ctx.db.patch(workspace._id, {
-      notes,
-      notesText: args.notesText,
-      updatedAt: Date.now(),
-    });
   },
 });
 
@@ -241,7 +188,6 @@ export const addNote = mutation({
 
     await ctx.db.patch(workspace._id, {
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -262,7 +208,6 @@ export const cleanupEmptyNotes = mutation({
 
     await ctx.db.patch(workspace._id, {
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -295,7 +240,6 @@ export const renameNote = mutation({
 
     await ctx.db.patch(workspace._id, {
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -335,7 +279,6 @@ export const saveNoteContent = mutation({
 
     await ctx.db.patch(workspace._id, {
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -359,9 +302,7 @@ export const addTable = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -389,9 +330,7 @@ export const renameTable = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -413,9 +352,7 @@ export const deleteTable = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -460,9 +397,7 @@ export const saveCell = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -487,9 +422,7 @@ export const addRow = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -515,9 +448,7 @@ export const addColumn = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -543,9 +474,7 @@ export const removeLastRow = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },
@@ -574,9 +503,7 @@ export const removeLastColumn = mutation({
 
     await ctx.db.patch(workspace._id, {
       tables,
-      cells: tables[0]?.cells ?? makeDefaultCells(),
       notes,
-      notesText: firstNoteText(notes),
       updatedAt: Date.now(),
     });
   },

@@ -115,7 +115,6 @@ export default defineSchema({
     .index("by_user_id", ["userId"]),
   notepadWorkspaces: defineTable({
     userId: v.optional(v.id("users")),
-    notesText: v.string(),
     notes: v.optional(
       v.array(
         v.object({
@@ -125,7 +124,6 @@ export default defineSchema({
         }),
       ),
     ),
-    cells: v.array(v.array(v.string())),
     tables: v.optional(
       v.array(
         v.object({

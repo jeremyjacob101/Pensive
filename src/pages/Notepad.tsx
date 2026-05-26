@@ -15,7 +15,6 @@ const MIN_ROW_HEIGHT = 10;
 
 export function Notepad() {
   const workspace = useQuery(api.notepad.getMine);
-  const cleanupEmptyNotes = useMutation(api.notepad.cleanupEmptyNotes);
   const renameNote = useMutation(api.notepad.renameNote);
   const saveNoteContent = useMutation(api.notepad.saveNoteContent);
   const addTable = useMutation(api.notepad.addTable);
@@ -45,7 +44,6 @@ export function Notepad() {
 
   const notesSyncedRef = useRef(false);
   const tablesSyncedRef = useRef(false);
-  const emptyNotesCleanupDoneRef = useRef(false);
   const noteContentTimersRef = useRef<Record<string, number>>({});
   const noteTitleTimersRef = useRef<Record<string, number>>({});
   const tableTitleTimersRef = useRef<Record<string, number>>({});
@@ -68,7 +66,7 @@ export function Notepad() {
         title: note.title,
         content: note.content,
       }));
-      setNotes(nextNotes);
+      setNotes(nextNotes.filter((note) => note.content.trim().length > 0));
       notesSyncedRef.current = true;
     }
 
@@ -82,15 +80,6 @@ export function Notepad() {
       tablesSyncedRef.current = true;
     }
   }, [workspace]);
-
-  useEffect(() => {
-    if (workspace === undefined) return;
-    if (emptyNotesCleanupDoneRef.current) return;
-    emptyNotesCleanupDoneRef.current = true;
-    void cleanupEmptyNotes().catch(() => {
-      setSaveError("Could not cleanup empty notes.");
-    });
-  }, [cleanupEmptyNotes, workspace]);
 
   const setTableColWidth = (
     tableId: string,
