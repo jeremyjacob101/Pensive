@@ -1,7 +1,7 @@
+import { internalMutation, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { normalizeMonthYearsInput } from "./monthYears";
 import { paginationOptsValidator } from "convex/server";
-import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
@@ -49,25 +49,68 @@ export const create = mutation({
     incomingType: v.optional(v.string()),
     incomingSubtype: v.optional(v.string()),
     incomingAccount: v.optional(v.string()),
+    recurringExpenseType: v.optional(v.string()),
+    recurringExpenseAccount: v.optional(v.string()),
+    recurringExpenseCategory: v.optional(v.string()),
+    recurringExpenseSubcategory: v.optional(v.string()),
+    recurringExpensePaidTo: v.optional(v.string()),
+    recurringIncomingPaidBy: v.optional(v.string()),
+    recurringIncomingType: v.optional(v.string()),
+    recurringIncomingSubtype: v.optional(v.string()),
+    recurringIncomingAccount: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
+    const recurringExpenseType = args.recurringExpenseType ?? args.expenseType;
+    const recurringExpenseAccount =
+      args.recurringExpenseAccount ?? args.expenseAccount;
+    const recurringExpenseCategory =
+      args.recurringExpenseCategory ?? args.expenseCategory;
+    const recurringExpenseSubcategory =
+      args.recurringExpenseSubcategory ?? args.expenseSubcategory;
+    const recurringExpensePaidTo =
+      args.recurringExpensePaidTo ?? args.expensePaidTo;
+    const recurringIncomingPaidBy =
+      args.recurringIncomingPaidBy ?? args.incomingPaidBy;
+    const recurringIncomingType =
+      args.recurringIncomingType ?? args.incomingType;
+    const recurringIncomingSubtype =
+      args.recurringIncomingSubtype ?? args.incomingSubtype;
+    const recurringIncomingAccount =
+      args.recurringIncomingAccount ?? args.incomingAccount;
+
     if (args.kind === "expense") {
       if (
-        !args.expenseType ||
-        !args.expenseAccount ||
-        !args.expenseCategory ||
-        !args.expensePaidTo
+        !recurringExpenseType ||
+        !recurringExpenseAccount ||
+        !recurringExpenseCategory ||
+        !recurringExpensePaidTo
       ) {
         throw new Error("Missing required expense recurring fields");
       }
     } else {
-      if (!args.incomingPaidBy || !args.incomingType || !args.incomingAccount) {
+      if (
+        !recurringIncomingPaidBy ||
+        !recurringIncomingType ||
+        !recurringIncomingAccount
+      ) {
         throw new Error("Missing required incoming recurring fields");
       }
     }
-    return await ctx.db.insert("recurrings", { ...args, userId });
+    return await ctx.db.insert("recurrings", {
+      ...args,
+      recurringExpenseType,
+      recurringExpenseAccount,
+      recurringExpenseCategory,
+      recurringExpenseSubcategory,
+      recurringExpensePaidTo,
+      recurringIncomingPaidBy,
+      recurringIncomingType,
+      recurringIncomingSubtype,
+      recurringIncomingAccount,
+      userId,
+    });
   },
 });
 
@@ -94,6 +137,15 @@ export const bulkCreate = mutation({
         incomingType: v.optional(v.string()),
         incomingSubtype: v.optional(v.string()),
         incomingAccount: v.optional(v.string()),
+        recurringExpenseType: v.optional(v.string()),
+        recurringExpenseAccount: v.optional(v.string()),
+        recurringExpenseCategory: v.optional(v.string()),
+        recurringExpenseSubcategory: v.optional(v.string()),
+        recurringExpensePaidTo: v.optional(v.string()),
+        recurringIncomingPaidBy: v.optional(v.string()),
+        recurringIncomingType: v.optional(v.string()),
+        recurringIncomingSubtype: v.optional(v.string()),
+        recurringIncomingAccount: v.optional(v.string()),
         notes: v.optional(v.string()),
       }),
     ),
@@ -145,6 +197,15 @@ export const update = mutation({
     incomingType: v.optional(v.string()),
     incomingSubtype: v.optional(v.string()),
     incomingAccount: v.optional(v.string()),
+    recurringExpenseType: v.optional(v.string()),
+    recurringExpenseAccount: v.optional(v.string()),
+    recurringExpenseCategory: v.optional(v.string()),
+    recurringExpenseSubcategory: v.optional(v.string()),
+    recurringExpensePaidTo: v.optional(v.string()),
+    recurringIncomingPaidBy: v.optional(v.string()),
+    recurringIncomingType: v.optional(v.string()),
+    recurringIncomingSubtype: v.optional(v.string()),
+    recurringIncomingAccount: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { id, kind, ...rest }) => {
@@ -154,22 +215,68 @@ export const update = mutation({
       throw new Error("Not found");
     }
 
+    const recurringExpenseType = rest.recurringExpenseType ?? rest.expenseType;
+    const recurringExpenseAccount =
+      rest.recurringExpenseAccount ?? rest.expenseAccount;
+    const recurringExpenseCategory =
+      rest.recurringExpenseCategory ?? rest.expenseCategory;
+    const recurringExpensePaidTo =
+      rest.recurringExpensePaidTo ?? rest.expensePaidTo;
+    const recurringIncomingPaidBy =
+      rest.recurringIncomingPaidBy ?? rest.incomingPaidBy;
+    const recurringIncomingType =
+      rest.recurringIncomingType ?? rest.incomingType;
+    const recurringIncomingAccount =
+      rest.recurringIncomingAccount ?? rest.incomingAccount;
+
     if (kind === "expense") {
       if (
-        !rest.expenseType ||
-        !rest.expenseAccount ||
-        !rest.expenseCategory ||
-        !rest.expensePaidTo
+        !recurringExpenseType ||
+        !recurringExpenseAccount ||
+        !recurringExpenseCategory ||
+        !recurringExpensePaidTo
       ) {
         throw new Error("Missing required expense recurring fields");
       }
     } else {
-      if (!rest.incomingPaidBy || !rest.incomingType || !rest.incomingAccount) {
+      if (
+        !recurringIncomingPaidBy ||
+        !recurringIncomingType ||
+        !recurringIncomingAccount
+      ) {
         throw new Error("Missing required incoming recurring fields");
       }
     }
 
-    await ctx.db.patch(id, { kind, ...rest });
+    await ctx.db.patch(id, {
+      kind,
+      ...rest,
+      recurringExpenseType,
+      recurringExpenseAccount,
+      recurringExpenseCategory,
+      recurringExpenseSubcategory:
+        rest.recurringExpenseSubcategory ?? rest.expenseSubcategory,
+      recurringExpensePaidTo,
+      recurringIncomingPaidBy,
+      recurringIncomingType,
+      recurringIncomingSubtype:
+        rest.recurringIncomingSubtype ?? rest.incomingSubtype,
+      recurringIncomingAccount,
+      ...(kind === "expense"
+        ? {
+            recurringIncomingPaidBy: undefined,
+            recurringIncomingType: undefined,
+            recurringIncomingSubtype: undefined,
+            recurringIncomingAccount: undefined,
+          }
+        : {
+            recurringExpenseType: undefined,
+            recurringExpenseAccount: undefined,
+            recurringExpenseCategory: undefined,
+            recurringExpenseSubcategory: undefined,
+            recurringExpensePaidTo: undefined,
+          }),
+    });
     return id;
   },
 });
@@ -188,6 +295,103 @@ export const setStatus = mutation({
 
     await ctx.db.patch(id, { status });
     return id;
+  },
+});
+
+export const cleanupRecurringKindFields = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+    const rows = await ctx.db
+      .query("recurrings")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .collect();
+    let updated = 0;
+    for (const row of rows) {
+      const kind = row.kind ?? "expense";
+      await ctx.db.patch(row._id, {
+        recurringExpenseType: row.recurringExpenseType ?? row.expenseType,
+        recurringExpenseAccount:
+          row.recurringExpenseAccount ?? row.expenseAccount ?? row.paidBy,
+        recurringExpenseCategory:
+          row.recurringExpenseCategory ?? row.expenseCategory ?? row.category,
+        recurringExpenseSubcategory:
+          row.recurringExpenseSubcategory ?? row.expenseSubcategory,
+        recurringExpensePaidTo:
+          row.recurringExpensePaidTo ?? row.expensePaidTo ?? row.paidTo,
+        recurringIncomingPaidBy:
+          row.recurringIncomingPaidBy ?? row.incomingPaidBy,
+        recurringIncomingType: row.recurringIncomingType ?? row.incomingType,
+        recurringIncomingSubtype:
+          row.recurringIncomingSubtype ?? row.incomingSubtype,
+        recurringIncomingAccount:
+          row.recurringIncomingAccount ?? row.incomingAccount ?? row.paidTo,
+        ...(kind === "expense"
+          ? {
+              recurringIncomingPaidBy: undefined,
+              recurringIncomingType: undefined,
+              recurringIncomingSubtype: undefined,
+              recurringIncomingAccount: undefined,
+            }
+          : {
+              recurringExpenseType: undefined,
+              recurringExpenseAccount: undefined,
+              recurringExpenseCategory: undefined,
+              recurringExpenseSubcategory: undefined,
+              recurringExpensePaidTo: undefined,
+            }),
+      });
+      updated++;
+    }
+    return { updated };
+  },
+});
+
+export const cleanupRecurringKindFieldsForUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const rows = await ctx.db
+      .query("recurrings")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .collect();
+    let updated = 0;
+    for (const row of rows) {
+      const kind = row.kind ?? "expense";
+      await ctx.db.patch(row._id, {
+        recurringExpenseType: row.recurringExpenseType ?? row.expenseType,
+        recurringExpenseAccount:
+          row.recurringExpenseAccount ?? row.expenseAccount ?? row.paidBy,
+        recurringExpenseCategory:
+          row.recurringExpenseCategory ?? row.expenseCategory ?? row.category,
+        recurringExpenseSubcategory:
+          row.recurringExpenseSubcategory ?? row.expenseSubcategory,
+        recurringExpensePaidTo:
+          row.recurringExpensePaidTo ?? row.expensePaidTo ?? row.paidTo,
+        recurringIncomingPaidBy:
+          row.recurringIncomingPaidBy ?? row.incomingPaidBy,
+        recurringIncomingType: row.recurringIncomingType ?? row.incomingType,
+        recurringIncomingSubtype:
+          row.recurringIncomingSubtype ?? row.incomingSubtype,
+        recurringIncomingAccount:
+          row.recurringIncomingAccount ?? row.incomingAccount ?? row.paidTo,
+        ...(kind === "expense"
+          ? {
+              recurringIncomingPaidBy: undefined,
+              recurringIncomingType: undefined,
+              recurringIncomingSubtype: undefined,
+              recurringIncomingAccount: undefined,
+            }
+          : {
+              recurringExpenseType: undefined,
+              recurringExpenseAccount: undefined,
+              recurringExpenseCategory: undefined,
+              recurringExpenseSubcategory: undefined,
+              recurringExpensePaidTo: undefined,
+            }),
+      });
+      updated++;
+    }
+    return { updated };
   },
 });
 
@@ -261,9 +465,16 @@ export const materializeDueExpenses = mutation({
           userId,
           incoming: recurring.name,
           paidBy: recurring.incomingPaidBy ?? "",
-          incomeType: recurring.incomingType ?? "",
-          incomeSubtype: recurring.incomingSubtype ?? "",
-          account: recurring.incomingAccount ?? "",
+          incomeType:
+            recurring.recurringIncomingType ?? recurring.incomingType ?? "",
+          incomeSubtype:
+            recurring.recurringIncomingSubtype ??
+            recurring.incomingSubtype ??
+            "",
+          account:
+            recurring.recurringIncomingAccount ??
+            recurring.incomingAccount ??
+            "",
           amount: recurring.price,
           effectiveAmount: recurring.price,
           effectiveAmountMode: "auto",
@@ -290,15 +501,34 @@ export const materializeDueExpenses = mutation({
         monthYears: normalizeMonthYearsInput([], runDate),
         userId,
         expense: recurring.name,
-        type: recurring.expenseType ?? recurring.type ?? "Recurring",
-        account: recurring.expenseAccount ?? recurring.paidBy ?? "",
-        category: recurring.expenseCategory ?? recurring.category ?? "",
-        subcategory: recurring.expenseSubcategory ?? "",
+        type:
+          recurring.recurringExpenseType ??
+          recurring.expenseType ??
+          recurring.type ??
+          "Recurring",
+        account:
+          recurring.recurringExpenseAccount ??
+          recurring.expenseAccount ??
+          recurring.paidBy ??
+          "",
+        category:
+          recurring.recurringExpenseCategory ??
+          recurring.expenseCategory ??
+          recurring.category ??
+          "",
+        subcategory:
+          recurring.recurringExpenseSubcategory ??
+          recurring.expenseSubcategory ??
+          "",
         amount: recurring.price,
         effectiveAmount: recurring.price,
         effectiveAmountMode: "auto",
         date: runDate,
-        paidTo: recurring.expensePaidTo ?? recurring.paidTo ?? "",
+        paidTo:
+          recurring.recurringExpensePaidTo ??
+          recurring.expensePaidTo ??
+          recurring.paidTo ??
+          "",
         notes: recurring.notes,
         comments: `Triggered at ${formatJerusalemNow()}`,
         expenseId: automationKey,

@@ -60,6 +60,15 @@ export type WorkspaceMutations = {
     incomingType?: string;
     incomingSubtype?: string;
     incomingAccount?: string;
+    recurringExpenseType?: string;
+    recurringExpenseAccount?: string;
+    recurringExpenseCategory?: string;
+    recurringExpenseSubcategory?: string;
+    recurringExpensePaidTo?: string;
+    recurringIncomingPaidBy?: string;
+    recurringIncomingType?: string;
+    recurringIncomingSubtype?: string;
+    recurringIncomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;
   addUserOption: (args: {
@@ -131,6 +140,15 @@ export type WorkspaceMutations = {
     incomingType?: string;
     incomingSubtype?: string;
     incomingAccount?: string;
+    recurringExpenseType?: string;
+    recurringExpenseAccount?: string;
+    recurringExpenseCategory?: string;
+    recurringExpenseSubcategory?: string;
+    recurringExpensePaidTo?: string;
+    recurringIncomingPaidBy?: string;
+    recurringIncomingType?: string;
+    recurringIncomingSubtype?: string;
+    recurringIncomingAccount?: string;
     notes?: string;
   }) => Promise<unknown>;
   deleteExpense: (args: { id: Id<"expenses"> }) => Promise<unknown>;

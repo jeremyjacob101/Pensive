@@ -1962,7 +1962,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="expenseType"
                       label="Expense Type"
-                      name="expenseType"
+                      name="recurringExpenseType"
                       value={expenseType}
                       options={toOptionValues(userOptions?.expenseType)}
                       placeholder="Type"
@@ -1973,7 +1973,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="account"
                       label="Expense Account"
-                      name="expenseAccount"
+                      name="recurringExpenseAccount"
                       value={expenseAccount}
                       options={toOptionValues(userOptions?.account)}
                       placeholder="Account"
@@ -1984,7 +1984,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="category"
                       label="Expense Category"
-                      name="expenseCategory"
+                      name="recurringExpenseCategory"
                       value={recurringCategory}
                       options={toOptionValues(userOptions?.category)}
                       placeholder="Category"
@@ -1995,7 +1995,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="subcategory"
                       label="Expense Subcategory"
-                      name="expenseSubcategory"
+                      name="recurringExpenseSubcategory"
                       value={recurringExpenseSubcategory}
                       options={recurringExpenseSubcategoryOptions}
                       placeholder="Subcategory"
@@ -2004,7 +2004,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                       parentValue={recurringCategory}
                     />
                     <input
-                      name="expensePaidTo"
+                      name="recurringExpensePaidTo"
                       placeholder="Paid To"
                       required
                     />
@@ -2012,14 +2012,14 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                 ) : (
                   <>
                     <input
-                      name="incomingPaidBy"
+                      name="recurringIncomingPaidBy"
                       placeholder="Paid By"
                       required
                     />
                     <OptionPicker
                       kind="incomeType"
                       label="Income Type"
-                      name="incomingType"
+                      name="recurringIncomingType"
                       value={incomingType}
                       options={toOptionValues(userOptions?.incomeType)}
                       placeholder="Income Type"
@@ -2030,7 +2030,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="incomeSubtype"
                       label="Income Subtype"
-                      name="incomingSubtype"
+                      name="recurringIncomingSubtype"
                       value={recurringIncomingSubtype}
                       options={recurringIncomingSubtypeOptions}
                       placeholder="Income Subtype"
@@ -2041,7 +2041,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     <OptionPicker
                       kind="account"
                       label="Incoming Account"
-                      name="incomingAccount"
+                      name="recurringIncomingAccount"
                       value={incomingAccount}
                       options={toOptionValues(userOptions?.account)}
                       placeholder="Account"

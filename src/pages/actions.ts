@@ -165,53 +165,60 @@ export async function handleAddRecurring(
           : "active",
       kind,
       name: String(form.get("name") ?? ""),
-      type: kind === "expense" ? String(form.get("expenseType") ?? "") : "",
+      type:
+        kind === "expense"
+          ? String(form.get("recurringExpenseType") ?? "")
+          : "",
       price: toAmount(String(form.get("price") ?? "")),
       frequency: String(form.get("frequency") ?? ""),
       dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
       paidBy:
         kind === "expense"
-          ? String(form.get("expenseAccount") ?? "")
-          : String(form.get("incomingPaidBy") ?? ""),
+          ? String(form.get("recurringExpenseAccount") ?? "")
+          : String(form.get("recurringIncomingPaidBy") ?? ""),
       category:
-        kind === "expense" ? String(form.get("expenseCategory") ?? "") : "",
+        kind === "expense"
+          ? String(form.get("recurringExpenseCategory") ?? "")
+          : "",
       paidTo:
         kind === "expense"
-          ? String(form.get("expensePaidTo") ?? "")
-          : String(form.get("incomingAccount") ?? ""),
-      expenseType:
-        kind === "expense" ? String(form.get("expenseType") ?? "") : undefined,
-      expenseAccount:
+          ? String(form.get("recurringExpensePaidTo") ?? "")
+          : String(form.get("recurringIncomingAccount") ?? ""),
+      recurringExpenseType:
         kind === "expense"
-          ? String(form.get("expenseAccount") ?? "")
+          ? String(form.get("recurringExpenseType") ?? "")
           : undefined,
-      expenseCategory:
+      recurringExpenseAccount:
         kind === "expense"
-          ? String(form.get("expenseCategory") ?? "")
+          ? String(form.get("recurringExpenseAccount") ?? "")
           : undefined,
-      expenseSubcategory:
+      recurringExpenseCategory:
         kind === "expense"
-          ? String(form.get("expenseSubcategory") ?? "") || undefined
+          ? String(form.get("recurringExpenseCategory") ?? "")
           : undefined,
-      expensePaidTo:
+      recurringExpenseSubcategory:
         kind === "expense"
-          ? String(form.get("expensePaidTo") ?? "")
+          ? String(form.get("recurringExpenseSubcategory") ?? "") || undefined
           : undefined,
-      incomingPaidBy:
-        kind === "incoming"
-          ? String(form.get("incomingPaidBy") ?? "")
+      recurringExpensePaidTo:
+        kind === "expense"
+          ? String(form.get("recurringExpensePaidTo") ?? "")
           : undefined,
-      incomingType:
+      recurringIncomingPaidBy:
         kind === "incoming"
-          ? String(form.get("incomingType") ?? "")
+          ? String(form.get("recurringIncomingPaidBy") ?? "")
           : undefined,
-      incomingSubtype:
+      recurringIncomingType:
         kind === "incoming"
-          ? String(form.get("incomingSubtype") ?? "") || undefined
+          ? String(form.get("recurringIncomingType") ?? "")
           : undefined,
-      incomingAccount:
+      recurringIncomingSubtype:
         kind === "incoming"
-          ? String(form.get("incomingAccount") ?? "")
+          ? String(form.get("recurringIncomingSubtype") ?? "") || undefined
+          : undefined,
+      recurringIncomingAccount:
+        kind === "incoming"
+          ? String(form.get("recurringIncomingAccount") ?? "")
           : undefined,
       notes: String(form.get("notes") ?? "") || undefined,
     });
@@ -284,22 +291,30 @@ export function handleStartEditRecurring(
     status: row.status,
     kind: row.kind ?? "expense",
     name: row.name,
-    type: row.type ?? row.expenseType ?? "",
+    type: row.type ?? row.recurringExpenseType ?? row.expenseType ?? "",
     price: String(row.price),
     frequency: row.frequency,
     dayOfMonth: String(row.dayOfMonth),
     paidBy: row.paidBy ?? "",
     category: row.category ?? "",
     paidTo: row.paidTo ?? "",
-    expenseType: row.expenseType ?? row.type ?? "",
-    expenseAccount: row.expenseAccount ?? row.paidBy ?? "",
-    expenseCategory: row.expenseCategory ?? row.category ?? "",
-    expenseSubcategory: row.expenseSubcategory ?? "",
-    expensePaidTo: row.expensePaidTo ?? row.paidTo ?? "",
-    incomingPaidBy: row.incomingPaidBy ?? "",
-    incomingType: row.incomingType ?? "",
-    incomingSubtype: row.incomingSubtype ?? "",
-    incomingAccount: row.incomingAccount ?? "",
+    recurringExpenseType:
+      row.recurringExpenseType ?? row.expenseType ?? row.type ?? "",
+    recurringExpenseAccount:
+      row.recurringExpenseAccount ?? row.expenseAccount ?? row.paidBy ?? "",
+    recurringExpenseCategory:
+      row.recurringExpenseCategory ?? row.expenseCategory ?? row.category ?? "",
+    recurringExpenseSubcategory:
+      row.recurringExpenseSubcategory ?? row.expenseSubcategory ?? "",
+    recurringExpensePaidTo:
+      row.recurringExpensePaidTo ?? row.expensePaidTo ?? row.paidTo ?? "",
+    recurringIncomingPaidBy:
+      row.recurringIncomingPaidBy ?? row.incomingPaidBy ?? "",
+    recurringIncomingType: row.recurringIncomingType ?? row.incomingType ?? "",
+    recurringIncomingSubtype:
+      row.recurringIncomingSubtype ?? row.incomingSubtype ?? "",
+    recurringIncomingAccount:
+      row.recurringIncomingAccount ?? row.incomingAccount ?? "",
     notes: row.notes ?? "",
   });
 }
@@ -430,47 +445,58 @@ export async function handleUpdateRecurring(
       status: deps.editValues.status === "inactive" ? "inactive" : "active",
       kind,
       name: deps.editValues.name ?? "",
-      type: kind === "expense" ? (deps.editValues.expenseType ?? "") : "",
+      type:
+        kind === "expense" ? (deps.editValues.recurringExpenseType ?? "") : "",
       price: toAmount(deps.editValues.price ?? ""),
       frequency: deps.editValues.frequency ?? "",
       dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
       paidBy:
         kind === "expense"
-          ? (deps.editValues.expenseAccount ?? "")
-          : (deps.editValues.incomingPaidBy ?? ""),
+          ? (deps.editValues.recurringExpenseAccount ?? "")
+          : (deps.editValues.recurringIncomingPaidBy ?? ""),
       category:
-        kind === "expense" ? (deps.editValues.expenseCategory ?? "") : "",
+        kind === "expense"
+          ? (deps.editValues.recurringExpenseCategory ?? "")
+          : "",
       paidTo:
         kind === "expense"
-          ? (deps.editValues.expensePaidTo ?? "")
-          : (deps.editValues.incomingAccount ?? ""),
-      expenseType:
-        kind === "expense" ? (deps.editValues.expenseType ?? "") : undefined,
-      expenseAccount:
-        kind === "expense" ? (deps.editValues.expenseAccount ?? "") : undefined,
-      expenseCategory:
+          ? (deps.editValues.recurringExpensePaidTo ?? "")
+          : (deps.editValues.recurringIncomingAccount ?? ""),
+      recurringExpenseType:
         kind === "expense"
-          ? (deps.editValues.expenseCategory ?? "")
+          ? (deps.editValues.recurringExpenseType ?? "")
           : undefined,
-      expenseSubcategory:
+      recurringExpenseAccount:
         kind === "expense"
-          ? deps.editValues.expenseSubcategory || undefined
+          ? (deps.editValues.recurringExpenseAccount ?? "")
           : undefined,
-      expensePaidTo:
-        kind === "expense" ? (deps.editValues.expensePaidTo ?? "") : undefined,
-      incomingPaidBy:
-        kind === "incoming"
-          ? (deps.editValues.incomingPaidBy ?? "")
+      recurringExpenseCategory:
+        kind === "expense"
+          ? (deps.editValues.recurringExpenseCategory ?? "")
           : undefined,
-      incomingType:
-        kind === "incoming" ? (deps.editValues.incomingType ?? "") : undefined,
-      incomingSubtype:
-        kind === "incoming"
-          ? deps.editValues.incomingSubtype || undefined
+      recurringExpenseSubcategory:
+        kind === "expense"
+          ? deps.editValues.recurringExpenseSubcategory || undefined
           : undefined,
-      incomingAccount:
+      recurringExpensePaidTo:
+        kind === "expense"
+          ? (deps.editValues.recurringExpensePaidTo ?? "")
+          : undefined,
+      recurringIncomingPaidBy:
         kind === "incoming"
-          ? (deps.editValues.incomingAccount ?? "")
+          ? (deps.editValues.recurringIncomingPaidBy ?? "")
+          : undefined,
+      recurringIncomingType:
+        kind === "incoming"
+          ? (deps.editValues.recurringIncomingType ?? "")
+          : undefined,
+      recurringIncomingSubtype:
+        kind === "incoming"
+          ? deps.editValues.recurringIncomingSubtype || undefined
+          : undefined,
+      recurringIncomingAccount:
+        kind === "incoming"
+          ? (deps.editValues.recurringIncomingAccount ?? "")
           : undefined,
       notes: deps.editValues.notes || undefined,
     });

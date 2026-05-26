@@ -80,17 +80,17 @@ export function Recurrings() {
                   const categoryColor = getOptionColor(
                     userOptions,
                     "category",
-                    row.expenseCategory ?? row.category ?? "",
+                    row.recurringExpenseCategory ?? row.category ?? "",
                   );
                   const typeColor = getOptionColor(
                     userOptions,
                     "expenseType",
-                    row.expenseType ?? row.type ?? "",
+                    row.recurringExpenseType ?? row.type ?? "",
                   );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
-                    row.expenseAccount ?? row.paidBy ?? "",
+                    row.recurringExpenseAccount ?? row.paidBy ?? "",
                   );
                   const isActive = row.status.toLowerCase() === "active";
                   const isToggling = togglingRecurringId === row._id;
@@ -108,7 +108,7 @@ export function Recurrings() {
                             <span
                               className="entry-card-account-icon-wrap"
                               data-tooltip={
-                                row.expenseAccount ?? row.paidBy ?? ""
+                                row.recurringExpenseAccount ?? row.paidBy ?? ""
                               }
                             >
                               <CreditCard
@@ -122,7 +122,9 @@ export function Recurrings() {
                           <span
                             className="entry-card-primary-divider"
                             style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                            data-tooltip={row.expenseType ?? row.type ?? ""}
+                            data-tooltip={
+                              row.recurringExpenseType ?? row.type ?? ""
+                            }
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -131,9 +133,11 @@ export function Recurrings() {
                               className="entry-card-color-dot"
                               style={{ backgroundColor: categoryColor }}
                               data-tooltip={
-                                row.expenseSubcategory
-                                  ? `${row.expenseCategory ?? row.category ?? ""} / ${row.expenseSubcategory}`
-                                  : (row.expenseCategory ?? row.category ?? "")
+                                row.recurringExpenseSubcategory
+                                  ? `${row.recurringExpenseCategory ?? row.category ?? ""} / ${row.recurringExpenseSubcategory}`
+                                  : (row.recurringExpenseCategory ??
+                                    row.category ??
+                                    "")
                               }
                             />
                           </div>
@@ -217,23 +221,25 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Type:</strong>{" "}
-                              {row.expenseType ?? row.type ?? "-"}
+                              {row.recurringExpenseType ?? row.type ?? "-"}
                             </div>
                             <div>
                               <strong>Account:</strong>{" "}
-                              {row.expenseAccount ?? row.paidBy ?? "-"}
+                              {row.recurringExpenseAccount ?? row.paidBy ?? "-"}
                             </div>
                             <div>
                               <strong>Category:</strong>{" "}
-                              {row.expenseCategory ?? row.category ?? "-"}
+                              {row.recurringExpenseCategory ??
+                                row.category ??
+                                "-"}
                             </div>
                             <div>
                               <strong>Subcategory:</strong>{" "}
-                              {row.expenseSubcategory ?? "-"}
+                              {row.recurringExpenseSubcategory ?? "-"}
                             </div>
                             <div>
                               <strong>Paid To:</strong>{" "}
-                              {row.expensePaidTo ?? row.paidTo ?? "-"}
+                              {row.recurringExpensePaidTo ?? row.paidTo ?? "-"}
                             </div>
                             <div>
                               <strong>Notes:</strong> {row.notes ?? "-"}
@@ -295,17 +301,17 @@ export function Recurrings() {
                   const categoryColor = getOptionColor(
                     userOptions,
                     "incomeType",
-                    row.incomingType ?? "",
+                    row.recurringIncomingType ?? "",
                   );
                   const typeColor = getOptionColor(
                     userOptions,
                     "incomeType",
-                    row.incomingType ?? "",
+                    row.recurringIncomingType ?? "",
                   );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
-                    row.incomingAccount ?? row.paidTo ?? "",
+                    row.recurringIncomingAccount ?? row.paidTo ?? "",
                   );
                   const isActive = row.status.toLowerCase() === "active";
                   const isToggling = togglingRecurringId === row._id;
@@ -323,7 +329,7 @@ export function Recurrings() {
                             <span
                               className="entry-card-account-icon-wrap"
                               data-tooltip={
-                                row.incomingAccount ?? row.paidTo ?? ""
+                                row.recurringIncomingAccount ?? row.paidTo ?? ""
                               }
                             >
                               <CreditCard
@@ -337,7 +343,7 @@ export function Recurrings() {
                           <span
                             className="entry-card-primary-divider"
                             style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                            data-tooltip={row.incomingType ?? ""}
+                            data-tooltip={row.recurringIncomingType ?? ""}
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -346,9 +352,9 @@ export function Recurrings() {
                               className="entry-card-color-dot"
                               style={{ backgroundColor: categoryColor }}
                               data-tooltip={
-                                row.incomingSubtype
-                                  ? `${row.incomingType ?? ""} / ${row.incomingSubtype}`
-                                  : (row.incomingType ?? "")
+                                row.recurringIncomingSubtype
+                                  ? `${row.recurringIncomingType ?? ""} / ${row.recurringIncomingSubtype}`
+                                  : (row.recurringIncomingType ?? "")
                               }
                             />
                           </div>
@@ -432,19 +438,21 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Paid By:</strong>{" "}
-                              {row.incomingPaidBy ?? row.paidBy ?? "-"}
+                              {row.recurringIncomingPaidBy ?? row.paidBy ?? "-"}
                             </div>
                             <div>
                               <strong>Income Type:</strong>{" "}
-                              {row.incomingType ?? "-"}
+                              {row.recurringIncomingType ?? "-"}
                             </div>
                             <div>
                               <strong>Income Subtype:</strong>{" "}
-                              {row.incomingSubtype ?? "-"}
+                              {row.recurringIncomingSubtype ?? "-"}
                             </div>
                             <div>
                               <strong>Account:</strong>{" "}
-                              {row.incomingAccount ?? row.paidTo ?? "-"}
+                              {row.recurringIncomingAccount ??
+                                row.paidTo ??
+                                "-"}
                             </div>
                             <div>
                               <strong>Notes:</strong> {row.notes ?? "-"}
@@ -573,13 +581,13 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="expenseType"
                 label="Expense Type"
-                value={editValues.expenseType ?? ""}
+                value={editValues.recurringExpenseType ?? ""}
                 options={toOptionValues(userOptions?.expenseType)}
                 placeholder="Type"
                 onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    expenseType: value,
+                    recurringExpenseType: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
@@ -587,13 +595,13 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="account"
                 label="Expense Account"
-                value={editValues.expenseAccount ?? ""}
+                value={editValues.recurringExpenseAccount ?? ""}
                 options={toOptionValues(userOptions?.account)}
                 placeholder="Account"
                 onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    expenseAccount: value,
+                    recurringExpenseAccount: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
@@ -601,14 +609,14 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="category"
                 label="Expense Category"
-                value={editValues.expenseCategory ?? ""}
+                value={editValues.recurringExpenseCategory ?? ""}
                 options={toOptionValues(userOptions?.category)}
                 placeholder="Category"
                 onChange={(value) =>
                   setEditValues((v) => {
                     const next: EditValues = {
                       ...v,
-                      expenseCategory: value,
+                      recurringExpenseCategory: value,
                     };
                     const scoped = getScopedOptionValues(
                       userOptions,
@@ -616,10 +624,10 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                       value,
                     );
                     if (
-                      (next.expenseSubcategory ?? "") &&
-                      !scoped.includes(next.expenseSubcategory ?? "")
+                      (next.recurringExpenseSubcategory ?? "") &&
+                      !scoped.includes(next.recurringExpenseSubcategory ?? "")
                     ) {
-                      next.expenseSubcategory = "";
+                      next.recurringExpenseSubcategory = "";
                     }
                     return next;
                   })
@@ -629,28 +637,28 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="subcategory"
                 label="Expense Subcategory"
-                value={editValues.expenseSubcategory ?? ""}
+                value={editValues.recurringExpenseSubcategory ?? ""}
                 options={getScopedOptionValues(
                   userOptions,
                   "subcategory",
-                  editValues.expenseCategory ?? "",
+                  editValues.recurringExpenseCategory ?? "",
                 )}
                 placeholder="Subcategory"
                 onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    expenseSubcategory: value,
+                    recurringExpenseSubcategory: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
-                parentValue={editValues.expenseCategory ?? ""}
+                parentValue={editValues.recurringExpenseCategory ?? ""}
               />
               <input
-                value={editValues.expensePaidTo ?? ""}
+                value={editValues.recurringExpensePaidTo ?? ""}
                 onChange={(e) =>
                   setEditValues((v) => ({
                     ...v,
-                    expensePaidTo: e.target.value,
+                    recurringExpensePaidTo: e.target.value,
                   }))
                 }
                 placeholder="Paid To"
@@ -659,11 +667,11 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
           ) : (
             <>
               <input
-                value={editValues.incomingPaidBy ?? ""}
+                value={editValues.recurringIncomingPaidBy ?? ""}
                 onChange={(e) =>
                   setEditValues((v) => ({
                     ...v,
-                    incomingPaidBy: e.target.value,
+                    recurringIncomingPaidBy: e.target.value,
                   }))
                 }
                 placeholder="Paid By"
@@ -671,14 +679,14 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="incomeType"
                 label="Income Type"
-                value={editValues.incomingType ?? ""}
+                value={editValues.recurringIncomingType ?? ""}
                 options={toOptionValues(userOptions?.incomeType)}
                 placeholder="Income Type"
                 onChange={(value) =>
                   setEditValues((v) => {
                     const next: EditValues = {
                       ...v,
-                      incomingType: value,
+                      recurringIncomingType: value,
                     };
                     const scoped = getScopedOptionValues(
                       userOptions,
@@ -686,10 +694,10 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
                       value,
                     );
                     if (
-                      (next.incomingSubtype ?? "") &&
-                      !scoped.includes(next.incomingSubtype ?? "")
+                      (next.recurringIncomingSubtype ?? "") &&
+                      !scoped.includes(next.recurringIncomingSubtype ?? "")
                     ) {
-                      next.incomingSubtype = "";
+                      next.recurringIncomingSubtype = "";
                     }
                     return next;
                   })
@@ -699,32 +707,32 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
               <OptionPicker
                 kind="incomeSubtype"
                 label="Income Subtype"
-                value={editValues.incomingSubtype ?? ""}
+                value={editValues.recurringIncomingSubtype ?? ""}
                 options={getScopedOptionValues(
                   userOptions,
                   "incomeSubtype",
-                  editValues.incomingType ?? "",
+                  editValues.recurringIncomingType ?? "",
                 )}
                 placeholder="Income Subtype"
                 onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    incomingSubtype: value,
+                    recurringIncomingSubtype: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}
-                parentValue={editValues.incomingType ?? ""}
+                parentValue={editValues.recurringIncomingType ?? ""}
               />
               <OptionPicker
                 kind="account"
                 label="Incoming Account"
-                value={editValues.incomingAccount ?? ""}
+                value={editValues.recurringIncomingAccount ?? ""}
                 options={toOptionValues(userOptions?.account)}
                 placeholder="Account"
                 onChange={(value) =>
                   setEditValues((v) => ({
                     ...v,
-                    incomingAccount: value,
+                    recurringIncomingAccount: value,
                   }))
                 }
                 onCreateOption={saveOption.bind(null, addUserOption)}

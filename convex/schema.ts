@@ -108,6 +108,15 @@ export default defineSchema({
     incomingType: v.optional(v.string()),
     incomingSubtype: v.optional(v.string()),
     incomingAccount: v.optional(v.string()),
+    recurringExpenseType: v.optional(v.string()),
+    recurringExpenseAccount: v.optional(v.string()),
+    recurringExpenseCategory: v.optional(v.string()),
+    recurringExpenseSubcategory: v.optional(v.string()),
+    recurringExpensePaidTo: v.optional(v.string()),
+    recurringIncomingPaidBy: v.optional(v.string()),
+    recurringIncomingType: v.optional(v.string()),
+    recurringIncomingSubtype: v.optional(v.string()),
+    recurringIncomingAccount: v.optional(v.string()),
     notes: v.optional(v.string()),
   })
     .index("by_day_of_month", ["dayOfMonth"])
