@@ -116,7 +116,16 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     func refresh() async {
-        state = .loading
+        let hadRenderableState: Bool
+        switch state {
+        case .content, .empty:
+            hadRenderableState = true
+        default:
+            hadRenderableState = false
+        }
+        if !hadRenderableState {
+            state = .loading
+        }
         do {
             switch kind {
             case .expense:
@@ -126,6 +135,9 @@ final class LedgerFeatureViewModel: ObservableObject {
             }
             applyFiltersAndSearch()
         } catch {
+            if isCancellationLike(error) {
+                return
+            }
             state = .error(message: message(for: error))
         }
     }
@@ -503,6 +515,13 @@ final class LedgerFeatureViewModel: ObservableObject {
             }
         }
         return "Unexpected error."
+    }
+
+    private func isCancellationLike(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled { return true }
+        return false
     }
 }
 

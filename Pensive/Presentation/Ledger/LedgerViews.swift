@@ -35,7 +35,6 @@ private struct LedgerScreen: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
     @State private var showCreate = false
-    @State private var showBulkCreate = false
     @State private var editingID: RowID?
     @State private var deleteID: String?
     @State private var selectedPartnerAnchorID: RowID?
@@ -109,7 +108,6 @@ private struct LedgerScreen: View {
             .refreshable { await viewModel.refresh() }
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { showBulkCreate = true } label: { Image(systemName: "square.stack.3d.up") }
                     Button { showCreate = true } label: { Image(systemName: "plus") }
                 }
             }
@@ -119,9 +117,6 @@ private struct LedgerScreen: View {
                 } else {
                     IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
                 }
-            }
-            .sheet(isPresented: $showBulkCreate) {
-                BulkCreateSheet(kind: viewModel.kind, viewModel: viewModel)
             }
             .sheet(item: $editingID) { selected in
                 if viewModel.kind == .expense, let draft = viewModel.expenseDraft(id: selected.id) {
@@ -161,7 +156,8 @@ private enum EditorMode { case create, edit }
 private struct ExpenseEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: LedgerFeatureViewModel
-    @State private var draft: ExpenseEditorDraft
+    @State private var drafts: [ExpenseEditorDraft]
+    @State private var selectedIndex = 0
     let mode: EditorMode
 
     @State private var addType = ""
@@ -170,28 +166,57 @@ private struct ExpenseEditorSheet: View {
 
     init(viewModel: LedgerFeatureViewModel, initialDraft: ExpenseEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
-        _draft = State(initialValue: initialDraft)
+        _drafts = State(initialValue: [initialDraft])
         self.mode = mode
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $draft.expense)
-                TextField("Type", text: $draft.type)
-                TextField("Account", text: $draft.account)
-                TextField("Category", text: $draft.category)
-                TextField("Subcategory", text: Binding(get: { draft.subcategory ?? "" }, set: { draft.subcategory = $0.isEmpty ? nil : $0 }))
-                TextField("Paid To", text: $draft.paidTo)
-                TextField("Amount", value: $draft.amount, format: .number)
-                TextField("Effective Amount", value: $draft.effectiveAmount, format: .number)
-                Picker("Effective Mode", selection: $draft.effectiveAmountMode) {
+                if mode == .create {
+                    Section("Bulk Group") {
+                        Text("Entries: \(drafts.count)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Picker("Editing Entry", selection: $selectedIndex) {
+                            ForEach(Array(drafts.indices), id: \.self) { index in
+                                Text("Entry \(index + 1)").tag(index)
+                            }
+                        }
+                        Button("Add Another in Bulk Group") {
+                            drafts.append(newExpenseDraft(template: drafts[selectedIndex]))
+                            selectedIndex = drafts.count - 1
+                        }
+                        if drafts.count > 1 {
+                            Button("Remove Current Entry", role: .destructive) {
+                                drafts.remove(at: selectedIndex)
+                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                            }
+                        }
+                    }
+                }
+
+                TextField("Name", text: binding(\.expense))
+                TextField("Type", text: binding(\.type))
+                TextField("Account", text: binding(\.account))
+                TextField("Category", text: binding(\.category))
+                TextField("Subcategory", text: Binding(get: { currentDraft.subcategory ?? "" }, set: { value in
+                    updateCurrent { $0.subcategory = value.isEmpty ? nil : value }
+                }))
+                TextField("Paid To", text: binding(\.paidTo))
+                TextField("Amount", value: binding(\.amount), format: .number)
+                TextField("Effective Amount", value: binding(\.effectiveAmount), format: .number)
+                Picker("Effective Mode", selection: binding(\.effectiveAmountMode)) {
                     Text("Auto").tag(EffectiveAmountMode.auto)
                     Text("Manual").tag(EffectiveAmountMode.manual)
                 }
-                DatePicker("Date", selection: $draft.date, displayedComponents: .date)
-                TextField("Notes", text: Binding(get: { draft.notes ?? "" }, set: { draft.notes = $0.isEmpty ? nil : $0 }))
-                TextField("Comments", text: Binding(get: { draft.comments ?? "" }, set: { draft.comments = $0.isEmpty ? nil : $0 }))
+                DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
+                TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
+                    updateCurrent { $0.notes = value.isEmpty ? nil : value }
+                }))
+                TextField("Comments", text: Binding(get: { currentDraft.comments ?? "" }, set: { value in
+                    updateCurrent { $0.comments = value.isEmpty ? nil : value }
+                }))
 
                 Section("Add missing option") {
                     TextField("New type", text: $addType)
@@ -207,20 +232,86 @@ private struct ExpenseEditorSheet: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(mode == .create ? "Create" : "Save") {
-                        if mode == .create { viewModel.createExpense(draft) } else { viewModel.updateExpense(draft) }
+                        if mode == .create {
+                            submitCreate()
+                        } else {
+                            viewModel.updateExpense(currentDraft)
+                        }
                         dismiss()
                     }
-                    .disabled(draft.expense.isEmpty || draft.type.isEmpty || draft.account.isEmpty || draft.category.isEmpty || draft.paidTo.isEmpty || draft.amount <= 0)
+                    .disabled(isSubmitDisabled)
                 }
             }
         }
+    }
+
+    private var currentDraft: ExpenseEditorDraft { drafts[selectedIndex] }
+
+    private var isSubmitDisabled: Bool {
+        if mode == .edit {
+            return currentDraft.expense.isEmpty || currentDraft.type.isEmpty || currentDraft.account.isEmpty || currentDraft.category.isEmpty || currentDraft.paidTo.isEmpty || currentDraft.amount <= 0
+        }
+        return drafts.isEmpty || drafts.contains { $0.expense.isEmpty || $0.type.isEmpty || $0.account.isEmpty || $0.category.isEmpty || $0.paidTo.isEmpty || $0.amount <= 0 }
+    }
+
+    private func submitCreate() {
+        if drafts.count == 1 {
+            viewModel.createExpense(drafts[0])
+            return
+        }
+        let baseExpenseId = UUID().uuidString
+        let groupLabel = drafts[0].expense
+        let rows = drafts.map { draft -> ExpenseEditorDraft in
+            var next = draft
+            next.baseExpenseId = baseExpenseId
+            next.baseExpenseLabel = groupLabel
+            next.subExpenseId = UUID().uuidString
+            if next.expenseId.isEmpty { next.expenseId = UUID().uuidString }
+            return next
+        }
+        viewModel.bulkCreateExpenses(rows)
+    }
+
+    private func binding<Value>(_ keyPath: WritableKeyPath<ExpenseEditorDraft, Value>) -> Binding<Value> {
+        Binding(get: { drafts[selectedIndex][keyPath: keyPath] }, set: { value in
+            drafts[selectedIndex][keyPath: keyPath] = value
+        })
+    }
+
+    private func updateCurrent(_ mutate: (inout ExpenseEditorDraft) -> Void) {
+        var next = drafts[selectedIndex]
+        mutate(&next)
+        drafts[selectedIndex] = next
+    }
+
+    private func newExpenseDraft(template: ExpenseEditorDraft) -> ExpenseEditorDraft {
+        ExpenseEditorDraft(
+            id: nil,
+            expense: "",
+            type: template.type,
+            account: template.account,
+            category: template.category,
+            subcategory: template.subcategory,
+            amount: 0,
+            effectiveAmount: 0,
+            effectiveAmountMode: template.effectiveAmountMode,
+            date: template.date,
+            paidTo: template.paidTo,
+            notes: template.notes,
+            comments: template.comments,
+            expenseId: UUID().uuidString,
+            baseExpenseId: nil,
+            baseExpenseLabel: nil,
+            subExpenseId: nil
+        )
     }
 }
 
 private struct IncomingEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: LedgerFeatureViewModel
-    @State private var draft: IncomingEditorDraft
+    @State private var drafts: [IncomingEditorDraft]
+    @State private var selectedIndex = 0
     let mode: EditorMode
 
     @State private var addType = ""
@@ -228,27 +319,56 @@ private struct IncomingEditorSheet: View {
 
     init(viewModel: LedgerFeatureViewModel, initialDraft: IncomingEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
-        _draft = State(initialValue: initialDraft)
+        _drafts = State(initialValue: [initialDraft])
         self.mode = mode
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $draft.incoming)
-                TextField("Paid By", text: $draft.paidBy)
-                TextField("Type", text: $draft.incomeType)
-                TextField("Subtype", text: Binding(get: { draft.incomeSubtype ?? "" }, set: { draft.incomeSubtype = $0.isEmpty ? nil : $0 }))
-                TextField("Account", text: $draft.account)
-                TextField("Amount", value: $draft.amount, format: .number)
-                TextField("Effective Amount", value: $draft.effectiveAmount, format: .number)
-                Picker("Effective Mode", selection: $draft.effectiveAmountMode) {
+                if mode == .create {
+                    Section("Bulk Group") {
+                        Text("Entries: \(drafts.count)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Picker("Editing Entry", selection: $selectedIndex) {
+                            ForEach(Array(drafts.indices), id: \.self) { index in
+                                Text("Entry \(index + 1)").tag(index)
+                            }
+                        }
+                        Button("Add Another in Bulk Group") {
+                            drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
+                            selectedIndex = drafts.count - 1
+                        }
+                        if drafts.count > 1 {
+                            Button("Remove Current Entry", role: .destructive) {
+                                drafts.remove(at: selectedIndex)
+                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                            }
+                        }
+                    }
+                }
+
+                TextField("Name", text: binding(\.incoming))
+                TextField("Paid By", text: binding(\.paidBy))
+                TextField("Type", text: binding(\.incomeType))
+                TextField("Subtype", text: Binding(get: { currentDraft.incomeSubtype ?? "" }, set: { value in
+                    updateCurrent { $0.incomeSubtype = value.isEmpty ? nil : value }
+                }))
+                TextField("Account", text: binding(\.account))
+                TextField("Amount", value: binding(\.amount), format: .number)
+                TextField("Effective Amount", value: binding(\.effectiveAmount), format: .number)
+                Picker("Effective Mode", selection: binding(\.effectiveAmountMode)) {
                     Text("Auto").tag(EffectiveAmountMode.auto)
                     Text("Manual").tag(EffectiveAmountMode.manual)
                 }
-                DatePicker("Date", selection: $draft.date, displayedComponents: .date)
-                TextField("Notes", text: Binding(get: { draft.notes ?? "" }, set: { draft.notes = $0.isEmpty ? nil : $0 }))
-                TextField("Comments", text: Binding(get: { draft.comments ?? "" }, set: { draft.comments = $0.isEmpty ? nil : $0 }))
+                DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
+                TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
+                    updateCurrent { $0.notes = value.isEmpty ? nil : value }
+                }))
+                TextField("Comments", text: Binding(get: { currentDraft.comments ?? "" }, set: { value in
+                    updateCurrent { $0.comments = value.isEmpty ? nil : value }
+                }))
 
                 Section("Add missing option") {
                     TextField("New income type", text: $addType)
@@ -262,61 +382,74 @@ private struct IncomingEditorSheet: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(mode == .create ? "Create" : "Save") {
-                        if mode == .create { viewModel.createIncoming(draft) } else { viewModel.updateIncoming(draft) }
-                        dismiss()
-                    }
-                    .disabled(draft.incoming.isEmpty || draft.paidBy.isEmpty || draft.incomeType.isEmpty || draft.account.isEmpty || draft.amount <= 0)
-                }
-            }
-        }
-    }
-}
-
-private struct BulkCreateSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let kind: LedgerKind
-    @ObservedObject var viewModel: LedgerFeatureViewModel
-    @State private var input = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Text("Format: title,amount,date(YYYY-MM-DD),field1,field2")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                TextEditor(text: $input)
-                    .frame(minHeight: 220)
-            }
-            .navigationTitle("Bulk Create")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Import") {
-                        let lines = input.split(separator: "\n").map(String.init)
-                        if kind == .expense {
-                            let drafts = lines.compactMap(parseExpense)
-                            viewModel.bulkCreateExpenses(drafts)
+                        if mode == .create {
+                            submitCreate()
                         } else {
-                            let drafts = lines.compactMap(parseIncoming)
-                            viewModel.bulkCreateIncomings(drafts)
+                            viewModel.updateIncoming(currentDraft)
                         }
                         dismiss()
                     }
+                    .disabled(isSubmitDisabled)
                 }
             }
         }
     }
 
-    private func parseExpense(_ line: String) -> ExpenseEditorDraft? {
-        let p = line.split(separator: ",", omittingEmptySubsequences: false).map { String($0).trimmingCharacters(in: .whitespaces) }
-        guard p.count >= 6, let amount = Double(p[1]), let date = LedgerScopeLogic.parseISODate(p[2]) else { return nil }
-        return ExpenseEditorDraft(id: nil, expense: p[0], type: p[3], account: p[4], category: p[5], subcategory: nil, amount: amount, effectiveAmount: amount, effectiveAmountMode: .auto, date: date, paidTo: p.count > 6 ? p[6] : "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil)
+    private var currentDraft: IncomingEditorDraft { drafts[selectedIndex] }
+
+    private var isSubmitDisabled: Bool {
+        if mode == .edit {
+            return currentDraft.incoming.isEmpty || currentDraft.paidBy.isEmpty || currentDraft.incomeType.isEmpty || currentDraft.account.isEmpty || currentDraft.amount <= 0
+        }
+        return drafts.isEmpty || drafts.contains { $0.incoming.isEmpty || $0.paidBy.isEmpty || $0.incomeType.isEmpty || $0.account.isEmpty || $0.amount <= 0 }
     }
 
-    private func parseIncoming(_ line: String) -> IncomingEditorDraft? {
-        let p = line.split(separator: ",", omittingEmptySubsequences: false).map { String($0).trimmingCharacters(in: .whitespaces) }
-        guard p.count >= 6, let amount = Double(p[1]), let date = LedgerScopeLogic.parseISODate(p[2]) else { return nil }
-        return IncomingEditorDraft(id: nil, incoming: p[0], paidBy: p[3], incomeType: p[4], incomeSubtype: nil, account: p[5], amount: amount, effectiveAmount: amount, effectiveAmountMode: .auto, date: date, notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil)
+    private func submitCreate() {
+        if drafts.count == 1 {
+            viewModel.createIncoming(drafts[0])
+            return
+        }
+        let baseIncomingId = UUID().uuidString
+        let rows = drafts.map { draft -> IncomingEditorDraft in
+            var next = draft
+            next.baseIncomingId = baseIncomingId
+            next.subIncomingId = UUID().uuidString
+            if next.incomingId.isEmpty { next.incomingId = UUID().uuidString }
+            return next
+        }
+        viewModel.bulkCreateIncomings(rows)
+    }
+
+    private func binding<Value>(_ keyPath: WritableKeyPath<IncomingEditorDraft, Value>) -> Binding<Value> {
+        Binding(get: { drafts[selectedIndex][keyPath: keyPath] }, set: { value in
+            drafts[selectedIndex][keyPath: keyPath] = value
+        })
+    }
+
+    private func updateCurrent(_ mutate: (inout IncomingEditorDraft) -> Void) {
+        var next = drafts[selectedIndex]
+        mutate(&next)
+        drafts[selectedIndex] = next
+    }
+
+    private func newIncomingDraft(template: IncomingEditorDraft) -> IncomingEditorDraft {
+        IncomingEditorDraft(
+            id: nil,
+            incoming: "",
+            paidBy: template.paidBy,
+            incomeType: template.incomeType,
+            incomeSubtype: template.incomeSubtype,
+            account: template.account,
+            amount: 0,
+            effectiveAmount: 0,
+            effectiveAmountMode: template.effectiveAmountMode,
+            date: template.date,
+            notes: template.notes,
+            comments: template.comments,
+            incomingId: UUID().uuidString,
+            baseIncomingId: nil,
+            subIncomingId: nil
+        )
     }
 }
 
