@@ -1,0 +1,8 @@
+// Shared build settings across all environments
+PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app
+SWIFT_VERSION = 5.10
+URL_SCHEME_HTTPS = https:
+URL_SLASH = /
+
+// Optional local overrides for developer machines. Keep secrets out of git.
+#include? "Local.xcconfig"

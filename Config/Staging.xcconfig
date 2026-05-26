@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+APP_ENV_NAME = Staging
+LOG_LEVEL = info
+CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)example-staging.convex.cloud
+CONVEX_HTTP_ACTION_BASE_URL = $(CONVEX_BASE_URL)
+AUTH_CLIENT_ID = staging-client-id

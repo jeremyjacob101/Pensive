@@ -88,18 +88,21 @@ npx convex dev
 
 3. iOS build (CLI expectation):
 ```bash
-xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 4. iOS test (CLI expectation):
 ```bash
-xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 16' test
+xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PensiveTests test
+xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:PensiveUITests/PensiveUITests/testLaunchShowsRootView test
 ```
 
 Notes:
 - If the scheme/device name differs, update commands accordingly.
 - If the project uses an `.xcworkspace`, use `-workspace` plus `-scheme`.
 - Keep build/test commands reproducible for CI.
+- Run unit and UI test commands sequentially (not in parallel) to avoid simulator test-runner collisions.
+- Do not use `Any iOS Simulator Device` for tests; use a concrete simulator destination.
 
 ### Prompt Templates For New Codex Window
 Kickoff prompt:
@@ -362,6 +365,9 @@ Create:
 ## Tests
 - Unit test: config parser reads each expected key.
 - Smoke UI test: app launch + root view visible.
+- Execute these tests with concrete simulator destination and sequential order:
+  1) `xcodebuild ... -only-testing:PensiveTests test`
+  2) `xcodebuild ... -only-testing:PensiveUITests/PensiveUITests/testLaunchShowsRootView test`
 
 ## Failure Modes
 - Secrets accidentally committed.

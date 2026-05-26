@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+APP_ENV_NAME = Release
+LOG_LEVEL = error
+CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)example.convex.cloud
+CONVEX_HTTP_ACTION_BASE_URL = $(CONVEX_BASE_URL)
+AUTH_CLIENT_ID = release-client-id

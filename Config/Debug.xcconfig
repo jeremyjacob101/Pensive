@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+APP_ENV_NAME = Debug
+LOG_LEVEL = debug
+CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)example-debug.convex.cloud
+CONVEX_HTTP_ACTION_BASE_URL = $(CONVEX_BASE_URL)
+AUTH_CLIENT_ID = debug-client-id
