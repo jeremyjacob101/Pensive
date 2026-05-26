@@ -13,3 +13,17 @@ build/
 Config/Local.xcconfig
 
 node_modules
+node_modules.
+.node_modules
+.node_modules.
+/node_modules
+node_modules/
+/node_modules/
+
+dist
+.dist
+dist.
+.dist.
+/dist/
+/dist
+dist/

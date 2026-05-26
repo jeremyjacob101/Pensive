@@ -15,7 +15,6 @@
 		9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCE0385815003415646F8C4 /* AuthState.swift */; };
 		9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */; };
 		A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */; };
-		ACE3225DFD843C544D2C8BEC /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA5D11103CBAE2749C0C86DA /* SmokeTests.swift */; };
 		B29B65867F1DD23E83411C90 /* PensiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */; };
 		C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27991D4F555E429982C9C524 /* AppEnvironment.swift */; };
 		CF035D7019DEA233A9017889 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */; };
@@ -64,7 +63,6 @@
 		D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexTransport.swift; sourceTree = "<group>"; };
 		D98F13E54929428601D27C98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		DA5D11103CBAE2749C0C86DA /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		E6F8155C7EF63E9520D985E5 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokenStore.swift; sourceTree = "<group>"; };
 		F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITests.swift; sourceTree = "<group>"; };
@@ -206,7 +204,6 @@
 		9CA9B78435C5A244F95A76D4 /* PensiveTests */ = {
 			isa = PBXGroup;
 			children = (
-				DA5D11103CBAE2749C0C86DA /* SmokeTests.swift */,
 			);
 			path = PensiveTests;
 			sourceTree = "<group>";
@@ -362,7 +359,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ACE3225DFD843C544D2C8BEC /* SmokeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

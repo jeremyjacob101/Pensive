@@ -247,7 +247,7 @@ export const migrateLegacyRecurringsForUserIds = internalMutation({
             ? row.price
             : 0;
 
-      await ctx.db.patch(id, {
+      const legacyPatch: Record<string, any> = {
         kind,
         amount,
         type: undefined,
@@ -312,7 +312,9 @@ export const migrateLegacyRecurringsForUserIds = internalMutation({
           kind === "incoming"
             ? (row.recurringIncomingAccount ?? row.incomingAccount ?? "")
             : undefined,
-      });
+      };
+
+      await ctx.db.patch(id, legacyPatch as any);
       updated++;
     }
     return { updated };
