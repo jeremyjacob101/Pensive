@@ -16,6 +16,7 @@ Delivery Mode: Balanced (feature parity + native polish per module)
 ## How To Use This Document
 
 This is a sequential execution manual for Codex in a fresh workspace.
+This file is the single source-of-truth for migration execution.
 
 Run in strict order:
 1. Part 1
@@ -41,6 +42,128 @@ Each part includes:
 - Acceptance criteria
 - Tests
 - Common failure modes
+
+---
+
+## Bootstrap Checklist (Copied From Prior README)
+
+Use this section as the startup guardrail in a new workspace.
+
+### Locked Targets
+- Platform: iOS (mobile)
+- Minimum deployment target: iOS 17.0
+- UI framework: SwiftUI
+- Backend: Convex (existing schema/functions are source-of-truth)
+- Integration style: HTTP wrapper layer from iOS to Convex endpoints
+- Migration execution: this `SWIFT.md`, sequentially Part 1 -> Part 12
+
+### Required Inputs In Workspace
+- `SWIFT.md` (this file)
+- `.env` (real env values for local work)
+- `.env.example` (sanitized template)
+- `convex/` folder (current schema + functions)
+
+### Execution Rules For Codex
+1. Read this `SWIFT.md` before coding.
+2. Execute one part at a time, strictly in order.
+3. After each part, provide:
+   - artifacts created/updated
+   - acceptance criteria proof
+   - tests run + results
+   - open risks/blockers
+4. Do not start the next part until current part is accepted.
+
+### Build Command Expectations
+Use these command expectations unless the workspace explicitly changes them.
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Convex codegen/dev sync (when backend changes or generated types are needed):
+```bash
+npx convex dev
+```
+
+3. iOS build (CLI expectation):
+```bash
+xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 16' build
+```
+
+4. iOS test (CLI expectation):
+```bash
+xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 16' test
+```
+
+Notes:
+- If the scheme/device name differs, update commands accordingly.
+- If the project uses an `.xcworkspace`, use `-workspace` plus `-scheme`.
+- Keep build/test commands reproducible for CI.
+
+### Prompt Templates For New Codex Window
+Kickoff prompt:
+`Read SWIFT.md and execute Part 1 only. Create all required artifacts, then show acceptance-criteria proof and tests run before moving to Part 2.`
+
+Part 3 opener:
+`Start Part 3. Generate API_CONTRACT.md first from current convex/ functions and schema, complete it fully, then implement the iOS HTTP wrapper against that contract.`
+
+---
+
+## No-Gaps Audit Checklist (Required After Every Part)
+
+This checklist is mandatory after each part (Parts 1 through 12).  
+Do not proceed to the next part until every checklist item below is answered explicitly.
+
+### A. Scope Lock
+- Confirm: “Only Part X was implemented in this cycle.”
+- List any out-of-scope changes that were made anyway (if any), with justification.
+
+### B. Artifact Completeness
+- List every file created/updated/deleted.
+- For each changed file, state why it changed and which part requirement it satisfies.
+- Confirm required outputs for the part were produced exactly as specified.
+
+### C. Acceptance Proof
+- Paste a point-by-point checklist of this part’s acceptance criteria.
+- Mark each item `pass` / `fail`.
+- For each `pass`, include concrete proof (test output summary, screenshot description, file reference, or behavior evidence).
+- For each `fail`, include impact and remediation plan.
+
+### D. Test Evidence
+- List all tests run for this part (unit/integration/UI/manual as relevant).
+- Include command(s) executed.
+- Include result summary (`passed`, `failed`, `skipped` counts).
+- If tests were not run, explain exactly why and list risk introduced.
+
+### E. Parity Gap Disclosure (Mandatory)
+- List every known parity gap between source web behavior and current iOS state, even if minor.
+- For each gap include:
+  - severity (`critical`, `high`, `medium`, `low`)
+  - affected feature
+  - user-visible impact
+  - planned part for resolution
+- Explicitly state: “No known parity gaps” only if truly none exist.
+
+### F. API/Contract Integrity (When Applicable)
+- Confirm whether API contracts changed this cycle.
+- If yes, update `API_CONTRACT.md` and list exact sections changed.
+- Confirm iOS implementation remains consistent with contract examples.
+
+### G. Risk + Next-Step Readiness
+- List top 3 technical risks remaining after this part.
+- State whether the project is ready to proceed to Part X+1 (`yes` / `no`).
+- If `no`, list required fixes before continuing.
+
+### H. Sign-Off Block (Required)
+Use this exact footer after each part report:
+
+`Part X Sign-Off:`  
+`- Scope gate: pass/fail`  
+`- Acceptance gate: pass/fail`  
+`- Test gate: pass/fail`  
+`- Parity gap gate: pass/fail`  
+`- Ready for next part: yes/no`
 
 ---
 
@@ -83,6 +206,13 @@ Core data behaviors to preserve:
 ---
 
 # Part 1: Product Parity Contract + Architecture
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 1 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Lock exact parity goals and architecture before coding.
@@ -162,6 +292,13 @@ Define standards for:
 
 # Part 2: iOS Project Bootstrap + Environment
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 2 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Stand up a production-structured SwiftUI app foundation and config system.
 
@@ -234,6 +371,13 @@ Create:
 
 # Part 3: Convex HTTP Integration Layer
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 3 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Define and implement the canonical typed HTTP wrapper for all Convex interactions from iOS.
 
@@ -245,10 +389,56 @@ Define and implement the canonical typed HTTP wrapper for all Convex interaction
 - `Networking/HTTPClient.swift`
 - `Networking/ConvexTransport.swift`
 - `Data/API/ConvexAPI.swift` and module-specific APIs
+- `API_CONTRACT.md` (generated first from current `convex/` source-of-truth)
 - Endpoint contract docs
 - DTO + mapper set
 
 ## Detailed Tasks
+
+### 3.0 Hard gate: generate contract before implementation
+Before writing iOS networking code, generate `API_CONTRACT.md` from current `convex/` functions and schema.
+
+This is mandatory for this migration. Do not implement wrapper code before this file exists and is reviewed.
+
+`API_CONTRACT.md` must include, at minimum:
+- Contract version/date and source commit hash.
+- Auth transport contract (headers/cookies/token semantics).
+- Standard response envelope and error envelope.
+- Endpoint index grouped by domain:
+  - auth
+  - expenses
+  - incomings
+  - recurrings
+  - summaries
+  - tracking
+  - notepad
+  - userOptions
+  - paybackLinks
+- For every endpoint:
+  - path
+  - method
+  - required auth
+  - request schema (required/optional fields)
+  - response schema
+  - error codes/messages
+  - idempotency notes (if any)
+  - one concrete example request/response
+- Validation/normalization rules:
+  - date formats (`YYYY-MM-DD`)
+  - month key format (`YYYY-MM`)
+  - numeric precision rules for money/effective amounts
+  - typed ID conventions
+- Recurring-specific notes for current schema:
+  - canonical `amount` field (not `price`)
+  - `kind`-scoped field families (`recurringExpense*` / `recurringIncoming*`)
+  - materialization contract with `runDate` and idempotency key shape
+  - explicit disallow of legacy recurring payload keys from iOS clients
+
+Gate acceptance criteria for 3.0:
+- `API_CONTRACT.md` exists in repo root.
+- Every required Convex capability from Part 3.2 is represented.
+- No unresolved `TBD` in request/response schemas.
+- Recurring contract reflects current backend behavior exactly.
 
 ### 3.1 API surface contract
 Define protocol grouping:
@@ -324,18 +514,31 @@ Defaults:
 ## Acceptance Criteria
 - Every required feature endpoint has typed request/response.
 - Error states are deterministic and test-covered.
+- Wrapper implementation is traceable endpoint-by-endpoint to `API_CONTRACT.md`.
 
 ## Tests
+- Contract completeness test:
+  - Cross-check `API_CONTRACT.md` endpoint index against exported Convex capabilities used by iOS.
+- Mapper tests:
+  - Ensure DTO/domain conversion matches examples in `API_CONTRACT.md`.
 - Contract tests for encode/decode per endpoint.
 - Mock transport tests for status/error mapping.
 
 ## Failure Modes
+- Building wrapper directly from assumptions without first writing/locking `API_CONTRACT.md`.
 - Date normalization mismatch causing scope bugs.
 - ID typing drift causing wrong endpoint payloads.
 
 ---
 
 # Part 4: Auth + Session Lifecycle
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 4 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Rebuild protected/public route behavior with native app auth state machine.
@@ -398,6 +601,13 @@ On launch:
 
 # Part 5: App Navigation + Global UI Shell
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 5 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Implement native mobile shell that preserves functionality with iOS-first structure.
 
@@ -457,6 +667,13 @@ Default to system light/dark; no custom theme toggle required for parity v1.
 ---
 
 # Part 6: Expenses + Incomings (Core Ledger)
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 6 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Ship full ledger parity with native card-based interaction.
@@ -531,6 +748,13 @@ Incomings:
 ---
 
 # Part 7: Recurrings + Materialization Behavior
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 7 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Deliver complete recurring management for both expense and incoming kinds.
@@ -612,6 +836,13 @@ Kind cleanup rule (must mirror backend behavior):
 
 # Part 8: Breakdown + Summaries + Charts
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 8 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Recreate analytics surfaces with native charts and precise scoped totals.
 
@@ -668,6 +899,13 @@ Use Swift Charts for:
 
 # Part 9: Tracking Timeline Experience
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 9 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Rebuild tracking rows with horizontal month timeline and persisted per-row state.
 
@@ -722,6 +960,13 @@ Storage keys should map to iOS equivalents; migration from old local storage not
 
 # Part 10: Notepad Workspace (Notes + Tables)
 
+## Mandatory Part Gate (Before Moving On)
+- Do Part 10 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
+
 ## Objective
 Recreate notepad hybrid workspace (notes + editable tables) with autosave.
 
@@ -774,6 +1019,13 @@ Recreate notepad hybrid workspace (notes + editable tables) with autosave.
 ---
 
 # Part 11: Options System + Taxonomy Management
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 11 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Deliver full taxonomy management parity with mobile-native interaction replacements for drag-drop.
@@ -832,6 +1084,13 @@ Use explicit actions:
 ---
 
 # Part 12: Quality Gates, Hardening, and Ship Checklist
+
+## Mandatory Part Gate (Before Moving On)
+- Do Part 12 only.
+- Show acceptance criteria proof.
+- Show tests run and results.
+- List any parity gaps explicitly before moving on.
+- Complete the No-Gaps Audit Checklist (see section: `No-Gaps Audit Checklist (Required After Every Part)`) before requesting the next part.
 
 ## Objective
 Harden for release-quality iOS experience and verify parity completion.
