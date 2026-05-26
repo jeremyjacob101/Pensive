@@ -99,7 +99,9 @@ xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' 
 
 Notes:
 - For simulator stability and reproducibility, follow `SIMULATOR.md` exactly for every iOS build/test run.
+- Run the `SIMULATOR.md` proactive preflight sequence (`shutdown/erase/boot/bootstatus`) before each test session.
 - In Codex environments, if CoreSimulator/Xcode connection errors appear, rerun the same command with escalated permissions before changing flags.
+- In Codex, prefer running `xcodebuild`/`simctl` with escalation from the start to avoid known simulator permission walls.
 - If the scheme/device name differs, update commands accordingly.
 - If the project uses an `.xcworkspace`, use `-workspace` plus `-scheme`.
 - Keep build/test commands reproducible for CI.

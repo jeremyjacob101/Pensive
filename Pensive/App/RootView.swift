@@ -19,7 +19,7 @@ struct RootView: View {
                     .accessibilityIdentifier("login_view")
 
             case .authenticated(let session):
-                AuthenticatedHomeView(userId: session.userId, signOut: authViewModel.signOut)
+                AppShellView(userId: session.userId, onSignOut: authViewModel.signOut)
                     .accessibilityIdentifier("home_view")
 
             case .authError(let error):
@@ -90,25 +90,6 @@ private struct LoginView: View {
             .buttonStyle(.borderedProminent)
             .disabled(viewModel.isLoading)
             .accessibilityIdentifier("sign_in_button")
-        }
-        .padding()
-    }
-}
-
-private struct AuthenticatedHomeView: View {
-    let userId: String
-    let signOut: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("Pensive Home")
-                .font(.title2)
-            Text("Signed in as \(userId)")
-                .foregroundStyle(.secondary)
-                .font(.footnote)
-            Button("Sign Out", action: signOut)
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("sign_out_button")
         }
         .padding()
     }

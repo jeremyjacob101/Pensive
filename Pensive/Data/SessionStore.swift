@@ -169,11 +169,15 @@ final class SessionStore: SessionStoring {
             return .invalidCredentials
         case .networkUnavailable:
             return .networkUnavailable
+        case .notFound:
+            return .server(message: "Auth endpoint not found. Verify CONVEX_HTTP_ACTION_BASE_URL and deployed HTTP auth routes.")
+        case .decoding(let message):
+            return .server(message: "Auth response format mismatch. \(message)")
         case .validation(let message):
             return .server(message: message)
         case .server(let message):
             return .server(message: message)
-        case .forbidden, .notFound, .decoding:
+        case .forbidden:
             return .unknown
         }
     }

@@ -2,10 +2,13 @@ import Foundation
 
 struct AppContainer {
     let environment: AppEnvironment
-    let sessionStore: SessionStore
+    let sessionStore: SessionStoring
 
     static func bootstrap(bundle: Bundle = .main) -> AppContainer {
         let env = AppEnvironment.load(from: bundle)
+        if let userId = ProcessInfo.processInfo.environment["UI_TEST_AUTHENTICATED_USER_ID"], !userId.isEmpty {
+            return AppContainer(environment: env, sessionStore: UITestSessionStore(userId: userId))
+        }
         let api = AppContainer.makeAPI(environment: env)
         return AppContainer(environment: env, sessionStore: SessionStore(authAPI: api.auth))
     }
@@ -16,4 +19,26 @@ struct AppContainer {
         let httpClient = HTTPClient(transport: transport)
         return ConvexService(client: httpClient)
     }
+}
+
+private final class UITestSessionStore: SessionStoring {
+    private(set) var state: AuthState
+    var onStateChange: ((AuthState) -> Void)?
+    private(set) var authMessage: String?
+
+    init(userId: String) {
+        self.state = .authenticated(UserSession(userId: userId, establishedAt: Date()))
+        self.authMessage = nil
+    }
+
+    func bootstrapSession() {}
+
+    func signIn(email: String, password: String) {}
+
+    func signOut() {
+        state = .unauthenticated
+        onStateChange?(state)
+    }
+
+    func handleProtectedRequestFailure(_ error: Error) {}
 }

@@ -58,15 +58,29 @@ final class HTTPClient: HTTPClientProtocol {
                 let response = try await transport.perform(spec: spec, body: body, timeout: timeout)
                 let correlation = correlationID(from: response.headers)
 
-                do {
-                    let envelope = try decoder.decode(APIEnvelope<T>.self, from: response.data)
-                    observer?.requestCompleted(endpoint: spec.endpoint, statusCode: response.statusCode, durationMs: response.durationMs, correlationId: correlation ?? envelope.correlationId)
+                observer?.requestCompleted(endpoint: spec.endpoint, statusCode: response.statusCode, durationMs: response.durationMs, correlationId: correlation)
 
-                    if envelope.ok, let data = envelope.data { return data }
-                    throw mapEnvelopeOrStatusError(envelope.error, statusCode: response.statusCode)
-                } catch let decodeError as DecodingError {
-                    observer?.requestCompleted(endpoint: spec.endpoint, statusCode: response.statusCode, durationMs: response.durationMs, correlationId: correlation)
-                    throw APIError.decoding(message: "Failed decoding response: \(decodeError.localizedDescription)")
+                if (200...299).contains(response.statusCode) {
+                    // Primary contract: wrapped API envelope.
+                    if let envelope = try? decoder.decode(APIEnvelope<T>.self, from: response.data),
+                       envelope.ok,
+                       let data = envelope.data {
+                        return data
+                    }
+
+                    // Compatibility path for routes that return direct JSON payloads.
+                    if let direct = try? decoder.decode(T.self, from: response.data) {
+                        return direct
+                    }
+
+                    throw APIError.decoding(message: "Failed decoding successful response for \(spec.endpoint)")
+                } else {
+                    // Error response may still be wrapped; if not, fall back to status mapping.
+                    if let envelope = try? decoder.decode(APIEnvelope<T>.self, from: response.data) {
+                        throw mapEnvelopeOrStatusError(envelope.error, statusCode: response.statusCode)
+                    }
+
+                    throw mapEnvelopeOrStatusError(nil, statusCode: response.statusCode)
                 }
             } catch let error as APIError {
                 throw error

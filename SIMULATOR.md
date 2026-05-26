@@ -32,7 +32,19 @@ These avoid prior failures from:
 - test runner collisions
 - simulator preflight instability
 
-## 4) Canonical Commands
+## 4) Proactive Preflight (Run Before Every Test Session)
+
+Run this before unit/UI tests to avoid known first-run failures:
+```bash
+xcrun simctl shutdown 'iPhone 17' || true
+xcrun simctl erase 'iPhone 17'
+xcrun simctl boot 'iPhone 17'
+xcrun simctl bootstatus 'iPhone 17' -b
+```
+
+Reason: reduces `SBMainWorkspace ... Busy (Application failed preflight checks)` flakiness and makes first run deterministic.
+
+## 5) Canonical Commands
 
 Build sanity:
 ```bash
@@ -60,10 +72,10 @@ xcodebuild -scheme Pensive \
   -derivedDataPath /private/tmp/PensiveDerivedData \
   -parallel-testing-enabled NO \
   -maximum-parallel-testing-workers 1 \
-  -only-testing:PensiveUITests/PensiveUITests/testLaunchShowsRootView test
+  -only-testing:PensiveUITests test
 ```
 
-## 5) Codex Sandbox + Escalation Rule (Mandatory)
+## 6) Codex Sandbox + Escalation Rule (Mandatory)
 
 When running from Codex, simulator/Xcode operations can fail under sandbox constraints even when commands are correct.
 
@@ -77,7 +89,11 @@ Action:
 - Do not change command flags first; preserve the canonical command from this document.
 - Keep using `/private/tmp/PensiveDerivedData` and sequential test execution.
 
-## 6) If Simulator Fails To Launch App (Preflight Busy)
+Recommended default in Codex:
+- Run all `xcodebuild` and `simctl` commands with escalated permissions from the start.
+- This avoids known CoreSimulator permission walls and reduces retry loops.
+
+## 7) If Simulator Fails To Launch App (Preflight Busy)
 
 Symptom usually includes:
 - `SBMainWorkspace ... Busy (Application failed preflight checks)`
@@ -87,11 +103,12 @@ Recovery sequence:
 xcrun simctl shutdown 'iPhone 17' || true
 xcrun simctl erase 'iPhone 17'
 xcrun simctl boot 'iPhone 17'
+xcrun simctl bootstatus 'iPhone 17' -b
 ```
 
 Then rerun the same test command with the stable flags above.
 
-## 7) SweetPad Setup
+## 8) SweetPad Setup
 
 This repo keeps SweetPad config in:
 - `.vscode/settings.json`
@@ -99,10 +116,11 @@ This repo keeps SweetPad config in:
 
 Use the provided tasks directly for build/test runs to avoid drift.
 
-## 8) Non-Negotiables
+## 9) Non-Negotiables
 
 - Run unit and UI commands sequentially, not in parallel.
 - Keep `iPhone 17` destination unless SWIFT.md explicitly changes it.
 - Keep `/private/tmp/PensiveDerivedData` unless permissions model changes.
+- Always run the proactive preflight sequence before test commands.
 - If adding/removing files, rerun `xcodegen generate` before tests.
 - If simulator tooling fails due to sandbox constraints, rerun with Codex escalation using the same command.

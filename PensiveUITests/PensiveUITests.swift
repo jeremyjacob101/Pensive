@@ -8,6 +8,7 @@ final class PensiveUITests: XCTestCase {
         app.launchEnvironment["CONVEX_HTTP_ACTION_BASE_URL"] = "https://ui-test.convex.cloud"
         app.launchEnvironment["AUTH_CLIENT_ID"] = "ui-test-client"
         app.launchEnvironment["LOG_LEVEL"] = "debug"
+        app.launchEnvironment["UI_TEST_AUTHENTICATED_USER_ID"] = "ui-test-user"
         app.launch()
 
         XCTAssertTrue(app.otherElements["root_view"].waitForExistence(timeout: 10))
