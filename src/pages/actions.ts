@@ -165,25 +165,9 @@ export async function handleAddRecurring(
           : "active",
       kind,
       name: String(form.get("name") ?? ""),
-      type:
-        kind === "expense"
-          ? String(form.get("recurringExpenseType") ?? "")
-          : "",
-      price: toAmount(String(form.get("price") ?? "")),
+      amount: toAmount(String(form.get("amount") ?? "")),
       frequency: String(form.get("frequency") ?? ""),
       dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
-      paidBy:
-        kind === "expense"
-          ? String(form.get("recurringExpenseAccount") ?? "")
-          : String(form.get("recurringIncomingPaidBy") ?? ""),
-      category:
-        kind === "expense"
-          ? String(form.get("recurringExpenseCategory") ?? "")
-          : "",
-      paidTo:
-        kind === "expense"
-          ? String(form.get("recurringExpensePaidTo") ?? "")
-          : String(form.get("recurringIncomingAccount") ?? ""),
       recurringExpenseType:
         kind === "expense"
           ? String(form.get("recurringExpenseType") ?? "")
@@ -291,30 +275,18 @@ export function handleStartEditRecurring(
     status: row.status,
     kind: row.kind ?? "expense",
     name: row.name,
-    type: row.type ?? row.recurringExpenseType ?? row.expenseType ?? "",
-    price: String(row.price),
+    amount: String(row.amount),
     frequency: row.frequency,
     dayOfMonth: String(row.dayOfMonth),
-    paidBy: row.paidBy ?? "",
-    category: row.category ?? "",
-    paidTo: row.paidTo ?? "",
-    recurringExpenseType:
-      row.recurringExpenseType ?? row.expenseType ?? row.type ?? "",
-    recurringExpenseAccount:
-      row.recurringExpenseAccount ?? row.expenseAccount ?? row.paidBy ?? "",
-    recurringExpenseCategory:
-      row.recurringExpenseCategory ?? row.expenseCategory ?? row.category ?? "",
-    recurringExpenseSubcategory:
-      row.recurringExpenseSubcategory ?? row.expenseSubcategory ?? "",
-    recurringExpensePaidTo:
-      row.recurringExpensePaidTo ?? row.expensePaidTo ?? row.paidTo ?? "",
-    recurringIncomingPaidBy:
-      row.recurringIncomingPaidBy ?? row.incomingPaidBy ?? "",
-    recurringIncomingType: row.recurringIncomingType ?? row.incomingType ?? "",
-    recurringIncomingSubtype:
-      row.recurringIncomingSubtype ?? row.incomingSubtype ?? "",
-    recurringIncomingAccount:
-      row.recurringIncomingAccount ?? row.incomingAccount ?? "",
+    recurringExpenseType: row.recurringExpenseType ?? "",
+    recurringExpenseAccount: row.recurringExpenseAccount ?? "",
+    recurringExpenseCategory: row.recurringExpenseCategory ?? "",
+    recurringExpenseSubcategory: row.recurringExpenseSubcategory ?? "",
+    recurringExpensePaidTo: row.recurringExpensePaidTo ?? "",
+    recurringIncomingPaidBy: row.recurringIncomingPaidBy ?? "",
+    recurringIncomingType: row.recurringIncomingType ?? "",
+    recurringIncomingSubtype: row.recurringIncomingSubtype ?? "",
+    recurringIncomingAccount: row.recurringIncomingAccount ?? "",
     notes: row.notes ?? "",
   });
 }
@@ -445,23 +417,9 @@ export async function handleUpdateRecurring(
       status: deps.editValues.status === "inactive" ? "inactive" : "active",
       kind,
       name: deps.editValues.name ?? "",
-      type:
-        kind === "expense" ? (deps.editValues.recurringExpenseType ?? "") : "",
-      price: toAmount(deps.editValues.price ?? ""),
+      amount: toAmount(deps.editValues.amount ?? ""),
       frequency: deps.editValues.frequency ?? "",
       dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
-      paidBy:
-        kind === "expense"
-          ? (deps.editValues.recurringExpenseAccount ?? "")
-          : (deps.editValues.recurringIncomingPaidBy ?? ""),
-      category:
-        kind === "expense"
-          ? (deps.editValues.recurringExpenseCategory ?? "")
-          : "",
-      paidTo:
-        kind === "expense"
-          ? (deps.editValues.recurringExpensePaidTo ?? "")
-          : (deps.editValues.recurringIncomingAccount ?? ""),
       recurringExpenseType:
         kind === "expense"
           ? (deps.editValues.recurringExpenseType ?? "")

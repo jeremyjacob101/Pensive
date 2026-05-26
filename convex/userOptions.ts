@@ -657,16 +657,13 @@ export const rename = mutation({
         .collect();
       for (const recurring of recurrings) {
         const patch: {
-          category?: string;
-          expenseCategory?: string;
-          expenseSubcategory?: string;
+          recurringExpenseCategory?: string;
+          recurringExpenseSubcategory?: string;
         } = {};
-        if ((recurring.category ?? "") === currentValue)
-          patch.category = targetValue;
-        if ((recurring.expenseCategory ?? "") === currentValue)
-          patch.expenseCategory = targetValue;
-        if ((recurring.expenseSubcategory ?? "") === currentValue)
-          patch.expenseSubcategory = targetValue;
+        if ((recurring.recurringExpenseCategory ?? "") === currentValue)
+          patch.recurringExpenseCategory = targetValue;
+        if ((recurring.recurringExpenseSubcategory ?? "") === currentValue)
+          patch.recurringExpenseSubcategory = targetValue;
         if (Object.keys(patch).length > 0)
           await ctx.db.patch(recurring._id, patch);
       }
@@ -705,12 +702,12 @@ export const rename = mutation({
         .collect();
       for (const recurring of recurrings) {
         if (
-          (recurring.expenseCategory ?? recurring.category ?? "") ===
+          (recurring.recurringExpenseCategory ?? "") ===
             normalizedParent &&
-          (recurring.expenseSubcategory ?? "") === currentValue
+          (recurring.recurringExpenseSubcategory ?? "") === currentValue
         ) {
           await ctx.db.patch(recurring._id, {
-            expenseSubcategory: targetValue,
+            recurringExpenseSubcategory: targetValue,
           });
         }
       }
@@ -736,11 +733,14 @@ export const rename = mutation({
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
       for (const recurring of recurrings) {
-        const patch: { incomingType?: string; incomingSubtype?: string } = {};
-        if ((recurring.incomingType ?? "") === currentValue)
-          patch.incomingType = targetValue;
-        if ((recurring.incomingSubtype ?? "") === currentValue)
-          patch.incomingSubtype = targetValue;
+        const patch: {
+          recurringIncomingType?: string;
+          recurringIncomingSubtype?: string;
+        } = {};
+        if ((recurring.recurringIncomingType ?? "") === currentValue)
+          patch.recurringIncomingType = targetValue;
+        if ((recurring.recurringIncomingSubtype ?? "") === currentValue)
+          patch.recurringIncomingSubtype = targetValue;
         if (Object.keys(patch).length > 0)
           await ctx.db.patch(recurring._id, patch);
       }
@@ -778,10 +778,12 @@ export const rename = mutation({
         .collect();
       for (const recurring of recurrings) {
         if (
-          (recurring.incomingType ?? "") === normalizedParent &&
-          (recurring.incomingSubtype ?? "") === currentValue
+          (recurring.recurringIncomingType ?? "") === normalizedParent &&
+          (recurring.recurringIncomingSubtype ?? "") === currentValue
         ) {
-          await ctx.db.patch(recurring._id, { incomingSubtype: targetValue });
+          await ctx.db.patch(recurring._id, {
+            recurringIncomingSubtype: targetValue,
+          });
         }
       }
       return;
@@ -802,10 +804,9 @@ export const rename = mutation({
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
       for (const recurring of recurrings) {
-        const patch: { type?: string; expenseType?: string } = {};
-        if ((recurring.type ?? "") === currentValue) patch.type = targetValue;
-        if ((recurring.expenseType ?? "") === currentValue)
-          patch.expenseType = targetValue;
+        const patch: { recurringExpenseType?: string } = {};
+        if ((recurring.recurringExpenseType ?? "") === currentValue)
+          patch.recurringExpenseType = targetValue;
         if (Object.keys(patch).length > 0)
           await ctx.db.patch(recurring._id, patch);
       }
@@ -837,16 +838,13 @@ export const rename = mutation({
         .collect();
       for (const recurring of recurrings) {
         const patch: {
-          paidBy?: string;
-          expenseAccount?: string;
-          incomingAccount?: string;
+          recurringExpenseAccount?: string;
+          recurringIncomingAccount?: string;
         } = {};
-        if ((recurring.paidBy ?? "") === currentValue)
-          patch.paidBy = targetValue;
-        if ((recurring.expenseAccount ?? "") === currentValue)
-          patch.expenseAccount = targetValue;
-        if ((recurring.incomingAccount ?? "") === currentValue)
-          patch.incomingAccount = targetValue;
+        if ((recurring.recurringExpenseAccount ?? "") === currentValue)
+          patch.recurringExpenseAccount = targetValue;
+        if ((recurring.recurringIncomingAccount ?? "") === currentValue)
+          patch.recurringIncomingAccount = targetValue;
         if (Object.keys(patch).length > 0)
           await ctx.db.patch(recurring._id, patch);
       }
@@ -959,18 +957,15 @@ export const moveToSubtype = mutation({
         .collect();
       for (const recurringRow of recurringRows) {
         const recurringCategory = (
-          recurringRow.expenseCategory ??
-          recurringRow.category ??
-          ""
+          recurringRow.recurringExpenseCategory ?? ""
         ).trim();
         if (recurringCategory !== source) continue;
         const existingSubcategory = (
-          recurringRow.expenseSubcategory ?? ""
+          recurringRow.recurringExpenseSubcategory ?? ""
         ).trim();
         await ctx.db.patch(recurringRow._id, {
-          category: target,
-          expenseCategory: target,
-          expenseSubcategory: existingSubcategory || source,
+          recurringExpenseCategory: target,
+          recurringExpenseSubcategory: existingSubcategory || source,
         });
       }
 
@@ -995,11 +990,11 @@ export const moveToSubtype = mutation({
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .collect();
     for (const recurringRow of recurringRows) {
-      if ((recurringRow.incomingType ?? "").trim() !== source) continue;
-      const existingSubtype = (recurringRow.incomingSubtype ?? "").trim();
+      if ((recurringRow.recurringIncomingType ?? "").trim() !== source) continue;
+      const existingSubtype = (recurringRow.recurringIncomingSubtype ?? "").trim();
       await ctx.db.patch(recurringRow._id, {
-        incomingType: target,
-        incomingSubtype: existingSubtype || source,
+        recurringIncomingType: target,
+        recurringIncomingSubtype: existingSubtype || source,
       });
     }
   },
@@ -1083,18 +1078,15 @@ export const promoteSubtype = mutation({
         .collect();
       for (const recurring of recurrings) {
         const recurringCategory = (
-          recurring.expenseCategory ??
-          recurring.category ??
-          ""
+          recurring.recurringExpenseCategory ?? ""
         ).trim();
         if (
           recurringCategory === sourceParent &&
-          (recurring.expenseSubcategory ?? "") === subtypeValue
+          (recurring.recurringExpenseSubcategory ?? "") === subtypeValue
         ) {
           await ctx.db.patch(recurring._id, {
-            category: subtypeValue,
-            expenseCategory: subtypeValue,
-            expenseSubcategory: "",
+            recurringExpenseCategory: subtypeValue,
+            recurringExpenseSubcategory: "",
           });
         }
       }
@@ -1123,12 +1115,12 @@ export const promoteSubtype = mutation({
       .collect();
     for (const recurring of recurrings) {
       if (
-        (recurring.incomingType ?? "") === sourceParent &&
-        (recurring.incomingSubtype ?? "") === subtypeValue
+        (recurring.recurringIncomingType ?? "") === sourceParent &&
+        (recurring.recurringIncomingSubtype ?? "") === subtypeValue
       ) {
         await ctx.db.patch(recurring._id, {
-          incomingType: subtypeValue,
-          incomingSubtype: "",
+          recurringIncomingType: subtypeValue,
+          recurringIncomingSubtype: "",
         });
       }
     }
@@ -1199,13 +1191,12 @@ export const moveSubtype = mutation({
         .collect();
       for (const recurring of recurrings) {
         if (
-          (recurring.expenseCategory ?? recurring.category ?? "") ===
+          (recurring.recurringExpenseCategory ?? "") ===
             sourceParent &&
-          (recurring.expenseSubcategory ?? "") === subtypeValue
+          (recurring.recurringExpenseSubcategory ?? "") === subtypeValue
         ) {
           await ctx.db.patch(recurring._id, {
-            category: targetParent,
-            expenseCategory: targetParent,
+            recurringExpenseCategory: targetParent,
           });
         }
       }
@@ -1231,10 +1222,12 @@ export const moveSubtype = mutation({
       .collect();
     for (const recurring of recurrings) {
       if (
-        (recurring.incomingType ?? "") === sourceParent &&
-        (recurring.incomingSubtype ?? "") === subtypeValue
+        (recurring.recurringIncomingType ?? "") === sourceParent &&
+        (recurring.recurringIncomingSubtype ?? "") === subtypeValue
       ) {
-        await ctx.db.patch(recurring._id, { incomingType: targetParent });
+        await ctx.db.patch(recurring._id, {
+          recurringIncomingType: targetParent,
+        });
       }
     }
   },

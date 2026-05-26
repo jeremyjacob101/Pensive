@@ -80,17 +80,17 @@ export function Recurrings() {
                   const categoryColor = getOptionColor(
                     userOptions,
                     "category",
-                    row.recurringExpenseCategory ?? row.category ?? "",
+                    row.recurringExpenseCategory ?? "",
                   );
                   const typeColor = getOptionColor(
                     userOptions,
                     "expenseType",
-                    row.recurringExpenseType ?? row.type ?? "",
+                    row.recurringExpenseType ?? "",
                   );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
-                    row.recurringExpenseAccount ?? row.paidBy ?? "",
+                    row.recurringExpenseAccount ?? "",
                   );
                   const isActive = row.status.toLowerCase() === "active";
                   const isToggling = togglingRecurringId === row._id;
@@ -107,9 +107,7 @@ export function Recurrings() {
                           <div className="entry-card-amount">
                             <span
                               className="entry-card-account-icon-wrap"
-                              data-tooltip={
-                                row.recurringExpenseAccount ?? row.paidBy ?? ""
-                              }
+                              data-tooltip={row.recurringExpenseAccount ?? ""}
                             >
                               <CreditCard
                                 className="entry-card-account-icon"
@@ -117,14 +115,12 @@ export function Recurrings() {
                                 aria-hidden="true"
                               />
                             </span>
-                            <span>₪{row.price}</span>
+                            <span>₪{row.amount}</span>
                           </div>
                           <span
                             className="entry-card-primary-divider"
                             style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                            data-tooltip={
-                              row.recurringExpenseType ?? row.type ?? ""
-                            }
+                            data-tooltip={row.recurringExpenseType ?? ""}
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -134,10 +130,8 @@ export function Recurrings() {
                               style={{ backgroundColor: categoryColor }}
                               data-tooltip={
                                 row.recurringExpenseSubcategory
-                                  ? `${row.recurringExpenseCategory ?? row.category ?? ""} / ${row.recurringExpenseSubcategory}`
-                                  : (row.recurringExpenseCategory ??
-                                    row.category ??
-                                    "")
+                                  ? `${row.recurringExpenseCategory ?? ""} / ${row.recurringExpenseSubcategory}`
+                                  : (row.recurringExpenseCategory ?? "")
                               }
                             />
                           </div>
@@ -221,17 +215,15 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Type:</strong>{" "}
-                              {row.recurringExpenseType ?? row.type ?? "-"}
+                              {row.recurringExpenseType ?? "-"}
                             </div>
                             <div>
                               <strong>Account:</strong>{" "}
-                              {row.recurringExpenseAccount ?? row.paidBy ?? "-"}
+                              {row.recurringExpenseAccount ?? "-"}
                             </div>
                             <div>
                               <strong>Category:</strong>{" "}
-                              {row.recurringExpenseCategory ??
-                                row.category ??
-                                "-"}
+                              {row.recurringExpenseCategory ?? "-"}
                             </div>
                             <div>
                               <strong>Subcategory:</strong>{" "}
@@ -239,7 +231,7 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Paid To:</strong>{" "}
-                              {row.recurringExpensePaidTo ?? row.paidTo ?? "-"}
+                              {row.recurringExpensePaidTo ?? "-"}
                             </div>
                             <div>
                               <strong>Notes:</strong> {row.notes ?? "-"}
@@ -311,7 +303,7 @@ export function Recurrings() {
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
-                    row.recurringIncomingAccount ?? row.paidTo ?? "",
+                    row.recurringIncomingAccount ?? "",
                   );
                   const isActive = row.status.toLowerCase() === "active";
                   const isToggling = togglingRecurringId === row._id;
@@ -328,9 +320,7 @@ export function Recurrings() {
                           <div className="entry-card-amount">
                             <span
                               className="entry-card-account-icon-wrap"
-                              data-tooltip={
-                                row.recurringIncomingAccount ?? row.paidTo ?? ""
-                              }
+                              data-tooltip={row.recurringIncomingAccount ?? ""}
                             >
                               <CreditCard
                                 className="entry-card-account-icon"
@@ -338,7 +328,7 @@ export function Recurrings() {
                                 aria-hidden="true"
                               />
                             </span>
-                            <span>₪{row.price}</span>
+                            <span>₪{row.amount}</span>
                           </div>
                           <span
                             className="entry-card-primary-divider"
@@ -438,7 +428,7 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Paid By:</strong>{" "}
-                              {row.recurringIncomingPaidBy ?? row.paidBy ?? "-"}
+                              {row.recurringIncomingPaidBy ?? "-"}
                             </div>
                             <div>
                               <strong>Income Type:</strong>{" "}
@@ -450,9 +440,7 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Account:</strong>{" "}
-                              {row.recurringIncomingAccount ??
-                                row.paidTo ??
-                                "-"}
+                              {row.recurringIncomingAccount ?? "-"}
                             </div>
                             <div>
                               <strong>Notes:</strong> {row.notes ?? "-"}
@@ -550,11 +538,11 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
             }
           />
           <input
-            value={editValues.price ?? ""}
+            value={editValues.amount ?? ""}
             onChange={(e) =>
               setEditValues((v) => ({
                 ...v,
-                price: e.target.value,
+                amount: e.target.value,
               }))
             }
           />

@@ -1954,7 +1954,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                   </select>
                 </label>
                 <input name="name" placeholder="Name" required />
-                <input name="price" placeholder="Price" required />
+                <input name="amount" placeholder="Amount" required />
                 <input name="frequency" placeholder="Frequency" required />
                 <input name="dayOfMonth" placeholder="Day of Month" required />
                 {recurringKind === "expense" ? (
