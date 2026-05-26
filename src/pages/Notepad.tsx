@@ -15,7 +15,6 @@ const MIN_ROW_HEIGHT = 10;
 
 export function Notepad() {
   const workspace = useQuery(api.notepad.getMine);
-  const addNote = useMutation(api.notepad.addNote);
   const cleanupEmptyNotes = useMutation(api.notepad.cleanupEmptyNotes);
   const renameNote = useMutation(api.notepad.renameNote);
   const saveNoteContent = useMutation(api.notepad.saveNoteContent);
@@ -161,9 +160,6 @@ export function Notepad() {
                 ...current,
                 { id: noteId, title, content: "" },
               ]);
-              void addNote({ noteId, title }).catch(() => {
-                setSaveError("Could not add a note right now.");
-              });
             }}
           >
             +

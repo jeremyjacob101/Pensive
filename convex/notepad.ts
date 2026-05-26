@@ -280,12 +280,18 @@ export const renameNote = mutation({
 
     const notes = normalizeNotes(workspace);
     const noteIndex = findNoteIndex(notes, args.noteId);
-    if (noteIndex < 0) throw new Error("Note not found");
-
-    notes[noteIndex] = {
-      ...notes[noteIndex],
-      title: args.title.trim() || notes[noteIndex].title,
-    };
+    if (noteIndex < 0) {
+      notes.push({
+        id: args.noteId,
+        title: args.title.trim() || `Note ${notes.length + 1}`,
+        content: "",
+      });
+    } else {
+      notes[noteIndex] = {
+        ...notes[noteIndex],
+        title: args.title.trim() || notes[noteIndex].title,
+      };
+    }
 
     await ctx.db.patch(workspace._id, {
       notes,
@@ -307,16 +313,24 @@ export const saveNoteContent = mutation({
 
     const notes = normalizeNotes(workspace);
     const noteIndex = findNoteIndex(notes, args.noteId);
-    if (noteIndex < 0) throw new Error("Note not found");
 
     const nextContent = args.content;
-    if (!nextContent.trim()) {
-      notes.splice(noteIndex, 1);
-    } else {
-      notes[noteIndex] = {
-        ...notes[noteIndex],
+    if (noteIndex < 0) {
+      if (!nextContent.trim()) return;
+      notes.push({
+        id: args.noteId,
+        title: `Note ${notes.length + 1}`,
         content: nextContent,
-      };
+      });
+    } else {
+      if (!nextContent.trim()) {
+        notes.splice(noteIndex, 1);
+      } else {
+        notes[noteIndex] = {
+          ...notes[noteIndex],
+          content: nextContent,
+        };
+      }
     }
 
     await ctx.db.patch(workspace._id, {
