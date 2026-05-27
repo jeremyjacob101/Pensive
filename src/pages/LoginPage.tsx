@@ -31,7 +31,7 @@ export function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await signInPassword({ email: username, password, flow: mode });
+      await signInPassword({ username, password, flow: mode });
       const from = getRedirectTarget(location.state);
       navigate(from || "/expenses", { replace: true });
     } catch (err) {

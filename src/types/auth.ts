@@ -1,7 +1,7 @@
 type SignInFlow = "signIn" | "signUp";
 
 type SignInPasswordInput = {
-  email: string;
+  username: string;
   password: string;
   flow: SignInFlow;
 };

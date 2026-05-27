@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signInPassword(input) {
         await signIn("password", {
           flow: input.flow,
-          email: input.email.trim().toLowerCase(),
+          username: input.username.trim().toLowerCase(),
           password: input.password,
         });
       },
