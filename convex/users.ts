@@ -8,8 +8,9 @@ export const backfillUsernames = mutation({
   args: {},
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
-    const passwordAccounts = (await ctx.db.query("authAccounts").collect())
-      .filter((account) => account.provider === "password");
+    const passwordAccounts = (
+      await ctx.db.query("authAccounts").collect()
+    ).filter((account) => account.provider === "password");
 
     const accountByUserId = new Map(
       passwordAccounts.map((account) => [account.userId, account]),
