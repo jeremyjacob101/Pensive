@@ -968,7 +968,7 @@ private final class TrackingFeatureViewModel: ObservableObject {
 
 private struct TrackingFeatureView: View {
     @StateObject private var viewModel: TrackingFeatureViewModel
-    @State private var selectedRowID: String?
+    @State private var expandedRowIDs: Set<String> = []
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: TrackingFeatureViewModel(api: api))
@@ -980,16 +980,26 @@ private struct TrackingFeatureView: View {
                 if !viewModel.expenseRows.isEmpty {
                     Section("Expenses") {
                         ForEach(viewModel.expenseRows) { row in
-                            TrackingTimelineRowCard(row: row)
-                                .onTapGesture { selectedRowID = row.id }
+                            TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
+                                toggleExpanded(row.id)
+                            }, onStartMonth: { month in
+                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
+                            }, onBuffer: { buffer in
+                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
+                            })
                         }
                     }
                 }
                 if !viewModel.incomingRows.isEmpty {
                     Section("Incomings") {
                         ForEach(viewModel.incomingRows) { row in
-                            TrackingTimelineRowCard(row: row)
-                                .onTapGesture { selectedRowID = row.id }
+                            TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
+                                toggleExpanded(row.id)
+                            }, onStartMonth: { month in
+                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
+                            }, onBuffer: { buffer in
+                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
+                            })
                         }
                     }
                 }
@@ -997,55 +1007,86 @@ private struct TrackingFeatureView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Tracking")
             .refreshable { await viewModel.refresh() }
-            .sheet(item: trackingSheetBinding, content: trackingSheetContent)
         }
         .task { viewModel.onAppear() }
     }
 
-    private var trackingSheetBinding: Binding<TrackingRowSheetID?> {
-        Binding(
-            get: {
-                guard let id = selectedRowID else { return nil }
-                return TrackingRowSheetID(rawValue: id)
-            },
-            set: { selectedRowID = $0?.rawValue }
-        )
-    }
-
-    @ViewBuilder
-    private func trackingSheetContent(_ sheetID: TrackingRowSheetID) -> some View {
-        if let row = viewModel.expenseRows.first(where: { $0.id == sheetID.rawValue }) ??
-            viewModel.incomingRows.first(where: { $0.id == sheetID.rawValue }) {
-            TrackingRowEditSheet(
-                row: row,
-                onStartMonth: { month in
-                    viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
-                },
-                onBuffer: { buffer in
-                    viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
-                },
-                onDone: { selectedRowID = nil }
-            )
+    private func toggleExpanded(_ id: String) {
+        if expandedRowIDs.contains(id) {
+            expandedRowIDs.remove(id)
+        } else {
+            expandedRowIDs.insert(id)
         }
     }
 }
 
 private struct TrackingTimelineRowCard: View {
     let row: TrackingTimelineRowViewData
+    let isExpanded: Bool
+    let onToggleExpanded: () -> Void
+    let onStartMonth: (String) -> Void
+    let onBuffer: (Int) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Text(row.label)
                     .font(.headline)
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
+                Button(action: onToggleExpanded) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             TrackingPipelinePreview(segments: row.segments)
+            if isExpanded {
+                HStack(spacing: 24) {
+                    HStack(spacing: 8) {
+                        Text("Start")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Menu {
+                            ForEach(row.availableMonths, id: \.self) { month in
+                                Button(month) { onStartMonth(month) }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(row.startMonth)
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        }
+                        .accessibilityIdentifier("tracking_start_month_\(row.key)")
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("Buffer")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Menu {
+                            ForEach(0 ... 24, id: \.self) { value in
+                                Button("\(value)") { onBuffer(value) }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text("\(row.trailingBufferMonths)")
+                                Image(systemName: "chevron.down")
+                                    .font(.caption2.weight(.semibold))
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                        }
+                        .accessibilityIdentifier("tracking_buffer_\(row.key)")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(.vertical, 4)
     }
@@ -1095,46 +1136,6 @@ private struct TrackingPipelinePreview: View {
         case .unpaid: return .orange
         case .buffer: return .blue
         case .empty: return Color(uiColor: .systemGray4)
-        }
-    }
-}
-
-private struct TrackingRowSheetID: Identifiable {
-    let rawValue: String
-    var id: String { rawValue }
-}
-
-private struct TrackingRowEditSheet: View {
-    let row: TrackingTimelineRowViewData
-    let onStartMonth: (String) -> Void
-    let onBuffer: (Int) -> Void
-    let onDone: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Start Month") {
-                    Picker("Start Month", selection: Binding(get: { row.startMonth }, set: { onStartMonth($0) })) {
-                        ForEach(row.availableMonths, id: \.self) { month in
-                            Text(month).tag(month)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .accessibilityIdentifier("tracking_start_month_\(row.key)")
-                }
-                Section("Buffer") {
-                    Stepper(value: Binding(get: { row.trailingBufferMonths }, set: { onBuffer($0) }), in: 0 ... 24) {
-                        Text("Buffer Months: \(row.trailingBufferMonths)")
-                    }
-                    .accessibilityIdentifier("tracking_buffer_\(row.key)")
-                }
-            }
-            .navigationTitle(row.label)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: onDone)
-                }
-            }
         }
     }
 }
