@@ -18,9 +18,11 @@
 		59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D911F3785CF260C05649961 /* LedgerViews.swift */; };
 		72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9D0A2E816730A432528113 /* RecurringsFeature.swift */; };
 		88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */; };
+		8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */; };
 		9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCE0385815003415646F8C4 /* AuthState.swift */; };
 		9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */; };
 		A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */; };
+		AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D71033083881BE72A1960881 /* Assets.xcassets */; };
 		B29B65867F1DD23E83411C90 /* PensiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */; };
 		BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */; };
 		C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27991D4F555E429982C9C524 /* AppEnvironment.swift */; };
@@ -74,12 +76,14 @@
 		BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
 		D02316F31B0A05A53566C05A /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
 		D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		D71033083881BE72A1960881 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexTransport.swift; sourceTree = "<group>"; };
 		D98F13E54929428601D27C98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		DC9D0A2E816730A432528113 /* RecurringsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsFeature.swift; sourceTree = "<group>"; };
 		E6F8155C7EF63E9520D985E5 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokenStore.swift; sourceTree = "<group>"; };
 		F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITests.swift; sourceTree = "<group>"; };
+		F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsMutationLogic.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -97,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				726D060B5033637BD6C1931C /* LedgerModels.swift */,
+				F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */,
 			);
 			path = Ledger;
 			sourceTree = "<group>";
@@ -189,6 +194,7 @@
 		5F2CB463C7C9E9A47E770859 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				D71033083881BE72A1960881 /* Assets.xcassets */,
 				D98F13E54929428601D27C98 /* Info.plist */,
 			);
 			path = Resources;
@@ -323,6 +329,7 @@
 			buildConfigurationList = BBE5749A67A7A515696938D3 /* Build configuration list for PBXNativeTarget "Pensive" */;
 			buildPhases = (
 				867FD8BED6D40B94266B4303 /* Sources */,
+				C350C241FAE1C0EBB3FED830 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -377,6 +384,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		C350C241FAE1C0EBB3FED830 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		632CA8D03E8D01F8B9FBF075 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -405,6 +423,7 @@
 				BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */,
 				3878FF85A81FB0C58414CACD /* LedgerModels.swift in Sources */,
 				59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */,
+				8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */,
 				570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */,
 				72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */,
 				33337397C5FD86C2E8F7E49C /* RecurringsView.swift in Sources */,

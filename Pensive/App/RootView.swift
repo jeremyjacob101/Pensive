@@ -57,19 +57,35 @@ private struct LoginView: View {
             Text("Pensive")
                 .font(.largeTitle.weight(.semibold))
 
-            Text("Sign in to continue")
+            Text(viewModel.entryMode == .signIn ? "Sign in to continue" : "Create your account")
                 .foregroundStyle(.secondary)
 
-            TextField("Email", text: $viewModel.email)
+            Picker("Auth Mode", selection: $viewModel.entryMode) {
+                ForEach(AuthViewModel.EntryMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("auth_mode_picker")
+
+            TextField("Username", text: $viewModel.username)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .keyboardType(.emailAddress)
+                .textContentType(.username)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("email_field")
+                .accessibilityIdentifier("username_field")
 
             SecureField("Password", text: $viewModel.password)
+                .textContentType(.password)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("password_field")
+
+            if viewModel.entryMode == .createAccount {
+                SecureField("Confirm Password", text: $viewModel.confirmPassword)
+                    .textContentType(.newPassword)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("confirm_password_field")
+            }
 
             if let inlineError = viewModel.inlineError, !inlineError.isEmpty {
                 Text(inlineError)
@@ -80,18 +96,18 @@ private struct LoginView: View {
             }
 
             Button {
-                viewModel.signIn()
+                viewModel.submitAuth()
             } label: {
                 if viewModel.isLoading {
                     ProgressView()
                 } else {
-                    Text("Sign In")
+                    Text(viewModel.entryMode == .signIn ? "Sign In" : "Create Account")
                 }
             }
             .frame(maxWidth: .infinity)
             .buttonStyle(.borderedProminent)
             .disabled(viewModel.isLoading)
-            .accessibilityIdentifier("sign_in_button")
+            .accessibilityIdentifier("auth_submit_button")
         }
         .padding()
     }

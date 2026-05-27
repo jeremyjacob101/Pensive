@@ -45,6 +45,13 @@ private struct LedgerScreen: View {
             List {
                 Section {
                     DebouncedSearchField(text: $viewModel.searchText) { viewModel.applySearch($0) }
+                    Button {
+                        showCreate = true
+                    } label: {
+                        Label(viewModel.kind == .expense ? "Add Expense" : "Add Incoming", systemImage: "plus.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(viewModel.kind == .expense ? "add_expense_button" : "add_incoming_button")
                     MultiSelectFilterButton(title: "Filters", choices: filterChoices, selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) }))
                     DateRangePickerButton(startDate: $viewModel.scope.startDate, endDate: $viewModel.scope.endDate)
                     Toggle("Include month overlap", isOn: $viewModel.scope.includeMonthYearOverlapOutsideDate)
@@ -113,35 +120,36 @@ private struct LedgerScreen: View {
                 }
             }
             .refreshable { await viewModel.refresh() }
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { showCreate = true } label: { Image(systemName: "plus") }
-                }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showCreate = true } label: { Image(systemName: "plus") }
+                    .accessibilityIdentifier("ledger_add_toolbar")
             }
-            .sheet(isPresented: $showCreate) {
-                if viewModel.kind == .expense {
-                    ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", type: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
-                } else {
-                    IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
-                }
+        }
+        .sheet(isPresented: $showCreate) {
+            if viewModel.kind == .expense {
+                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", type: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
+            } else {
+                IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
             }
-            .sheet(item: $editingID) { selected in
-                if viewModel.kind == .expense, let draft = viewModel.expenseDraft(id: selected.id) {
-                    ExpenseEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
-                } else if viewModel.kind == .incoming, let draft = viewModel.incomingDraft(id: selected.id) {
-                    IncomingEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
-                }
+        }
+        .sheet(item: $editingID) { selected in
+            if viewModel.kind == .expense, let draft = viewModel.expenseDraft(id: selected.id) {
+                ExpenseEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
+            } else if viewModel.kind == .incoming, let draft = viewModel.incomingDraft(id: selected.id) {
+                IncomingEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
             }
-            .sheet(item: $selectedPartnerAnchorID) { anchor in
-                PartnerPickerSheet(anchorID: anchor.id, viewModel: viewModel)
+        }
+        .sheet(item: $selectedPartnerAnchorID) { anchor in
+            PartnerPickerSheet(anchorID: anchor.id, viewModel: viewModel)
+        }
+        .alert("Delete item?", isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
+            Button("Delete", role: .destructive) {
+                if let id = deleteID { viewModel.delete(id: id) }
+                deleteID = nil
             }
-            .alert("Delete item?", isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
-                Button("Delete", role: .destructive) {
-                    if let id = deleteID { viewModel.delete(id: id) }
-                    deleteID = nil
-                }
-                Button("Cancel", role: .cancel) { deleteID = nil }
-            }
+            Button("Cancel", role: .cancel) { deleteID = nil }
         }
         .task { viewModel.onAppear() }
         .alert("Notice", isPresented: Binding(get: { viewModel.alertText != nil }, set: { if !$0 { viewModel.alertText = nil } })) {

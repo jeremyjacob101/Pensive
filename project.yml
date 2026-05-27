@@ -35,6 +35,7 @@ targets:
         PRODUCT_MODULE_NAME: Pensive
         SWIFT_EMIT_LOC_STRINGS: YES
         INFOPLIST_FILE: Pensive/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     preBuildScripts: []
     dependencies: []
 

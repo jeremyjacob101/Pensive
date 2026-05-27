@@ -143,4 +143,31 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(changed[1][0], "X")
         XCTAssertEqual(changed[1][1], "D")
     }
+
+    func testOptionsMoveToSubtypeBuilderRejectsSelfMove() {
+        XCTAssertThrowsError(try OptionsMutationLogic.buildMoveToSubtype(kind: "category", sourceValue: "Rent", targetValue: "Rent")) { error in
+            guard let apiError = error as? APIError, case .validation(let message) = apiError else {
+                XCTFail("Expected validation error.")
+                return
+            }
+            XCTAssertEqual(message, "Cannot move an option under itself.")
+        }
+    }
+
+    func testOptionsMoveSubtypeBuilderRejectsSameParentMove() {
+        XCTAssertThrowsError(try OptionsMutationLogic.buildMoveSubtype(kind: "subcategory", value: "Utilities", sourceParentValue: "Housing", targetParentValue: "Housing")) { error in
+            guard let apiError = error as? APIError, case .validation(let message) = apiError else {
+                XCTFail("Expected validation error.")
+                return
+            }
+            XCTAssertEqual(message, "Subtype is already under the selected parent.")
+        }
+    }
+
+    func testOptionsPromoteSubtypeBuilderReturnsRequest() throws {
+        let request = try OptionsMutationLogic.buildPromoteSubtype(kind: "subcategory", value: "Utilities", parentValue: "Housing")
+        XCTAssertEqual(request.kind, "subcategory")
+        XCTAssertEqual(request.value, "Utilities")
+        XCTAssertEqual(request.parentValue, "Housing")
+    }
 }

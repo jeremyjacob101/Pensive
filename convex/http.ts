@@ -1,5 +1,5 @@
 import { httpRouter } from "convex/server";
-import { api, internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 
@@ -20,7 +20,7 @@ http.route({
       identity = null;
     }
     const data = identity
-      ? { authenticated: true, userId: identity.subject }
+      ? { authenticated: true, userId: authEmailToUsername(identity.subject) }
       : { authenticated: false };
 
     return jsonOk(data);
@@ -31,13 +31,14 @@ http.route({
   path: "/api/auth/sign-in",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = (await request.json()) as { email?: string; password?: string };
-    const email = (body.email ?? "").trim().toLowerCase();
+    const body = (await request.json()) as { username?: string; email?: string; password?: string };
+    const username = normalizeUsername(body.username ?? body.email ?? "");
     const password = (body.password ?? "").trim();
 
-    if (!email || !password) {
-      return jsonError(422, "validation", "Enter both email and password.");
+    if (!username || !password) {
+      return jsonError(422, "validation", "Enter both username and password.");
     }
+    const email = usernameToAuthEmail(username);
 
     const result = (await ctx.runAction(api.auth.signIn, {
       provider: "password",
@@ -51,14 +52,54 @@ http.route({
     };
 
     if (!result?.tokens?.token) {
-      return jsonError(401, "unauthorized", "Email or password is incorrect.");
+      return jsonError(401, "unauthorized", "Username or password is incorrect.");
     }
 
     return jsonOk({
       authenticated: true,
       token: result.tokens.token,
       refreshToken: result.tokens.refreshToken ?? null,
-      userId: email,
+      userId: username,
+    });
+  }),
+});
+
+http.route({
+  path: "/api/auth/sign-up",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const body = (await request.json()) as { username?: string; email?: string; password?: string };
+    const username = normalizeUsername(body.username ?? body.email ?? "");
+    const password = (body.password ?? "").trim();
+
+    if (!username || !password) {
+      return jsonError(422, "validation", "Enter both username and password.");
+    }
+    if (!isValidUsername(username)) {
+      return jsonError(422, "validation", "Username must be 3-32 characters and use letters, numbers, ., _, or -.");
+    }
+    const email = usernameToAuthEmail(username);
+
+    const result = (await ctx.runAction(api.auth.signIn, {
+      provider: "password",
+      params: {
+        flow: "signUp",
+        email,
+        password,
+      },
+    })) as {
+      tokens?: { token?: string; refreshToken?: string } | null;
+    };
+
+    if (!result?.tokens?.token) {
+      return jsonError(500, "server", "Failed to create account.");
+    }
+
+    return jsonOk({
+      authenticated: true,
+      token: result.tokens.token,
+      refreshToken: result.tokens.refreshToken ?? null,
+      userId: username,
     });
   }),
 });
@@ -103,8 +144,6 @@ routePost("/api/recurrings/update", (ctx, body) => ctx.runMutation(api.recurring
 routePost("/api/recurrings/remove", (ctx, body) => ctx.runMutation(api.recurrings.remove, body));
 routePost("/api/recurrings/set-status", (ctx, body) => ctx.runMutation(api.recurrings.setStatus, body));
 routePost("/api/recurrings/materialize-due-expenses", (ctx, body) => ctx.runMutation(api.recurrings.materializeDueExpenses, body));
-routePost("/api/recurrings/cleanup-recurring-kind-fields", (ctx) => ctx.runMutation(api.recurrings.cleanupRecurringKindFields, {}));
-routePost("/api/recurrings/migrate-legacy-recurrings-for-user-ids", (ctx, body) => ctx.runMutation(internal.recurrings.migrateLegacyRecurringsForUserIds, body));
 
 // Summaries + Tracking
 routePost("/api/summaries/range", (ctx, body) => ctx.runQuery(api.summaries.range, body));
@@ -211,6 +250,24 @@ function jsonError(status: number, code: string, message: string): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+function normalizeUsername(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function isValidUsername(username: string): boolean {
+  return /^[a-z0-9._-]{3,32}$/.test(username);
+}
+
+function usernameToAuthEmail(username: string): string {
+  if (username.includes("@")) return username;
+  return `${username}@pensive.user`;
+}
+
+function authEmailToUsername(authEmail: string): string {
+  const suffix = "@pensive.user";
+  return authEmail.endsWith(suffix) ? authEmail.slice(0, -suffix.length) : authEmail;
 }
 
 export default http;

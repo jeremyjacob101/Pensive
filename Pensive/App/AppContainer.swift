@@ -40,7 +40,8 @@ private final class UITestSessionStore: SessionStoring {
 
     func bootstrapSession() {}
 
-    func signIn(email: String, password: String) {}
+    func signIn(username: String, password: String) {}
+    func signUp(username: String, password: String) {}
 
     func signOut() {
         state = .unauthenticated

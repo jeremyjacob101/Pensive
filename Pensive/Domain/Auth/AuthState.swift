@@ -16,9 +16,9 @@ enum AuthError: Error, Equatable {
     var userMessage: String {
         switch self {
         case .missingCredentials:
-            return "Enter both email and password."
+            return "Enter both username and password."
         case .invalidCredentials:
-            return "Email or password is incorrect."
+            return "Username or password is incorrect."
         case .sessionExpired:
             return "Your session expired. Please sign in again."
         case .networkUnavailable:

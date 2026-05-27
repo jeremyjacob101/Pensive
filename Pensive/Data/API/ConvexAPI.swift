@@ -93,6 +93,7 @@ protocol ConvexAPI {
 
 protocol AuthAPI {
     func signIn(_ request: SignInRequest) async throws -> SessionResponse
+    func signUp(_ request: SignInRequest) async throws -> SessionResponse
     func signOut() async throws
     func session() async throws -> SessionResponse
 }
@@ -130,8 +131,6 @@ protocol RecurringsAPI {
     func remove(id: DocumentID<ConvexEntity.Recurring>) async throws -> DocumentID<ConvexEntity.Recurring>
     func setStatus(_ request: SetRecurringStatusRequest) async throws -> DocumentID<ConvexEntity.Recurring>
     func materializeDueExpenses(runDate: String) async throws -> MaterializeResponse
-    func cleanupRecurringKindFields() async throws -> UpdatedCountResponse
-    func migrateLegacyRecurringsForUserIds(_ request: MigrateLegacyRecurringsRequest) async throws -> UpdatedCountResponse
 }
 
 protocol SummariesAPI { func range(_ request: SummaryRangeRequest) async throws -> SummaryRangeResponse }
@@ -178,7 +177,7 @@ protocol PaybackLinksAPI {
 
 // MARK: - DTOs
 
-struct SignInRequest: Codable { let email: String; let password: String }
+struct SignInRequest: Codable { let username: String; let password: String }
 struct SessionResponse: Codable {
     let authenticated: Bool
     let userId: String?
@@ -388,7 +387,6 @@ struct RecurringUpdateDTO: Codable {
 }
 
 struct SetRecurringStatusRequest: Codable { let id: String; let status: String }
-struct MigrateLegacyRecurringsRequest: Codable { let userId: String; let ids: [String] }
 struct MaterializeResponse: Codable { let runDate: String; let day: Int; let matched: Int; let created: Int; let skipped: Int }
 
 struct SummaryRangeRequest: Codable { let startDate: String; let endDate: String }
@@ -501,6 +499,7 @@ private final class AuthClient: AuthAPI {
     init(client: HTTPClientProtocol) { self.client = client }
 
     func signIn(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.mutation("api/auth/sign-in"), body: request) }
+    func signUp(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.mutation("api/auth/sign-up"), body: request) }
     func signOut() async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/auth/sign-out"), body: EmptyBody()) }
     func session() async throws -> SessionResponse { try await client.send(Req.get("api/auth/session"), body: Optional<EmptyBody>.none) }
 }
@@ -547,8 +546,6 @@ private final class RecurringsClient: RecurringsAPI {
     func remove(id: DocumentID<ConvexEntity.Recurring>) async throws -> DocumentID<ConvexEntity.Recurring> { DocumentID(try await client.send(Req.mutation("api/recurrings/remove"), body: IDPayload(id: id.rawValue)) as String) }
     func setStatus(_ request: SetRecurringStatusRequest) async throws -> DocumentID<ConvexEntity.Recurring> { DocumentID(try await client.send(Req.mutation("api/recurrings/set-status"), body: request) as String) }
     func materializeDueExpenses(runDate: String) async throws -> MaterializeResponse { try await client.send(Req.mutation("api/recurrings/materialize-due-expenses"), body: ["runDate": runDate]) }
-    func cleanupRecurringKindFields() async throws -> UpdatedCountResponse { try await client.send(Req.mutation("api/recurrings/cleanup-recurring-kind-fields"), body: EmptyBody()) }
-    func migrateLegacyRecurringsForUserIds(_ request: MigrateLegacyRecurringsRequest) async throws -> UpdatedCountResponse { try await client.send(Req.mutation("api/recurrings/migrate-legacy-recurrings-for-user-ids"), body: request) }
 }
 
 private final class SummariesClient: SummariesAPI {

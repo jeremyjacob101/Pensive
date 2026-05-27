@@ -724,6 +724,552 @@ private struct TrackingTimelineRowCard: View {
     }
 }
 
+private enum OptionsKind: String, CaseIterable, Identifiable {
+    case expenseType
+    case account
+    case category
+    case subcategory
+    case incomeType
+    case incomeSubtype
+
+    var id: String { rawValue }
+    var title: String { rawValue }
+    var supportsParent: Bool { self == .subcategory || self == .incomeSubtype }
+
+    var parentKind: OptionsKind? {
+        switch self {
+        case .subcategory: return .category
+        case .incomeSubtype: return .incomeType
+        default: return nil
+        }
+    }
+}
+
+@MainActor
+private final class OptionsViewModel: ObservableObject {
+    @Published private(set) var state: ViewLoadState = .loading
+    @Published private(set) var optionsByKind: [OptionsKind: [UserOptionRow]] = [:]
+    @Published var selectedKind: OptionsKind = .expenseType
+    @Published var inlineError: String?
+    @Published var successText: String?
+    @Published private(set) var trackingMismatchCount: Int = 0
+
+    private let api: ConvexAPI
+    private var trackedKeysFromTrackingRows: Set<String> = []
+
+    init(api: ConvexAPI) {
+        self.api = api
+    }
+
+    func onAppear() {
+        if optionsByKind.isEmpty {
+            Task { await refresh() }
+        }
+    }
+
+    func refresh() async {
+        state = .loading
+        do {
+            async let optionsListRequest = api.userOptions.list()
+            async let trackingListRequest = api.tracking.list()
+            let list = try await optionsListRequest
+            let tracking = try await trackingListRequest
+            optionsByKind = [
+                .expenseType: list.expenseType,
+                .account: list.account,
+                .category: list.category,
+                .subcategory: list.subcategory,
+                .incomeType: list.incomeType,
+                .incomeSubtype: list.incomeSubtype
+            ]
+            trackedKeysFromTrackingRows = Set(tracking.rows.map { trackingKey(kind: $0.kind, value: $0.value, parentValue: $0.parentValue) })
+            trackingMismatchCount = countTrackingMismatches()
+            state = .content
+        } catch {
+            state = .error(message: "Failed to load options")
+        }
+    }
+
+    var parentChoices: [String] {
+        guard let parentKind = selectedKind.parentKind else { return [] }
+        return (optionsByKind[parentKind] ?? []).map(\.value).sorted()
+    }
+
+    func parentChoicesExcluding(_ parentValue: String?) -> [String] {
+        guard let parentValue = normalized(parentValue), !parentValue.isEmpty else {
+            return parentChoices
+        }
+        return parentChoices.filter { $0 != parentValue }
+    }
+
+    func moveToSubtypeTargets(excluding sourceValue: String) -> [String] {
+        let values = (optionsByKind[selectedKind] ?? []).map(\.value)
+        return values.filter { $0 != sourceValue }.sorted()
+    }
+
+    var showsMoveHint: Bool {
+        switch selectedKind {
+        case .category, .incomeType, .subcategory, .incomeSubtype:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var supportsTrackingForSelectedKind: Bool {
+        switch selectedKind {
+        case .category, .subcategory, .incomeType, .incomeSubtype:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var rows: [OptionsDisplayRow] {
+        (optionsByKind[selectedKind] ?? []).sorted { lhs, rhs in
+            if lhs.parentValue == rhs.parentValue {
+                return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            return (lhs.parentValue ?? "") < (rhs.parentValue ?? "")
+        }.map { row in
+            let key = trackingKey(kind: selectedKind.rawValue, value: row.value, parentValue: row.parentValue)
+            let effectiveIsTracking = row.isTracking || trackedKeysFromTrackingRows.contains(key)
+            return OptionsDisplayRow(
+                value: row.value,
+                color: row.color,
+                isDefault: row.isDefault,
+                isTracking: effectiveIsTracking,
+                parentValue: row.parentValue
+            )
+        }
+    }
+
+    func add(kind: OptionsKind, value: String, parentValue: String?) async {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            inlineError = "Option name cannot be empty."
+            return
+        }
+
+        if kind.supportsParent, (parentValue ?? "").isEmpty {
+            inlineError = "Please select a parent."
+            return
+        }
+
+        do {
+            try await api.userOptions.add(.init(kind: kind.rawValue, value: trimmed, parentValue: normalized(parentValue)))
+            await refresh()
+            successText = "Added \(trimmed)."
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to add option."
+        }
+    }
+
+    func rename(kind: OptionsKind, value: String, nextValue: String, parentValue: String?) async {
+        let trimmed = nextValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            inlineError = "New name cannot be empty."
+            return
+        }
+        do {
+            try await api.userOptions.rename(.init(kind: kind.rawValue, value: value, nextValue: trimmed, parentValue: normalized(parentValue)))
+            await refresh()
+            successText = "Renamed successfully."
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to rename option."
+        }
+    }
+
+    func updateColor(kind: OptionsKind, value: String, color: String, parentValue: String?) async {
+        let normalizedColor = sanitizeHexColor(color)
+        guard normalizedColor != nil else {
+            inlineError = "Color must be a valid 6-digit hex value."
+            return
+        }
+        do {
+            try await api.userOptions.updateColor(.init(kind: kind.rawValue, value: value, color: normalizedColor!, parentValue: normalized(parentValue)))
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to update color."
+        }
+    }
+
+    func setDefault(kind: OptionsKind, value: String, isDefault: Bool, parentValue: String?) async {
+        do {
+            try await api.userOptions.setDefault(.init(kind: kind.rawValue, value: value, isDefault: isDefault, parentValue: normalized(parentValue)))
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to set default."
+        }
+    }
+
+    func setTracking(kind: OptionsKind, value: String, isTracking: Bool, parentValue: String?) async {
+        do {
+            try await api.userOptions.setTracking(.init(kind: kind.rawValue, value: value, isTracking: isTracking, parentValue: normalized(parentValue)))
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to set tracking."
+        }
+    }
+
+    func remove(kind: OptionsKind, value: String, parentValue: String?) async {
+        do {
+            try await api.userOptions.remove(.init(kind: kind.rawValue, value: value, parentValue: normalized(parentValue)))
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = "Failed to delete option."
+        }
+    }
+
+    func moveToSubtype(kind: OptionsKind, sourceValue: String, targetValue: String) async {
+        do {
+            let request = try OptionsMutationLogic.buildMoveToSubtype(kind: kind.rawValue, sourceValue: sourceValue, targetValue: targetValue)
+            try await api.userOptions.moveToSubtype(request)
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = message(for: error, fallback: "Failed to move to subtype.")
+        }
+    }
+
+    func moveSubtype(kind: OptionsKind, value: String, sourceParentValue: String, targetParentValue: String) async {
+        do {
+            let request = try OptionsMutationLogic.buildMoveSubtype(
+                kind: kind.rawValue,
+                value: value,
+                sourceParentValue: sourceParentValue,
+                targetParentValue: targetParentValue
+            )
+            try await api.userOptions.moveSubtype(request)
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = message(for: error, fallback: "Failed to move subtype.")
+        }
+    }
+
+    func promoteSubtype(kind: OptionsKind, value: String, parentValue: String) async {
+        do {
+            let request = try OptionsMutationLogic.buildPromoteSubtype(kind: kind.rawValue, value: value, parentValue: parentValue)
+            try await api.userOptions.promoteSubtype(request)
+            await refresh()
+            inlineError = nil
+        } catch {
+            inlineError = message(for: error, fallback: "Failed to promote subtype.")
+        }
+    }
+
+    private func normalized(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func sanitizeHexColor(_ color: String) -> String? {
+        let clean = color.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().replacingOccurrences(of: "#", with: "")
+        guard clean.range(of: #"^[0-9A-F]{6}$"#, options: .regularExpression) != nil else { return nil }
+        return "#\(clean)"
+    }
+
+    private func trackingKey(kind: String, value: String, parentValue: String?) -> String {
+        let parent = normalized(parentValue) ?? ""
+        return "\(kind)|\(value)|\(parent)"
+    }
+
+    private func countTrackingMismatches() -> Int {
+        let candidateKinds: [OptionsKind] = [.category, .subcategory, .incomeType, .incomeSubtype]
+        var count = 0
+        for kind in candidateKinds {
+            for row in optionsByKind[kind] ?? [] {
+                let key = trackingKey(kind: kind.rawValue, value: row.value, parentValue: row.parentValue)
+                let inTrackingRows = trackedKeysFromTrackingRows.contains(key)
+                if inTrackingRows && row.isTracking == false {
+                    count += 1
+                }
+            }
+        }
+        return count
+    }
+
+    private func message(for error: Error, fallback: String) -> String {
+        if let apiError = error as? APIError, case let .validation(message) = apiError {
+            return message
+        }
+        return fallback
+    }
+}
+
+private struct OptionsDisplayRow: Identifiable {
+    let value: String
+    let color: String
+    let isDefault: Bool
+    let isTracking: Bool
+    let parentValue: String?
+    var id: String { "\(value)|\(parentValue ?? "")" }
+}
+
+private struct OptionsFeatureView: View {
+    @StateObject private var viewModel: OptionsViewModel
+    @State private var addValue = ""
+    @State private var addParent = ""
+    @State private var renameByRow: [String: String] = [:]
+    @State private var colorByRow: [String: String] = [:]
+    @State private var rowPendingDelete: OptionsDisplayRow?
+    @State private var moveToSubtypeContext: OptionsDisplayRow?
+    @State private var moveSubtypeContext: OptionsDisplayRow?
+    @State private var promoteSubtypeContext: OptionsDisplayRow?
+    @State private var moveTarget = ""
+    @State private var moveSubtypeTargetParent = ""
+
+    init(api: ConvexAPI) {
+        _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
+    }
+
+    var body: some View {
+        LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
+            List {
+                Section("Kind") {
+                    Picker("Kind", selection: $viewModel.selectedKind) {
+                        ForEach(OptionsKind.allCases) { kind in
+                            Text(kind.title).tag(kind)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
+                Section("Add Option") {
+                    TextField("Value", text: $addValue)
+                    if viewModel.selectedKind.supportsParent {
+                        Picker("Parent", selection: $addParent) {
+                            Text("Select Parent").tag("")
+                            ForEach(viewModel.parentChoices, id: \.self) { parent in
+                                Text(parent).tag(parent)
+                            }
+                        }
+                    }
+                    Button("Add") {
+                        Task { await viewModel.add(kind: viewModel.selectedKind, value: addValue, parentValue: addParent) }
+                    }
+                }
+
+                Section("Options") {
+                    ForEach(viewModel.rows, id: \.selfKey) { row in
+                        VStack(alignment: .leading, spacing: 8) {
+                            let rowKey = row.selfKey
+                            HStack {
+                                Text(row.value).font(.headline)
+                                Spacer()
+                                Circle().fill(color(from: row.color) ?? .gray).frame(width: 14, height: 14)
+                            }
+                            if let parent = row.parentValue, !parent.isEmpty {
+                                Text("Parent: \(parent)").font(.footnote).foregroundStyle(.secondary)
+                            }
+                            HStack {
+                                Toggle("Default", isOn: Binding(get: { row.isDefault }, set: { next in
+                                    Task { await viewModel.setDefault(kind: viewModel.selectedKind, value: row.value, isDefault: next, parentValue: row.parentValue) }
+                                }))
+                                if viewModel.supportsTrackingForSelectedKind {
+                                    Toggle("Tracking", isOn: Binding(get: { row.isTracking }, set: { next in
+                                        Task { await viewModel.setTracking(kind: viewModel.selectedKind, value: row.value, isTracking: next, parentValue: row.parentValue) }
+                                    }))
+                                }
+                            }
+                            .font(.footnote)
+
+                            TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
+                            Button("Apply Rename") {
+                                Task {
+                                    await viewModel.rename(
+                                        kind: viewModel.selectedKind,
+                                        value: row.value,
+                                        nextValue: renameByRow[rowKey, default: row.value],
+                                        parentValue: row.parentValue
+                                    )
+                                }
+                            }
+                            .buttonStyle(.bordered)
+
+                            TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
+                            Button("Update Color") {
+                                Task {
+                                    await viewModel.updateColor(
+                                        kind: viewModel.selectedKind,
+                                        value: row.value,
+                                        color: colorByRow[rowKey, default: row.color],
+                                        parentValue: row.parentValue
+                                    )
+                                }
+                            }
+                            .buttonStyle(.bordered)
+
+                            if viewModel.selectedKind == .category || viewModel.selectedKind == .incomeType {
+                                Button("Move to subtype") {
+                                    moveToSubtypeContext = row
+                                    moveTarget = ""
+                                }
+                                .buttonStyle(.bordered)
+                            }
+
+                            if viewModel.selectedKind == .subcategory || viewModel.selectedKind == .incomeSubtype {
+                                HStack {
+                                    Button("Move subtype under parent") {
+                                        moveSubtypeContext = row
+                                        moveSubtypeTargetParent = ""
+                                    }
+                                    .buttonStyle(.bordered)
+
+                                    Button("Promote subtype to parent") {
+                                        promoteSubtypeContext = row
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+                            }
+
+                            Button("Delete", role: .destructive) {
+                                rowPendingDelete = row
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                if viewModel.trackingMismatchCount > 0 {
+                    Section("Tracking Data Warning") {
+                        Text("Detected \(viewModel.trackingMismatchCount) tracking rows not reflected in option flags. Showing effective tracking state.")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
+                }
+
+                if let inlineError = viewModel.inlineError {
+                    Section("Error") {
+                        Text(inlineError).foregroundStyle(.red).font(.footnote)
+                    }
+                }
+                if let successText = viewModel.successText {
+                    Section("Status") {
+                        Text(successText).font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Options")
+            .refreshable { await viewModel.refresh() }
+            .alert("Delete option?", isPresented: Binding(get: { rowPendingDelete != nil }, set: { if !$0 { rowPendingDelete = nil } })) {
+                Button("Delete", role: .destructive) {
+                    if let row = rowPendingDelete {
+                        Task {
+                            await viewModel.remove(kind: viewModel.selectedKind, value: row.value, parentValue: row.parentValue)
+                            rowPendingDelete = nil
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) { rowPendingDelete = nil }
+            }
+            .sheet(item: $moveToSubtypeContext) { row in
+                NavigationStack {
+                    Form {
+                        Picker("Target parent", selection: $moveTarget) {
+                            Text("Select Parent").tag("")
+                            ForEach(viewModel.moveToSubtypeTargets(excluding: row.value), id: \.self) { value in
+                                Text(value).tag(value)
+                            }
+                        }
+                    }
+                    .navigationTitle("Move To Subtype")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") { moveToSubtypeContext = nil }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Move") {
+                                Task {
+                                    await viewModel.moveToSubtype(kind: viewModel.selectedKind, sourceValue: row.value, targetValue: moveTarget)
+                                    moveToSubtypeContext = nil
+                                }
+                            }
+                            .disabled(moveTarget.isEmpty)
+                        }
+                    }
+                }
+            }
+            .sheet(item: $moveSubtypeContext) { row in
+                NavigationStack {
+                    Form {
+                        Picker("Target parent", selection: $moveSubtypeTargetParent) {
+                            Text("Select Parent").tag("")
+                            ForEach(viewModel.parentChoicesExcluding(row.parentValue), id: \.self) { value in
+                                Text(value).tag(value)
+                            }
+                        }
+                    }
+                    .navigationTitle("Move Subtype")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") { moveSubtypeContext = nil }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Move") {
+                                guard let sourceParent = row.parentValue else { return }
+                                Task {
+                                    await viewModel.moveSubtype(kind: viewModel.selectedKind, value: row.value, sourceParentValue: sourceParent, targetParentValue: moveSubtypeTargetParent)
+                                    moveSubtypeContext = nil
+                                }
+                            }
+                            .disabled(moveSubtypeTargetParent.isEmpty || row.parentValue == nil)
+                        }
+                    }
+                }
+            }
+            .sheet(item: $promoteSubtypeContext) { row in
+                NavigationStack {
+                    Form {
+                        Text("Promote '\(row.value)' from subtype to parent?")
+                    }
+                    .navigationTitle("Promote Subtype")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") { promoteSubtypeContext = nil }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Promote") {
+                                guard let sourceParent = row.parentValue else { return }
+                                Task {
+                                    await viewModel.promoteSubtype(kind: viewModel.selectedKind, value: row.value, parentValue: sourceParent)
+                                    promoteSubtypeContext = nil
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task { viewModel.onAppear() }
+    }
+
+    private func color(from hex: String) -> Color? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
+    }
+}
+
+private extension UserOptionRow {
+    var selfKey: String { "\(value)|\(parentValue ?? "")" }
+}
+
+private extension OptionsDisplayRow {
+    var selfKey: String { "\(value)|\(parentValue ?? "")" }
+}
+
 @MainActor
 final class QuickAddFormViewModel: ObservableObject {
     @Published var kind: QuickAddKind = .expense
@@ -805,6 +1351,8 @@ private struct FeatureRootView: View {
                 TrackingFeatureView(api: api)
             } else if tab == .notepad {
                 NotepadFeatureView(api: api)
+            } else if tab == .options {
+                OptionsFeatureView(api: api)
             } else {
                 List {
             Section {

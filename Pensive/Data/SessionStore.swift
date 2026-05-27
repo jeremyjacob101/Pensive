@@ -6,7 +6,8 @@ protocol SessionStoring: AnyObject {
     var authMessage: String? { get }
 
     func bootstrapSession()
-    func signIn(email: String, password: String)
+    func signIn(username: String, password: String)
+    func signUp(username: String, password: String)
     func signOut()
     func handleProtectedRequestFailure(_ error: Error)
 }
@@ -68,11 +69,24 @@ final class SessionStore: SessionStoring {
         }
     }
 
-    func signIn(email: String, password: String) {
-        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    func signIn(username: String, password: String) {
+        authenticate(username: username, password: password, mode: .signIn)
+    }
+
+    func signUp(username: String, password: String) {
+        authenticate(username: username, password: password, mode: .signUp)
+    }
+
+    private enum AuthFlowMode {
+        case signIn
+        case signUp
+    }
+
+    private func authenticate(username: String, password: String, mode: AuthFlowMode) {
+        let normalizedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let normalizedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !normalizedEmail.isEmpty, !normalizedPassword.isEmpty else {
+        guard !normalizedUsername.isEmpty, !normalizedPassword.isEmpty else {
             authMessage = AuthError.missingCredentials.userMessage
             transition(to: .unauthenticated)
             return
@@ -87,9 +101,19 @@ final class SessionStore: SessionStoring {
                 defer { self.stateQueue.sync { self.authTask = nil } }
 
                 do {
-                    let response = try await self.authAPI.signIn(.init(email: normalizedEmail, password: normalizedPassword))
+                    let response: SessionResponse
+                    switch mode {
+                    case .signIn:
+                        response = try await self.authAPI.signIn(.init(username: normalizedUsername, password: normalizedPassword))
+                    case .signUp:
+                        response = try await self.authAPI.signUp(.init(username: normalizedUsername, password: normalizedPassword))
+                    }
                     guard response.authenticated, let userId = response.userId, !userId.isEmpty else {
-                        let error = AuthError.invalidCredentials
+                        let error: AuthError
+                        switch mode {
+                        case .signIn: error = .invalidCredentials
+                        case .signUp: error = .server(message: "Failed to create account.")
+                        }
                         self.authMessage = error.userMessage
                         self.transition(to: .unauthenticated)
                         return
