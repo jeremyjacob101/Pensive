@@ -16,6 +16,7 @@
 		3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */; };
 		570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1060E8EA814D7616BF2AC146 /* PensiveApp.swift */; };
 		59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D911F3785CF260C05649961 /* LedgerViews.swift */; };
+		5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */; };
 		72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9D0A2E816730A432528113 /* RecurringsFeature.swift */; };
 		88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */; };
 		8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */; };
@@ -52,6 +53,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreAuthRefreshTests.swift; sourceTree = "<group>"; };
 		0FCE0385815003415646F8C4 /* AuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthState.swift; sourceTree = "<group>"; };
 		1060E8EA814D7616BF2AC146 /* PensiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveApp.swift; sourceTree = "<group>"; };
 		12C8A5DC05FE932702BEE04F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -242,6 +244,7 @@
 			isa = PBXGroup;
 			children = (
 				552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */,
+				066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */,
 			);
 			path = PensiveTests;
 			sourceTree = "<group>";
@@ -438,6 +441,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */,
+				5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

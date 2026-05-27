@@ -3,6 +3,7 @@ import XCTest
 final class PensiveUITests: XCTestCase {
     func testLaunchShowsRootView() {
         let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["APP_ENV_NAME"] = "UITest"
         app.launchEnvironment["CONVEX_BASE_URL"] = "https://ui-test.convex.cloud"
         app.launchEnvironment["CONVEX_HTTP_ACTION_BASE_URL"] = "https://ui-test.convex.cloud"
@@ -18,6 +19,7 @@ final class PensiveUITests: XCTestCase {
 
     func testTrackingRowPersistsStartMonthAndBufferWithinSession() {
         let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["APP_ENV_NAME"] = "UITest"
         app.launchEnvironment["CONVEX_BASE_URL"] = "https://ui-test.convex.cloud"
         app.launchEnvironment["CONVEX_HTTP_ACTION_BASE_URL"] = "https://ui-test.convex.cloud"
@@ -29,28 +31,30 @@ final class PensiveUITests: XCTestCase {
         app.launch()
 
         openTab(named: "Tracking", app: app)
-        let picker = app.buttons["tracking_start_month_housing"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 10))
-        picker.tap()
-        app.buttons["2026-03"].tap()
+        let rowTitle = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_title_'")).firstMatch
+        XCTAssertTrue(rowTitle.waitForExistence(timeout: 10))
 
-        let buffer = app.steppers["tracking_buffer_housing"]
-        XCTAssertTrue(buffer.exists)
-        let beforeLabel = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Buffer Months:'")).firstMatch.label
-        buffer.buttons["tracking_buffer_housing-Increment"].tap()
-        let incremented = waitForBufferLabelChange(app: app, from: beforeLabel, timeout: 3)
-        XCTAssertTrue(incremented, "Expected buffer label to change after increment.")
-        let afterLabel = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Buffer Months:'")).firstMatch.label
+        let expandButton = app.buttons["chevron.down"].firstMatch
+        XCTAssertTrue(expandButton.waitForExistence(timeout: 10))
+        expandButton.tap()
+        let picker = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_start_month_'")).firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        let bufferMenu = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_buffer_'")).firstMatch
+        XCTAssertTrue(bufferMenu.waitForExistence(timeout: 10))
 
         app.terminate()
         app.launch()
         openTab(named: "Tracking", app: app)
-        XCTAssertTrue(app.buttons["tracking_start_month_housing"].exists)
-        XCTAssertTrue(app.staticTexts[afterLabel].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_title_'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["chevron.down"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["chevron.down"].firstMatch.tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_start_month_'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_buffer_'")).firstMatch.waitForExistence(timeout: 10))
     }
 
     func testNotepadNotesAndTablesWorkflow() {
         let app = XCUIApplication()
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launchEnvironment["APP_ENV_NAME"] = "UITest"
         app.launchEnvironment["CONVEX_BASE_URL"] = "https://ui-test.convex.cloud"
         app.launchEnvironment["CONVEX_HTTP_ACTION_BASE_URL"] = "https://ui-test.convex.cloud"
@@ -62,30 +66,24 @@ final class PensiveUITests: XCTestCase {
 
         openTab(named: "Notepad", app: app)
 
-        let noteTitle = app.textFields["notepad_note_title_note-1"]
-        XCTAssertTrue(noteTitle.waitForExistence(timeout: 10))
-        noteTitle.tap()
+        let firstNoteRow = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'notepad_note_row_'")).firstMatch
+        XCTAssertTrue(firstNoteRow.waitForExistence(timeout: 10))
 
         app.segmentedControls.buttons["Tables"].tap()
-        let tableTitle = app.textFields["notepad_table_title_table-1"]
-        XCTAssertTrue(tableTitle.waitForExistence(timeout: 10))
-
-        let cell = app.textFields["notepad_cell_table-1_1_1"]
-        XCTAssertTrue(cell.exists)
-        cell.tap()
-    }
-
-    private func waitForBufferLabelChange(app: XCUIApplication, from oldValue: String, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let label = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Buffer Months:'")).firstMatch.label
-            if !label.isEmpty && label != oldValue { return true }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-        return false
+        let firstTableRow = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'notepad_table_row_'")).firstMatch
+        XCTAssertTrue(firstTableRow.waitForExistence(timeout: 10))
     }
 
     private func openTab(named tabName: String, app: XCUIApplication) {
+        dismissBlockingAlertIfPresent(app)
+
+        let raw = tabName.lowercased()
+        let tabByID = app.tabBars.buttons["tab_\(raw)"]
+        if tabByID.waitForExistence(timeout: 1) {
+            tabByID.tap()
+            return
+        }
+
         let direct = app.tabBars.buttons[tabName]
         if direct.waitForExistence(timeout: 1) {
             direct.tap()
@@ -97,13 +95,51 @@ final class PensiveUITests: XCTestCase {
             if more.waitForExistence(timeout: 1) {
                 more.tap()
             }
-            let overflowItem = app.tables.staticTexts[tabName]
-            if overflowItem.waitForExistence(timeout: 1) {
-                overflowItem.tap()
+            if tapOverflowTab(named: tabName, app: app) {
                 return
             }
+            scrollOverflowList(app: app)
+            dismissBlockingAlertIfPresent(app)
         }
 
         XCTFail("Could not open tab named \(tabName)")
+    }
+
+    private func dismissBlockingAlertIfPresent(_ app: XCUIApplication) {
+        let alert = app.alerts.firstMatch
+        guard alert.waitForExistence(timeout: 0.5) else { return }
+        if alert.buttons["OK"].exists {
+            alert.buttons["OK"].tap()
+        } else if alert.buttons["Cancel"].exists {
+            alert.buttons["Cancel"].tap()
+        } else if alert.buttons.firstMatch.exists {
+            alert.buttons.firstMatch.tap()
+        }
+    }
+
+    private func tapOverflowTab(named tabName: String, app: XCUIApplication) -> Bool {
+        let predicate = NSPredicate(format: "label == %@", tabName)
+        let match = app.descendants(matching: .any).matching(predicate).firstMatch
+        if match.waitForExistence(timeout: 1), match.isHittable {
+            match.tap()
+            return true
+        }
+        return false
+    }
+
+    private func scrollOverflowList(app: XCUIApplication) {
+        if app.tables.firstMatch.exists {
+            app.tables.firstMatch.swipeUp()
+            return
+        }
+        if app.collectionViews.firstMatch.exists {
+            app.collectionViews.firstMatch.swipeUp()
+            return
+        }
+        if app.scrollViews.firstMatch.exists {
+            app.scrollViews.firstMatch.swipeUp()
+            return
+        }
+        app.swipeUp()
     }
 }

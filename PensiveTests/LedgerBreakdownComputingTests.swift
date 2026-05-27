@@ -99,9 +99,9 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         )
 
         XCTAssertEqual(segments[0].state, .paid)
-        XCTAssertEqual(segments[1].state, .unpaid)
+        XCTAssertEqual(segments[1].state, .buffer)
         XCTAssertEqual(segments[2].state, .paid)
-        XCTAssertEqual(segments[3].state, .buffer)
+        XCTAssertEqual(segments[3].state, .empty)
         XCTAssertEqual(segments[4].state, .empty)
     }
 

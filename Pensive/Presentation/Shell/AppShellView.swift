@@ -81,19 +81,19 @@ private final class NotepadFeatureViewModel: ObservableObject {
     func refresh() async {
         let shouldShowFullScreenError = !state.hasLoadedContent
         if shouldShowFullScreenError { state = .loading }
+        if let workspace = debugFixtureWorkspaceIfEnabled() {
+            apply(workspace: workspace)
+            state = .content
+            return
+        }
         do {
             let workspace = try await api.notepad.getMine()
             apply(workspace: workspace)
             state = .content
         } catch {
-            if let workspace = debugFixtureWorkspaceIfEnabled() {
-                apply(workspace: workspace)
-                state = .content
-            } else {
-                saveErrorText = "Failed to refresh notepad."
-                if shouldShowFullScreenError {
-                    state = .error(message: "Failed to load notepad")
-                }
+            saveErrorText = "Failed to refresh notepad."
+            if shouldShowFullScreenError {
+                state = .error(message: "Failed to load notepad")
             }
         }
     }
@@ -639,6 +639,7 @@ private struct NotepadNotesListView: View {
             }
             .buttonStyle(.plain)
             .padding(.vertical, 4)
+            .accessibilityIdentifier("notepad_note_row_\(note.id)")
         }
     }
 }
@@ -668,6 +669,7 @@ private struct NotepadTablesListView: View {
             }
             .buttonStyle(.plain)
             .padding(.vertical, 4)
+            .accessibilityIdentifier("notepad_table_row_\(table.id)")
         }
     }
 }
@@ -858,18 +860,18 @@ private final class TrackingFeatureViewModel: ObservableObject {
     func refresh() async {
         let shouldShowFullScreenError = !state.hasLoadedContent
         if shouldShowFullScreenError { state = .loading }
+        if let tracking = debugFixtureResponseIfEnabled() {
+            apply(response: tracking)
+            state = .content
+            return
+        }
         do {
             let tracking = try await api.tracking.list()
             apply(response: tracking)
             state = .content
         } catch {
-            if let tracking = debugFixtureResponseIfEnabled() {
-                apply(response: tracking)
-                state = .content
-            } else {
-                if shouldShowFullScreenError {
-                    state = .error(message: "Failed to load tracking")
-                }
+            if shouldShowFullScreenError {
+                state = .error(message: "Failed to load tracking")
             }
         }
     }
