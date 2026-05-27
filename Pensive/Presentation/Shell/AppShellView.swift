@@ -968,6 +968,7 @@ private final class TrackingFeatureViewModel: ObservableObject {
 
 private struct TrackingFeatureView: View {
     @StateObject private var viewModel: TrackingFeatureViewModel
+    @State private var selectedRowID: String?
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: TrackingFeatureViewModel(api: api))
@@ -979,22 +980,16 @@ private struct TrackingFeatureView: View {
                 if !viewModel.expenseRows.isEmpty {
                     Section("Expenses") {
                         ForEach(viewModel.expenseRows) { row in
-                            TrackingTimelineRowCard(row: row, onStartMonth: { month in
-                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
-                            }, onBuffer: { buffer in
-                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
-                            })
+                            TrackingTimelineRowCard(row: row)
+                                .onTapGesture { selectedRowID = row.id }
                         }
                     }
                 }
                 if !viewModel.incomingRows.isEmpty {
                     Section("Incomings") {
                         ForEach(viewModel.incomingRows) { row in
-                            TrackingTimelineRowCard(row: row, onStartMonth: { month in
-                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
-                            }, onBuffer: { buffer in
-                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
-                            })
+                            TrackingTimelineRowCard(row: row)
+                                .onTapGesture { selectedRowID = row.id }
                         }
                     }
                 }
@@ -1002,62 +997,96 @@ private struct TrackingFeatureView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Tracking")
             .refreshable { await viewModel.refresh() }
+            .sheet(item: trackingSheetBinding, content: trackingSheetContent)
         }
         .task { viewModel.onAppear() }
+    }
+
+    private var trackingSheetBinding: Binding<TrackingRowSheetID?> {
+        Binding(
+            get: {
+                guard let id = selectedRowID else { return nil }
+                return TrackingRowSheetID(rawValue: id)
+            },
+            set: { selectedRowID = $0?.rawValue }
+        )
+    }
+
+    @ViewBuilder
+    private func trackingSheetContent(_ sheetID: TrackingRowSheetID) -> some View {
+        if let row = viewModel.expenseRows.first(where: { $0.id == sheetID.rawValue }) ??
+            viewModel.incomingRows.first(where: { $0.id == sheetID.rawValue }) {
+            TrackingRowEditSheet(
+                row: row,
+                onStartMonth: { month in
+                    viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
+                },
+                onBuffer: { buffer in
+                    viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
+                },
+                onDone: { selectedRowID = nil }
+            )
+        }
     }
 }
 
 private struct TrackingTimelineRowCard: View {
     let row: TrackingTimelineRowViewData
-    let onStartMonth: (String) -> Void
-    let onBuffer: (Int) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(row.label)
-                .font(.headline)
-                .accessibilityIdentifier("tracking_row_title_\(row.key)")
-
-            Picker("Start Month", selection: Binding(get: { row.startMonth }, set: { onStartMonth($0) })) {
-                ForEach(row.availableMonths, id: \.self) { month in
-                    Text(month).tag(month)
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(row.label)
+                    .font(.headline)
+                    .accessibilityIdentifier("tracking_row_title_\(row.key)")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
-            .pickerStyle(.menu)
-            .accessibilityIdentifier("tracking_start_month_\(row.key)")
+            TrackingPipelinePreview(segments: row.segments)
+        }
+        .padding(.vertical, 4)
+    }
+}
 
-            Stepper(value: Binding(get: { row.trailingBufferMonths }, set: { onBuffer($0) }), in: 0 ... 24) {
-                Text("Buffer Months: \(row.trailingBufferMonths)")
-            }
-            .accessibilityIdentifier("tracking_buffer_\(row.key)")
+private struct TrackingPipelinePreview: View {
+    let segments: [TrackingTimelineSegment]
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(row.segments) { segment in
-                            VStack(spacing: 4) {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(color(for: segment.state))
-                                    .frame(width: 42, height: 18)
-                                Text(segment.month.suffix(2))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .id(segment.id)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel("\(segment.month), \(segment.state.rawValue)")
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(segments) { segment in
+                        VStack(spacing: 2) {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .fill(color(for: segment.state))
+                                .frame(width: 40, height: 8)
+                            Text(monthAbbrev(segment.month))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
+                        .id(segment.id)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(segment.month), \(segment.state.rawValue)")
                     }
-                    .padding(.vertical, 4)
                 }
-                .onAppear {
-                    if let newest = row.segments.last?.id {
-                        proxy.scrollTo(newest, anchor: .trailing)
-                    }
+            }
+            .frame(width: 230, alignment: .trailing)
+            .onAppear {
+                if let newest = segments.last?.id {
+                    proxy.scrollTo(newest, anchor: .trailing)
                 }
             }
         }
-        .padding(.vertical, 4)
+    }
+
+    private func monthAbbrev(_ month: String) -> String {
+        let parts = month.split(separator: "-")
+        guard parts.count == 2, let m = Int(parts[1]), (1 ... 12).contains(m) else { return month }
+        let labels = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+        return labels[m - 1]
     }
 
     private func color(for state: TrackingTimelineSegmentState) -> Color {
@@ -1066,6 +1095,46 @@ private struct TrackingTimelineRowCard: View {
         case .unpaid: return .orange
         case .buffer: return .blue
         case .empty: return Color(uiColor: .systemGray4)
+        }
+    }
+}
+
+private struct TrackingRowSheetID: Identifiable {
+    let rawValue: String
+    var id: String { rawValue }
+}
+
+private struct TrackingRowEditSheet: View {
+    let row: TrackingTimelineRowViewData
+    let onStartMonth: (String) -> Void
+    let onBuffer: (Int) -> Void
+    let onDone: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Start Month") {
+                    Picker("Start Month", selection: Binding(get: { row.startMonth }, set: { onStartMonth($0) })) {
+                        ForEach(row.availableMonths, id: \.self) { month in
+                            Text(month).tag(month)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("tracking_start_month_\(row.key)")
+                }
+                Section("Buffer") {
+                    Stepper(value: Binding(get: { row.trailingBufferMonths }, set: { onBuffer($0) }), in: 0 ... 24) {
+                        Text("Buffer Months: \(row.trailingBufferMonths)")
+                    }
+                    .accessibilityIdentifier("tracking_buffer_\(row.key)")
+                }
+            }
+            .navigationTitle(row.label)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDone)
+                }
+            }
         }
     }
 }
