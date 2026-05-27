@@ -9,6 +9,7 @@ enum AppTab: String, CaseIterable, Hashable {
     case tracking
     case notepad
     case options
+    case user
 
     var title: String {
         switch self {
@@ -19,6 +20,7 @@ enum AppTab: String, CaseIterable, Hashable {
         case .tracking: return "Tracking"
         case .notepad: return "Notepad"
         case .options: return "Options"
+        case .user: return "User"
         }
     }
 
@@ -31,6 +33,7 @@ enum AppTab: String, CaseIterable, Hashable {
         case .tracking: return "scope"
         case .notepad: return "note.text"
         case .options: return "gearshape"
+        case .user: return "person.crop.circle"
         }
     }
 

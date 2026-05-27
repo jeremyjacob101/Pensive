@@ -20,7 +20,7 @@ http.route({
       identity = null;
     }
     const data = identity
-      ? { authenticated: true, userId: authEmailToUsername(identity.subject) }
+      ? { authenticated: true, userId: normalizeUsername(identity.subject) }
       : { authenticated: false };
 
     return jsonOk(data);
@@ -261,13 +261,7 @@ function isValidUsername(username: string): boolean {
 }
 
 function usernameToAuthEmail(username: string): string {
-  if (username.includes("@")) return username;
-  return `${username}@pensive.user`;
-}
-
-function authEmailToUsername(authEmail: string): string {
-  const suffix = "@pensive.user";
-  return authEmail.endsWith(suffix) ? authEmail.slice(0, -suffix.length) : authEmail;
+  return normalizeUsername(username);
 }
 
 export default http;

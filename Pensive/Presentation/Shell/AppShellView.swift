@@ -1353,6 +1353,8 @@ private struct FeatureRootView: View {
                 NotepadFeatureView(api: api)
             } else if tab == .options {
                 OptionsFeatureView(api: api)
+            } else if tab == .user {
+                UserFeatureView(userId: userId, onSignOut: onSignOut)
             } else {
                 List {
             Section {
@@ -1415,6 +1417,27 @@ private struct FeatureRootView: View {
                 }
             }
         }
+    }
+}
+
+private struct UserFeatureView: View {
+    let userId: String
+    let onSignOut: () -> Void
+
+    var body: some View {
+        List {
+            Section("Account") {
+                LabeledContent("Username", value: userId)
+                    .accessibilityIdentifier("user_username_value")
+            }
+
+            Section {
+                Button("Sign Out", role: .destructive, action: onSignOut)
+                    .accessibilityIdentifier("sign_out_button")
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("User")
     }
 }
 
@@ -1576,6 +1599,7 @@ struct AppShellView: View {
     @SceneStorage("shell.path.tracking") private var trackingPathData: Data?
     @SceneStorage("shell.path.notepad") private var notepadPathData: Data?
     @SceneStorage("shell.path.options") private var optionsPathData: Data?
+    @SceneStorage("shell.path.user") private var userPathData: Data?
 
     @State private var selectedTab: AppTab = .defaultTab
     @State private var pathByTab: [AppTab: NavigationPath] = [:]
@@ -1682,6 +1706,7 @@ struct AppShellView: View {
         case .tracking: return trackingPathData
         case .notepad: return notepadPathData
         case .options: return optionsPathData
+        case .user: return userPathData
         }
     }
 
@@ -1694,6 +1719,7 @@ struct AppShellView: View {
         case .tracking: trackingPathData = value
         case .notepad: notepadPathData = value
         case .options: optionsPathData = value
+        case .user: userPathData = value
         }
     }
 }

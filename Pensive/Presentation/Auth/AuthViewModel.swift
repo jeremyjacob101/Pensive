@@ -27,6 +27,7 @@ final class AuthViewModel: ObservableObject {
             Task { @MainActor in
                 self.state = next
                 self.inlineError = self.sessionStore.authMessage
+                self.handleStateTransition(next)
             }
         }
     }
@@ -74,6 +75,9 @@ final class AuthViewModel: ObservableObject {
     }
 
     func signOut() {
+        clearCredentials()
+        entryMode = .signIn
+        inlineError = nil
         sessionStore.signOut()
     }
 
@@ -89,5 +93,25 @@ final class AuthViewModel: ObservableObject {
         default:
             return false
         }
+    }
+
+    private func handleStateTransition(_ next: AuthState) {
+        switch next {
+        case .authenticated:
+            clearCredentials()
+            entryMode = .signIn
+            inlineError = nil
+        case .unauthenticated:
+            clearCredentials()
+            entryMode = .signIn
+        default:
+            break
+        }
+    }
+
+    private func clearCredentials() {
+        username = ""
+        password = ""
+        confirmPassword = ""
     }
 }
