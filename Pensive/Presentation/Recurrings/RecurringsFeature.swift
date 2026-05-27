@@ -65,14 +65,17 @@ final class RecurringsFeatureViewModel: ObservableObject {
     }
 
     func refresh() async {
-        if case .content = state {} else if case .empty = state {} else { state = .loading }
+        let shouldShowFullScreenError = !state.hasLoadedContent
+        if shouldShowFullScreenError { state = .loading }
         do {
             recurrings = try await loadAllRecurrings()
             rebuildRows()
             // Keep screen interactive even when there are no rows so create actions remain visible.
             state = .content
         } catch {
-            state = .error(message: message(for: error))
+            if shouldShowFullScreenError {
+                state = .error(message: message(for: error))
+            }
         }
     }
 

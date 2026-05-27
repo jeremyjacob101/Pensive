@@ -79,7 +79,8 @@ private final class NotepadFeatureViewModel: ObservableObject {
     }
 
     func refresh() async {
-        state = .loading
+        let shouldShowFullScreenError = !state.hasLoadedContent
+        if shouldShowFullScreenError { state = .loading }
         do {
             let workspace = try await api.notepad.getMine()
             apply(workspace: workspace)
@@ -89,7 +90,10 @@ private final class NotepadFeatureViewModel: ObservableObject {
                 apply(workspace: workspace)
                 state = .content
             } else {
-                state = .error(message: "Failed to load notepad")
+                saveErrorText = "Failed to refresh notepad."
+                if shouldShowFullScreenError {
+                    state = .error(message: "Failed to load notepad")
+                }
             }
         }
     }
@@ -844,7 +848,8 @@ private final class TrackingFeatureViewModel: ObservableObject {
     }
 
     func refresh() async {
-        state = .loading
+        let shouldShowFullScreenError = !state.hasLoadedContent
+        if shouldShowFullScreenError { state = .loading }
         do {
             let tracking = try await api.tracking.list()
             apply(response: tracking)
@@ -854,7 +859,9 @@ private final class TrackingFeatureViewModel: ObservableObject {
                 apply(response: tracking)
                 state = .content
             } else {
-                state = .error(message: "Failed to load tracking")
+                if shouldShowFullScreenError {
+                    state = .error(message: "Failed to load tracking")
+                }
             }
         }
     }
@@ -1107,7 +1114,8 @@ private final class OptionsViewModel: ObservableObject {
     }
 
     func refresh() async {
-        state = .loading
+        let shouldShowFullScreenError = !state.hasLoadedContent
+        if shouldShowFullScreenError { state = .loading }
         do {
             async let optionsListRequest = api.userOptions.list()
             async let trackingListRequest = api.tracking.list()
@@ -1125,7 +1133,9 @@ private final class OptionsViewModel: ObservableObject {
             trackingMismatchCount = countTrackingMismatches()
             state = .content
         } catch {
-            state = .error(message: "Failed to load options")
+            if shouldShowFullScreenError {
+                state = .error(message: "Failed to load options")
+            }
         }
     }
 
@@ -1844,12 +1854,15 @@ private final class BreakdownViewModel: ObservableObject {
     }
 
     func load() async {
-        state = .loading
+        let shouldShowFullScreenError = !state.hasLoadedContent
+        if shouldShowFullScreenError { state = .loading }
         do {
             summary = try await api.summaries.range(.init(startDate: LedgerScopeLogic.isoDate(startDate), endDate: LedgerScopeLogic.isoDate(endDate)))
             state = .content
         } catch {
-            state = .error(message: "Failed to load breakdown")
+            if shouldShowFullScreenError {
+                state = .error(message: "Failed to load breakdown")
+            }
         }
     }
 }

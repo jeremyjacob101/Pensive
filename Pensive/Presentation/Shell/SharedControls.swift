@@ -170,6 +170,12 @@ enum ViewLoadState {
     case empty(message: String)
     case error(message: String)
     case content
+
+    var hasLoadedContent: Bool {
+        if case .content = self { return true }
+        if case .empty = self { return true }
+        return false
+    }
 }
 
 struct LoadStateView<Content: View>: View {
