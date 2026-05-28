@@ -28,4 +28,4 @@ jobs:
           CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
           RUN_DATE: ${{ steps.date.outputs.run_date }}
         run: |
-          npx convex run internal.recurrings:materializeDueExpensesForAllUsers "{\"runDate\":\"$RUN_DATE\"}"
+          npx convex run recurrings:materializeDueExpensesForAllUsers "{\"runDate\":\"$RUN_DATE\"}"
