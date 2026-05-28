@@ -428,8 +428,6 @@ async function materializeRecurringRow(
     notes: recurring.notes,
     comments: `Triggered at ${formatJerusalemNow()}`,
     expenseId: automationKey,
-    baseExpenseId: automationKey,
-    subExpenseId: "000",
   });
   return { created: 1, skipped: 0 };
 }
