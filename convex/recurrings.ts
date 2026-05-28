@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { normalizeMonthYearsInput } from "./monthYears";
 import { paginationOptsValidator } from "convex/server";
@@ -259,91 +259,177 @@ export const materializeDueExpenses = mutation({
   args: { runDate: v.string() },
   handler: async (ctx, { runDate }) => {
     const userId = await requireUserId(ctx);
-    const day = Number(runDate.split("-")[2] ?? "0");
-    if (!Number.isFinite(day) || day < 1 || day > 31) {
-      throw new Error("runDate must be YYYY-MM-DD");
-    }
+    return await materializeDueExpensesForSingleUser(ctx, userId, runDate);
+  },
+});
 
+export const materializeDueExpensesForUser = internalMutation({
+  args: { userId: v.id("users"), runDate: v.string() },
+  handler: async (ctx, { userId, runDate }) => {
+    return await materializeDueExpensesForSingleUser(ctx, userId, runDate);
+  },
+});
+
+export const materializeDueExpensesForAllUsers = internalMutation({
+  args: { runDate: v.string() },
+  handler: async (ctx, { runDate }) => {
+    const day = parseDay(runDate);
     const due = await ctx.db
       .query("recurrings")
-      .withIndex("by_user_id_day_of_month", (q) =>
-        q.eq("userId", userId).eq("dayOfMonth", day))
+      .withIndex("by_day_of_month", (q) => q.eq("dayOfMonth", day))
       .collect();
 
     let created = 0;
     let skipped = 0;
+    let usersProcessed = 0;
+    let skippedNoUser = 0;
+    const processedUserIds = new Set<string>();
 
     for (const recurring of due) {
-      if (recurring.status.toLowerCase() !== "active") {
-        skipped++;
+      if (!recurring.userId) {
+        skippedNoUser++;
         continue;
       }
-
-      const kind = recurring.kind ?? "expense";
-      const automationKey = `recurring:${kind}:${recurring._id}:${runDate}`;
-
-      if (kind === "incoming") {
-        const monthYears = normalizeMonthYearsInput([], runDate);
-        const alreadyIncoming = await ctx.db
-          .query("incomings")
-          .withIndex("by_incoming_id", (q) => q.eq("incomingId", automationKey))
-          .first();
-        if (alreadyIncoming) {
-          skipped++;
-          continue;
-        }
-
-        await ctx.db.insert("incomings", {
-          userId,
-          incoming: recurring.name,
-          paidBy: recurring.recurringIncomingPaidBy ?? "",
-          incomeType: recurring.recurringIncomingType ?? "",
-          incomeSubtype: recurring.recurringIncomingSubtype ?? "",
-          account: recurring.recurringIncomingAccount ?? "",
-          amount: recurring.amount,
-          effectiveAmount: recurring.amount,
-          effectiveAmountMode: "auto",
-          date: runDate,
-          monthYears,
-          notes: recurring.notes,
-          comments: `Triggered at ${formatJerusalemNow()}`,
-          incomingId: automationKey,
-        });
-        created++;
-        continue;
+      if (!processedUserIds.has(recurring.userId)) {
+        processedUserIds.add(recurring.userId);
+        usersProcessed++;
       }
-
-      const alreadyExpense = await ctx.db
-        .query("expenses")
-        .withIndex("by_expense_id", (q) => q.eq("expenseId", automationKey))
-        .first();
-      if (alreadyExpense) {
-        skipped++;
-        continue;
-      }
-
-      await ctx.db.insert("expenses", {
-        monthYears: normalizeMonthYearsInput([], runDate),
-        userId,
-        expense: recurring.name,
-        type: recurring.recurringExpenseType ?? "Recurring",
-        account: recurring.recurringExpenseAccount ?? "",
-        category: recurring.recurringExpenseCategory ?? "",
-        subcategory: recurring.recurringExpenseSubcategory ?? "",
-        amount: recurring.amount,
-        effectiveAmount: recurring.amount,
-        effectiveAmountMode: "auto",
-        date: runDate,
-        paidTo: recurring.recurringExpensePaidTo ?? "",
-        notes: recurring.notes,
-        comments: `Triggered at ${formatJerusalemNow()}`,
-        expenseId: automationKey,
-        baseExpenseId: automationKey,
-        subExpenseId: "000",
-      });
-      created++;
+      const result = await materializeRecurringRow(
+        ctx,
+        recurring.userId,
+        recurring,
+        runDate,
+      );
+      created += result.created;
+      skipped += result.skipped;
     }
 
-    return { runDate, day, matched: due.length, created, skipped };
+    return {
+      runDate,
+      day,
+      matched: due.length,
+      usersProcessed,
+      skippedNoUser,
+      created,
+      skipped,
+    };
   },
 });
+
+function parseDay(runDate: string) {
+  const day = Number(runDate.split("-")[2] ?? "0");
+  if (!Number.isFinite(day) || day < 1 || day > 31) {
+    throw new Error("runDate must be YYYY-MM-DD");
+  }
+  return day;
+}
+
+async function materializeDueExpensesForSingleUser(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  runDate: string,
+) {
+  const day = parseDay(runDate);
+
+  const due = await ctx.db
+    .query("recurrings")
+    .withIndex("by_user_id_day_of_month", (q) =>
+      q.eq("userId", userId).eq("dayOfMonth", day))
+    .collect();
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const recurring of due) {
+    const result = await materializeRecurringRow(
+      ctx,
+      userId,
+      recurring,
+      runDate,
+    );
+    created += result.created;
+    skipped += result.skipped;
+  }
+
+  return { runDate, day, matched: due.length, created, skipped };
+}
+
+async function materializeRecurringRow(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  recurring: {
+    _id: Id<"recurrings">;
+    status: string;
+    kind?: "expense" | "incoming";
+    name: string;
+    recurringIncomingPaidBy?: string;
+    recurringIncomingType?: string;
+    recurringIncomingSubtype?: string;
+    recurringIncomingAccount?: string;
+    amount: number;
+    notes?: string;
+    recurringExpenseType?: string;
+    recurringExpenseAccount?: string;
+    recurringExpenseCategory?: string;
+    recurringExpenseSubcategory?: string;
+    recurringExpensePaidTo?: string;
+  },
+  runDate: string,
+) {
+  if (recurring.status.toLowerCase() !== "active")
+    return { created: 0, skipped: 1 };
+  const kind = recurring.kind ?? "expense";
+  const automationKey = `recurring:${kind}:${recurring._id}:${runDate}`;
+
+  if (kind === "incoming") {
+    const monthYears = normalizeMonthYearsInput([], runDate);
+    const alreadyIncoming = await ctx.db
+      .query("incomings")
+      .withIndex("by_incoming_id", (q) => q.eq("incomingId", automationKey))
+      .first();
+    if (alreadyIncoming) return { created: 0, skipped: 1 };
+    await ctx.db.insert("incomings", {
+      userId,
+      incoming: recurring.name,
+      paidBy: recurring.recurringIncomingPaidBy ?? "",
+      incomeType: recurring.recurringIncomingType ?? "",
+      incomeSubtype: recurring.recurringIncomingSubtype ?? "",
+      account: recurring.recurringIncomingAccount ?? "",
+      amount: recurring.amount,
+      effectiveAmount: recurring.amount,
+      effectiveAmountMode: "auto",
+      date: runDate,
+      monthYears,
+      notes: recurring.notes,
+      comments: `Triggered at ${formatJerusalemNow()}`,
+      incomingId: automationKey,
+    });
+    return { created: 1, skipped: 0 };
+  }
+
+  const alreadyExpense = await ctx.db
+    .query("expenses")
+    .withIndex("by_expense_id", (q) => q.eq("expenseId", automationKey))
+    .first();
+  if (alreadyExpense) return { created: 0, skipped: 1 };
+  await ctx.db.insert("expenses", {
+    monthYears: normalizeMonthYearsInput([], runDate),
+    userId,
+    expense: recurring.name,
+    type: recurring.recurringExpenseType ?? "Recurring",
+    account: recurring.recurringExpenseAccount ?? "",
+    category: recurring.recurringExpenseCategory ?? "",
+    subcategory: recurring.recurringExpenseSubcategory ?? "",
+    amount: recurring.amount,
+    effectiveAmount: recurring.amount,
+    effectiveAmountMode: "auto",
+    date: runDate,
+    paidTo: recurring.recurringExpensePaidTo ?? "",
+    notes: recurring.notes,
+    comments: `Triggered at ${formatJerusalemNow()}`,
+    expenseId: automationKey,
+    baseExpenseId: automationKey,
+    subExpenseId: "000",
+  });
+  return { created: 1, skipped: 0 };
+}
