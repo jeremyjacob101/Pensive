@@ -2,12 +2,13 @@ name: Materialize Recurrings
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 1 * * *'
   workflow_dispatch:
 
 jobs:
   materialize:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v5
 
@@ -15,23 +16,16 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Run only at 04:00 Asia/Jerusalem
-        id: gate
+      - name: Set run date
+        id: date
         run: |
-          HOUR=$(TZ=Asia/Jerusalem date +%H)
           RUN_DATE=$(TZ=Asia/Jerusalem date +%F)
-          echo "hour=$HOUR" >> "$GITHUB_OUTPUT"
           echo "run_date=$RUN_DATE" >> "$GITHUB_OUTPUT"
-          if [ "$HOUR" != "04" ]; then
-            echo "Not 04:00 in Israel (hour=$HOUR). Exiting."
-            exit 0
-          fi
 
       - name: Materialize due recurrings into expenses
-        if: steps.gate.outputs.hour == '04'
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
           CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
-          RUN_DATE: ${{ steps.gate.outputs.run_date }}
+          RUN_DATE: ${{ steps.date.outputs.run_date }}
         run: |
           npx convex run recurrings:materializeDueExpenses "{\"runDate\":\"$RUN_DATE\"}"
