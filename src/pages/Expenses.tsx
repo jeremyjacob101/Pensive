@@ -194,14 +194,14 @@ export function Expenses() {
                 : field === "subcategory"
                   ? row.subcategory
                   : field === "account"
-                      ? row.account
-                      : field === "notes"
-                        ? row.notes
-                        : field === "comments"
-                          ? row.comments
-                          : field === "baseExpenseLabel"
-                            ? row.baseExpenseLabel
-                            : "") ?? "";
+                    ? row.account
+                    : field === "notes"
+                      ? row.notes
+                      : field === "comments"
+                        ? row.comments
+                        : field === "baseExpenseLabel"
+                          ? row.baseExpenseLabel
+                          : "") ?? "";
         return value.toLowerCase().includes(normalizedSearchQuery);
       }));
   }, [expenseSelectedSearchFields, filteredExpenses, normalizedSearchQuery]);
@@ -728,13 +728,7 @@ export function Expenses() {
                           </div>
                           <span
                             className="entry-card-primary-divider"
-                            style={{ backgroundColor: dotColor, opacity: 0.8 }}
-                            data-tooltip={
-                              firstRow.subcategory
-                                ? `${firstRow.category} / ${firstRow.subcategory}`
-                                : firstRow.category
-                            }
-                            aria-hidden="true"
+                            style={{ opacity: 0.8 }}
                           />
                           <div className="entry-card-title-wrap">
                             <span className="entry-card-title">
@@ -854,8 +848,10 @@ export function Expenses() {
                                 </div>
                                 <div className="grouped-expense-row-meta">
                                   {row.category}
-                                  {row.subcategory ? ` / ${row.subcategory}` : ""} ·{" "}
-                                  {row.account} · {row.paidTo}
+                                  {row.subcategory
+                                    ? ` / ${row.subcategory}`
+                                    : ""}{" "}
+                                  · {row.account} · {row.paidTo}
                                 </div>
                               </div>
 
@@ -1170,13 +1166,7 @@ export function Expenses() {
                         </div>
                         <span
                           className="entry-card-primary-divider"
-                          style={{ backgroundColor: dotColor, opacity: 0.8 }}
-                          data-tooltip={
-                            row.subcategory
-                              ? `${row.category} / ${row.subcategory}`
-                              : row.category
-                          }
-                          aria-hidden="true"
+                          style={{ opacity: 0.8 }}
                         />
                         <div className="entry-card-title-wrap">
                           {shouldShowRowMatchDisclaimer &&

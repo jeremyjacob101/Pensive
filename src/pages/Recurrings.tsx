@@ -114,7 +114,10 @@ export function Recurrings() {
                           </div>
                           <span
                             className="entry-card-primary-divider"
-                            style={{ backgroundColor: categoryColor, opacity: 0.8 }}
+                            style={{
+                              backgroundColor: categoryColor,
+                              opacity: 0.8,
+                            }}
                             data-tooltip={row.recurringExpenseCategory ?? ""}
                             aria-hidden="true"
                           />
