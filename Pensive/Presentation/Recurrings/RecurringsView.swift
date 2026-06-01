@@ -88,6 +88,7 @@ struct RecurringsFeatureView: View {
             Text(viewModel.alertText ?? "")
         }
         .navigationTitle("Recurrings")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     private func recurringRow(_ row: RecurringItemViewData) -> some View {

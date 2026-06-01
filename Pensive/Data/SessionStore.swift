@@ -61,13 +61,10 @@ final class SessionStore: SessionStoring {
                     }
                 } catch {
                     let mapped = self.mapAuthError(error)
-                    // Keep public route reachable on launch unless this is a hard server issue.
-                    if case .server = mapped {
-                        self.transition(to: .authError(mapped))
-                    } else {
-                        self.authMessage = mapped.userMessage
-                        self.transition(to: .unauthenticated)
-                    }
+                    // Never hard-block launch on session bootstrap errors.
+                    // Fall back to unauthenticated so the user can sign in immediately.
+                    self.authMessage = mapped.userMessage
+                    self.transition(to: .unauthenticated)
                 }
             }
         }

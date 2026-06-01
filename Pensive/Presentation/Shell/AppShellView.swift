@@ -308,6 +308,7 @@ private struct NotepadFeatureView: View {
             )
             .listStyle(.insetGrouped)
             .navigationTitle("Notepad")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 addToolbar
             }
@@ -808,6 +809,14 @@ enum TrackingTimelineLogic {
             return .init(id: month, month: month, state: state)
         }
     }
+
+    static func monthsFromStart(_ months: [String], startMonth: String) -> [String] {
+        guard let startDate = monthDate(startMonth) else { return months }
+        return months.filter { month in
+            guard let monthDate = monthDate(month) else { return false }
+            return monthDate >= startDate
+        }
+    }
 }
 
 struct TrackingTimelineRowPersistenceStore {
@@ -880,8 +889,9 @@ private final class TrackingFeatureViewModel: ObservableObject {
         persistence.setStartMonth(month, source: source, key: key)
         mutateRow(id: rowID, source: source) { row in
             row.startMonth = month
+            let visibleMonths = TrackingTimelineLogic.monthsFromStart(row.availableMonths, startMonth: row.startMonth)
             row.segments = TrackingTimelineLogic.segments(
-                months: row.availableMonths,
+                months: visibleMonths,
                 paidMonths: row.paidMonths,
                 currentMonth: row.currentMonth,
                 trailingBufferMonths: row.trailingBufferMonths
@@ -893,8 +903,9 @@ private final class TrackingFeatureViewModel: ObservableObject {
         persistence.setTrailingBufferMonths(months, source: source, key: key)
         mutateRow(id: rowID, source: source) { row in
             row.trailingBufferMonths = max(0, months)
+            let visibleMonths = TrackingTimelineLogic.monthsFromStart(row.availableMonths, startMonth: row.startMonth)
             row.segments = TrackingTimelineLogic.segments(
-                months: row.availableMonths,
+                months: visibleMonths,
                 paidMonths: row.paidMonths,
                 currentMonth: row.currentMonth,
                 trailingBufferMonths: row.trailingBufferMonths
@@ -911,10 +922,7 @@ private final class TrackingFeatureViewModel: ObservableObject {
             let persistedBuffer = persistence.trailingBufferMonths(source: source, key: dto.key) ?? 0
             let months = dto.rangeMonths.isEmpty ? [response.currentMonth] : dto.rangeMonths
             let allMonths = months.last == response.currentMonth ? months : months + [response.currentMonth]
-            let clipped = allMonths.filter { month in
-                guard let monthDate = TrackingTimelineLogic.monthDate(month), let startDate = TrackingTimelineLogic.monthDate(start) else { return false }
-                return monthDate >= startDate
-            }
+            let clipped = TrackingTimelineLogic.monthsFromStart(allMonths, startMonth: start)
             let segments = TrackingTimelineLogic.segments(
                 months: clipped,
                 paidMonths: Set(dto.paidMonths),
@@ -929,7 +937,7 @@ private final class TrackingFeatureViewModel: ObservableObject {
                 colorHex: dto.color,
                 paidMonths: Set(dto.paidMonths),
                 currentMonth: response.currentMonth,
-                availableMonths: clipped,
+                availableMonths: allMonths,
                 startMonth: start,
                 trailingBufferMonths: persistedBuffer,
                 segments: segments
@@ -1016,6 +1024,7 @@ private struct TrackingFeatureView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Tracking")
+            .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
         }
         .task { viewModel.onAppear() }
@@ -1094,6 +1103,7 @@ private struct TrackingTimelineRowCard: View {
                         .accessibilityIdentifier("tracking_buffer_\(row.key)")
                     }
                 }
+                .padding(.top, 10)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -1104,32 +1114,36 @@ private struct TrackingTimelineRowCard: View {
 
 private struct TrackingPipelinePreview: View {
     let segments: [TrackingTimelineSegment]
+    private let previewWidth: CGFloat = 276
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(segments) { segment in
-                        VStack(spacing: 2) {
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(color(for: segment.state))
-                                .frame(width: 40, height: 8)
-                            Text(monthAbbrev(segment.month))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(segments) { segment in
+                            VStack(spacing: 2) {
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .fill(color(for: segment.state))
+                                    .frame(width: 40, height: 8)
+                                Text(monthAbbrev(segment.month))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .id(segment.id)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel("\(segment.month), \(segment.state.rawValue)")
                         }
-                        .id(segment.id)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(segment.month), \(segment.state.rawValue)")
+                    }
+                    .frame(minWidth: geo.size.width, alignment: .trailing)
+                }
+                .onAppear {
+                    if let newest = segments.last?.id {
+                        proxy.scrollTo(newest, anchor: .trailing)
                     }
                 }
             }
-            .frame(width: 276, alignment: .trailing)
-            .onAppear {
-                if let newest = segments.last?.id {
-                    proxy.scrollTo(newest, anchor: .trailing)
-                }
-            }
+            .frame(width: previewWidth)
         }
     }
 
@@ -1588,6 +1602,7 @@ private struct OptionsFeatureView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Options")
+            .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
             .alert("Delete option?", isPresented: Binding(get: { rowPendingDelete != nil }, set: { if !$0 { rowPendingDelete = nil } })) {
                 Button("Delete", role: .destructive) {
@@ -1846,7 +1861,6 @@ private struct FeatureRootView: View {
                 }
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -1868,6 +1882,7 @@ private struct UserFeatureView: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("User")
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -2004,6 +2019,7 @@ private struct BreakdownFeatureView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Breakdown")
+            .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.load() }
         }
         .task { viewModel.onAppear() }

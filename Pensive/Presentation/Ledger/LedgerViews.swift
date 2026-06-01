@@ -11,6 +11,7 @@ struct ExpensesFeatureView: View {
     var body: some View {
         LedgerScreen(viewModel: viewModel)
             .navigationTitle("Expenses")
+            .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -24,6 +25,7 @@ struct IncomingsFeatureView: View {
     var body: some View {
         LedgerScreen(viewModel: viewModel)
             .navigationTitle("Incomings")
+            .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -39,6 +41,8 @@ private struct LedgerScreen: View {
     @State private var editingID: RowID?
     @State private var deleteID: String?
     @State private var selectedPartnerAnchorID: RowID?
+    @State private var showAppliedThisMonthPaidDifferent = false
+    @State private var showPaidThisMonthAppliedDifferent = false
 
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
@@ -64,59 +68,50 @@ private struct LedgerScreen: View {
                         .listRowBackground(Color.clear)
                 }
 
-                ForEach(viewModel.rows) { row in
-                    DisclosureGroup {
-                        HStack {
-                            Button {
-                                editingID = RowID(id: row.id)
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
+                if !appliedThisMonthPaidDifferentRows.isEmpty {
+                    Section {
+                        DisclosureGroup(
+                            isExpanded: $showAppliedThisMonthPaidDifferent,
+                            content: {
+                                ForEach(appliedThisMonthPaidDifferentRows) { row in
+                                    ledgerRow(row)
+                                }
+                            },
+                            label: {
+                                HStack {
+                                    Text("Applied this month | Paid Elsewhere")
+                                    Spacer()
+                                    Text("(\(appliedThisMonthPaidDifferentRows.count))")
+                                        .foregroundStyle(.secondary)
+                                }
                             }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("ledger_edit_\(row.id)")
-
-                            Button(role: .destructive) {
-                                deleteID = row.id
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("ledger_delete_\(row.id)")
-                        }
-
-                        ForEach(row.details, id: \.self) { detail in
-                            Text(detail).font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Text("Month Years: \(row.monthYears.joined(separator: ", "))").font(.footnote)
-
-                        HStack {
-                            Button("Add partner") { selectedPartnerAnchorID = RowID(id: row.id) }
-                            Button("Unlink partner") { viewModel.unlinkPartner(id: row.id) }
-                        }
-
-                        if viewModel.kind == .expense {
-                            Button("Rename base group") { viewModel.renameExpenseBaseGroup(baseID: row.id, label: row.title) }
-                            Button("Remove base group", role: .destructive) { viewModel.removeExpenseBaseGroup(baseID: row.id) }
-                        }
-
-                        NavigationLink("Manage Payback Links") {
-                            PaybackLinksManagerView(target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id), viewModel: viewModel)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(row.title).font(.headline)
-                            Text(row.subtitle).font(.subheadline).foregroundStyle(.secondary)
-                            Text(row.amountLine).font(.subheadline.weight(.medium))
-                            Text(row.appliedLine).font(.footnote).foregroundStyle(.secondary)
-                            if let warning = row.warningText {
-                                Text(warning).font(.footnote).foregroundStyle(.orange)
-                            }
-                        }
+                        )
                     }
-                    .swipeActions {
-                        Button("Edit") { editingID = RowID(id: row.id) }.tint(.blue)
-                        Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
+                }
+
+                if !paidThisMonthAppliedDifferentRows.isEmpty {
+                    Section {
+                        DisclosureGroup(
+                            isExpanded: $showPaidThisMonthAppliedDifferent,
+                            content: {
+                                ForEach(paidThisMonthAppliedDifferentRows) { row in
+                                    ledgerRow(row)
+                                }
+                            },
+                            label: {
+                                HStack {
+                                    Text("Paid this month | Applied elsewhere")
+                                    Spacer()
+                                    Text("(\(paidThisMonthAppliedDifferentRows.count))")
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        )
                     }
+                }
+
+                ForEach(regularRows) { row in
+                    ledgerRow(row)
                 }
 
                 if viewModel.rows.isEmpty {
@@ -164,6 +159,71 @@ private struct LedgerScreen: View {
             Button("OK", role: .cancel) { viewModel.alertText = nil }
         } message: {
             Text(viewModel.alertText ?? "")
+        }
+    }
+
+    private var appliedThisMonthPaidDifferentRows: [LedgerItemViewData] {
+        viewModel.rows.filter { $0.scopeStatus == .monthYearsOnly }
+    }
+
+    private var paidThisMonthAppliedDifferentRows: [LedgerItemViewData] {
+        viewModel.rows.filter { $0.scopeStatus == .dateOnly }
+    }
+
+    private var regularRows: [LedgerItemViewData] {
+        viewModel.rows.filter { $0.scopeStatus == .full }
+    }
+
+    @ViewBuilder
+    private func ledgerRow(_ row: LedgerItemViewData) -> some View {
+        DisclosureGroup {
+            HStack {
+                Button {
+                    editingID = RowID(id: row.id)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("ledger_edit_\(row.id)")
+
+                Button(role: .destructive) {
+                    deleteID = row.id
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("ledger_delete_\(row.id)")
+            }
+
+            ForEach(row.details, id: \.self) { detail in
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
+            Text("Month Years: \(row.monthYears.joined(separator: ", "))").font(.footnote)
+
+            HStack {
+                Button("Add partner") { selectedPartnerAnchorID = RowID(id: row.id) }
+                Button("Unlink partner") { viewModel.unlinkPartner(id: row.id) }
+            }
+
+            if viewModel.kind == .expense {
+                Button("Rename base group") { viewModel.renameExpenseBaseGroup(baseID: row.id, label: row.title) }
+                Button("Remove base group", role: .destructive) { viewModel.removeExpenseBaseGroup(baseID: row.id) }
+            }
+
+            NavigationLink("Manage Payback Links") {
+                PaybackLinksManagerView(target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id), viewModel: viewModel)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(row.title).font(.headline)
+                Text(row.subtitle).font(.subheadline).foregroundStyle(.secondary)
+                Text(row.amountLine).font(.subheadline.weight(.medium))
+                Text(row.appliedLine).font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .swipeActions {
+            Button("Edit") { editingID = RowID(id: row.id) }.tint(.blue)
+            Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
     }
 }
