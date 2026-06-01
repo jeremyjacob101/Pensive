@@ -784,6 +784,11 @@ export function Incomings() {
                                   <span
                                     className="entry-card-color-dot"
                                     style={{ backgroundColor: dotColor }}
+                                    data-tooltip={
+                                      row.incomeSubtype
+                                        ? `${row.incomeType} / ${row.incomeSubtype}`
+                                        : row.incomeType
+                                    }
                                   />
                                 </div>
                                 <div className="grouped-expense-row-meta">

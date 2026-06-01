@@ -848,6 +848,11 @@ export function Expenses() {
                                   <span
                                     className="entry-card-color-dot"
                                     style={{ backgroundColor: dotColor }}
+                                    data-tooltip={
+                                      row.subcategory
+                                        ? `${row.category} / ${row.subcategory}`
+                                        : row.category
+                                    }
                                   />
                                 </div>
                                 <div className="grouped-expense-row-meta">
