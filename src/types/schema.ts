@@ -1,6 +1,5 @@
 export const expenseHeaders = [
   "Expense",
-  "Type",
   "Account",
   "Category",
   "Subcategory",
@@ -34,7 +33,6 @@ export const recurringHeaders = [
   "Status",
   "Kind",
   "Name",
-  "ExpenseType",
   "ExpenseAccount",
   "ExpenseCategory",
   "ExpenseSubcategory",
@@ -50,7 +48,6 @@ export const recurringHeaders = [
 ] as const;
 
 export const optionKinds = [
-  { key: "expenseType", label: "Expense Type" },
   { key: "account", label: "Account" },
   { key: "category", label: "Category" },
   { key: "subcategory", label: "Subcategory" },

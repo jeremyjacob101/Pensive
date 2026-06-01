@@ -28,7 +28,6 @@ export function Options() {
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
   const [editingOption, setEditingOption] = useState<{
     kind:
-      | "expenseType"
       | "account"
       | "category"
       | "subcategory"
@@ -66,7 +65,6 @@ export function Options() {
 
   const removeOptionWithConfirm = (args: {
     kind:
-      | "expenseType"
       | "account"
       | "category"
       | "subcategory"

@@ -82,11 +82,6 @@ export function Recurrings() {
                     "category",
                     row.recurringExpenseCategory ?? "",
                   );
-                  const typeColor = getOptionColor(
-                    userOptions,
-                    "expenseType",
-                    row.recurringExpenseType ?? "",
-                  );
                   const accountColor = getOptionColor(
                     userOptions,
                     "account",
@@ -119,8 +114,8 @@ export function Recurrings() {
                           </div>
                           <span
                             className="entry-card-primary-divider"
-                            style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                            data-tooltip={row.recurringExpenseType ?? ""}
+                            style={{ backgroundColor: categoryColor, opacity: 0.8 }}
+                            data-tooltip={row.recurringExpenseCategory ?? ""}
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -212,10 +207,6 @@ export function Recurrings() {
                             </div>
                             <div>
                               <strong>Frequency:</strong> {row.frequency}
-                            </div>
-                            <div>
-                              <strong>Type:</strong>{" "}
-                              {row.recurringExpenseType ?? "-"}
                             </div>
                             <div>
                               <strong>Account:</strong>{" "}
@@ -566,20 +557,6 @@ function RecurringEditModal({ editValues, setEditValues, userOptions, addUserOpt
           />
           {(editValues.kind ?? "expense") === "expense" ? (
             <>
-              <OptionPicker
-                kind="expenseType"
-                label="Expense Type"
-                value={editValues.recurringExpenseType ?? ""}
-                options={toOptionValues(userOptions?.expenseType)}
-                placeholder="Type"
-                onChange={(value) =>
-                  setEditValues((v) => ({
-                    ...v,
-                    recurringExpenseType: value,
-                  }))
-                }
-                onCreateOption={saveOption.bind(null, addUserOption)}
-              />
               <OptionPicker
                 kind="account"
                 label="Expense Account"

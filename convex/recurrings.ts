@@ -18,7 +18,6 @@ const recurringArgs = {
   amount: v.number(),
   frequency: v.string(),
   dayOfMonth: v.number(),
-  recurringExpenseType: v.optional(v.string()),
   recurringExpenseAccount: v.optional(v.string()),
   recurringExpenseCategory: v.optional(v.string()),
   recurringExpenseSubcategory: v.optional(v.string()),
@@ -32,7 +31,6 @@ const recurringArgs = {
 
 function validateRecurringFields(args: {
   kind: "expense" | "incoming";
-  recurringExpenseType?: string;
   recurringExpenseAccount?: string;
   recurringExpenseCategory?: string;
   recurringExpensePaidTo?: string;
@@ -42,7 +40,6 @@ function validateRecurringFields(args: {
 }) {
   if (args.kind === "expense") {
     if (
-      !args.recurringExpenseType ||
       !args.recurringExpenseAccount ||
       !args.recurringExpenseCategory ||
       !args.recurringExpensePaidTo
@@ -88,7 +85,6 @@ export const create = mutation({
             recurringIncomingAccount: undefined,
           }
         : {
-            recurringExpenseType: undefined,
             recurringExpenseAccount: undefined,
             recurringExpenseCategory: undefined,
             recurringExpenseSubcategory: undefined,
@@ -142,7 +138,6 @@ export const update = mutation({
             recurringIncomingAccount: undefined,
           }
         : {
-            recurringExpenseType: undefined,
             recurringExpenseAccount: undefined,
             recurringExpenseCategory: undefined,
             recurringExpenseSubcategory: undefined,
@@ -186,7 +181,6 @@ export const cleanupRecurringKindFields = mutation({
               recurringIncomingAccount: undefined,
             }
           : {
-              recurringExpenseType: undefined,
               recurringExpenseAccount: undefined,
               recurringExpenseCategory: undefined,
               recurringExpenseSubcategory: undefined,
@@ -216,7 +210,6 @@ export const cleanupRecurringKindFieldsForUser = internalMutation({
               recurringIncomingAccount: undefined,
             }
           : {
-              recurringExpenseType: undefined,
               recurringExpenseAccount: undefined,
               recurringExpenseCategory: undefined,
               recurringExpenseSubcategory: undefined,
@@ -368,7 +361,6 @@ async function materializeRecurringRow(
     recurringIncomingAccount?: string;
     amount: number;
     notes?: string;
-    recurringExpenseType?: string;
     recurringExpenseAccount?: string;
     recurringExpenseCategory?: string;
     recurringExpenseSubcategory?: string;
@@ -416,7 +408,6 @@ async function materializeRecurringRow(
     monthYears: normalizeMonthYearsInput([], runDate),
     userId,
     expense: recurring.name,
-    type: recurring.recurringExpenseType ?? "Recurring",
     account: recurring.recurringExpenseAccount ?? "",
     category: recurring.recurringExpenseCategory ?? "",
     subcategory: recurring.recurringExpenseSubcategory ?? "",

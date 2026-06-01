@@ -1,6 +1,5 @@
 export type SplitExpenseDraft = {
   expense: string;
-  type: string;
   account: string;
   category: string;
   subcategory: string;

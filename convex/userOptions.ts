@@ -1,10 +1,9 @@
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
 const optionKind = v.union(
-  v.literal("expenseType"),
   v.literal("account"),
   v.literal("category"),
   v.literal("subcategory"),
@@ -13,7 +12,6 @@ const optionKind = v.union(
 );
 
 type OptionKind =
-  | "expenseType"
   | "account"
   | "category"
   | "subcategory"
@@ -21,7 +19,6 @@ type OptionKind =
   | "incomeSubtype";
 
 const OPTION_KINDS: OptionKind[] = [
-  "expenseType",
   "account",
   "category",
   "subcategory",
@@ -340,7 +337,6 @@ export const list = query({
     const userId = await requireUserId(ctx);
 
     const [
-      expenseTypeRows,
       accountRows,
       categoryRows,
       subcategoryRows,
@@ -356,15 +352,6 @@ export const list = query({
     );
 
     return {
-      expenseType: formatOptionList(
-        "expenseType",
-        expenseTypeRows.map((row) => ({
-          value: row.value,
-          color: (row as { color?: string }).color,
-          isDefault: (row as { isDefault?: boolean }).isDefault,
-          isTracking: (row as { isTracking?: boolean }).isTracking,
-        })),
-      ),
       account: formatOptionList(
         "account",
         accountRows.map((row) => ({
@@ -563,7 +550,7 @@ export const setTracking = mutation({
     const userId = await requireUserId(ctx);
     if (!TRACKING_KINDS.includes(kind)) {
       throw new Error(
-        "Tracking is only supported for category and type options",
+        "Tracking is only supported for category and income type options",
       );
     }
 
@@ -784,30 +771,6 @@ export const rename = mutation({
             recurringIncomingSubtype: targetValue,
           });
         }
-      }
-      return;
-    }
-
-    if (kind === "expenseType") {
-      const expenses = await ctx.db
-        .query("expenses")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect();
-      for (const expense of expenses) {
-        if (expense.type === currentValue) {
-          await ctx.db.patch(expense._id, { type: targetValue });
-        }
-      }
-      const recurrings = await ctx.db
-        .query("recurrings")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect();
-      for (const recurring of recurrings) {
-        const patch: { recurringExpenseType?: string } = {};
-        if ((recurring.recurringExpenseType ?? "") === currentValue)
-          patch.recurringExpenseType = targetValue;
-        if (Object.keys(patch).length > 0)
-          await ctx.db.patch(recurring._id, patch);
       }
       return;
     }
@@ -1231,5 +1194,140 @@ export const moveSubtype = mutation({
         });
       }
     }
+  },
+});
+
+async function runCleanupLegacyExpenseTypeForUser(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+) {
+  const expenses = await ctx.db
+    .query("expenses")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .collect();
+  let expensesUpdated = 0;
+  for (const expense of expenses) {
+    const raw = expense as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(raw, "type")) continue;
+    const { type: _legacyType, ...next } = raw;
+    void _legacyType;
+    await ctx.db.replace(expense._id, next as typeof expense);
+    expensesUpdated += 1;
+  }
+
+  const recurrings = await ctx.db
+    .query("recurrings")
+    .withIndex("by_user_id", (q) => q.eq("userId", userId))
+    .collect();
+  let recurringsUpdated = 0;
+  for (const recurring of recurrings) {
+    const raw = recurring as Record<string, unknown>;
+    if (!Object.prototype.hasOwnProperty.call(raw, "recurringExpenseType"))
+      continue;
+    const { recurringExpenseType: _legacyType, ...next } = raw;
+    void _legacyType;
+    await ctx.db.replace(recurring._id, next as typeof recurring);
+    recurringsUpdated += 1;
+  }
+
+  return {
+    expensesUpdated,
+    recurringsUpdated,
+    optionsDeleted: 0,
+  };
+}
+
+export const cleanupLegacyExpenseType = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+    return await runCleanupLegacyExpenseTypeForUser(ctx, userId);
+  },
+});
+
+export const cleanupLegacyExpenseTypeForUser = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    return await runCleanupLegacyExpenseTypeForUser(ctx, userId);
+  },
+});
+
+export const cleanupLegacyExpenseTypeForAllUsers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let expensesUpdated = 0;
+    let recurringsUpdated = 0;
+    let optionsDeleted = 0;
+
+    for (const user of users) {
+      const result = await runCleanupLegacyExpenseTypeForUser(ctx, user._id);
+      expensesUpdated += result.expensesUpdated;
+      recurringsUpdated += result.recurringsUpdated;
+      optionsDeleted += result.optionsDeleted;
+    }
+
+    const orphanExpenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_user_id", (q) => q.eq("userId", undefined))
+      .collect();
+    for (const row of orphanExpenses) {
+      const raw = row as Record<string, unknown>;
+      if (!Object.prototype.hasOwnProperty.call(raw, "type")) continue;
+      const { type: _legacyType, ...next } = raw;
+      void _legacyType;
+      await ctx.db.replace(row._id, next as typeof row);
+      expensesUpdated += 1;
+    }
+
+    const orphanRecurrings = await ctx.db
+      .query("recurrings")
+      .withIndex("by_user_id", (q) => q.eq("userId", undefined))
+      .collect();
+    for (const row of orphanRecurrings) {
+      const raw = row as Record<string, unknown>;
+      if (!Object.prototype.hasOwnProperty.call(raw, "recurringExpenseType"))
+        continue;
+      const { recurringExpenseType: _legacyType, ...next } = raw;
+      void _legacyType;
+      await ctx.db.replace(row._id, next as typeof row);
+      recurringsUpdated += 1;
+    }
+
+    return {
+      usersProcessed: users.length,
+      expensesUpdated,
+      recurringsUpdated,
+      optionsDeleted,
+    };
+  },
+});
+
+export const legacyExpenseTypeStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .collect();
+    const recurrings = await ctx.db
+      .query("recurrings")
+      .withIndex("by_user_id", (q) => q.eq("userId", userId))
+      .collect();
+
+    return {
+      expenseRowsWithType: expenses.filter((row) =>
+        Object.prototype.hasOwnProperty.call(
+          row as Record<string, unknown>,
+          "type",
+        )).length,
+      recurringRowsWithExpenseType: recurrings.filter((row) =>
+        Object.prototype.hasOwnProperty.call(
+          row as Record<string, unknown>,
+          "recurringExpenseType",
+        )).length,
+      expenseTypeOptionRows: 0,
+    };
   },
 });

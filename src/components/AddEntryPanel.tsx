@@ -32,7 +32,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   onBulkPatchExpenses: (args: {
     ids: Id<"expenses">[];
     patch: {
-      type?: string;
       account?: string;
       category?: string;
       subcategory?: string | null;
@@ -58,7 +57,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   bulkCreateExpenses: (args: {
     rows: Array<{
       expense: string;
-      type: string;
       account: string;
       category: string;
       subcategory?: string;
@@ -102,7 +100,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   const todayIsoDate = getTodayIsoDate();
   const defaults = useMemo(
     () => ({
-      expenseType: getDefaultOptionValue(userOptions, "expenseType"),
       incomeType: getDefaultOptionValue(userOptions, "incomeType"),
       account: getDefaultOptionValue(userOptions, "account"),
       category: getDefaultOptionValue(userOptions, "category"),
@@ -110,7 +107,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     [userOptions],
   );
 
-  const [expenseType, setExpenseType] = useState("");
   const [expenseAccount, setExpenseAccount] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("");
   const [expenseSubcategory, setExpenseSubcategory] = useState("");
@@ -145,7 +141,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [expenseBulkValues, setExpenseBulkValues] = useState({
-    type: "",
     account: "",
     category: "",
     subcategory: "",
@@ -162,7 +157,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     comments: "",
   });
   const [expenseBulkTouched, setExpenseBulkTouched] = useState({
-    type: false,
     account: false,
     category: false,
     subcategory: false,
@@ -221,7 +215,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
 
   const resetBulkState = () => {
     setExpenseBulkValues({
-      type: "",
       account: "",
       category: "",
       subcategory: "",
@@ -238,7 +231,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       comments: "",
     });
     setExpenseBulkTouched({
-      type: false,
       account: false,
       category: false,
       subcategory: false,
@@ -257,7 +249,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   };
 
   const resetOptionState = () => {
-    setExpenseType(defaults.expenseType);
     setExpenseAccount(defaults.account);
     setExpenseCategory(defaults.category);
     setExpenseSubcategory("");
@@ -472,7 +463,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     const cleaned = splitExpenseDrafts.map((row) => ({
       ...row,
       expense: row.expense.trim(),
-      type: row.type.trim(),
       account: row.account.trim(),
       category: row.category.trim(),
       subcategory: row.subcategory.trim(),
@@ -486,7 +476,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     const invalid = cleaned.find(
       (row) =>
         !row.expense ||
-        !row.type ||
         !row.account ||
         !row.category ||
         !row.paidTo ||
@@ -506,7 +495,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       await bulkCreateExpenses({
         rows: cleaned.map((row, index) => ({
           expense: row.expense,
-          type: row.type,
           account: row.account,
           category: row.category,
           subcategory: row.subcategory || undefined,
@@ -524,8 +512,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       });
 
       await Promise.all([
-        ...[...new Set(cleaned.map((row) => row.type))].map((value) =>
-          saveOption(addUserOption, "expenseType", value)),
         ...[...new Set(cleaned.map((row) => row.account))].map((value) =>
           saveOption(addUserOption, "account", value)),
         ...[...new Set(cleaned.map((row) => row.category))].map((value) =>
@@ -624,7 +610,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       const detail = (event as CustomEvent<{ kind?: "expense" | "incoming" }>)
         .detail;
       const kind = detail?.kind === "incoming" ? "incoming" : "expense";
-      setExpenseType(defaults.expenseType);
       setExpenseAccount(defaults.account);
       setExpenseCategory(defaults.category);
       setExpenseSubcategory("");
@@ -669,7 +654,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
 
     if (activeItem === "expenses") {
       const patch: {
-        type?: string;
         account?: string;
         category?: string;
         subcategory?: string | null;
@@ -678,7 +662,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
         comments?: string | null;
       } = {};
 
-      if (expenseBulkTouched.type) patch.type = expenseBulkValues.type.trim();
       if (expenseBulkTouched.account)
         patch.account = expenseBulkValues.account.trim();
       if (expenseBulkTouched.category)
@@ -703,12 +686,11 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
         patch.comments = expenseBulkValues.comments.trim() || null;
 
       if (
-        (expenseBulkTouched.type && !patch.type) ||
         (expenseBulkTouched.account && !patch.account) ||
         (expenseBulkTouched.category && !patch.category) ||
         (expenseBulkTouched.paidTo && !patch.paidTo)
       ) {
-        window.alert("Type, Account, Category, and Paid To cannot be empty.");
+        window.alert("Account, Category, and Paid To cannot be empty.");
         return;
       }
       if (Object.keys(patch).length === 0) return;
@@ -728,9 +710,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
           patch,
         });
         await Promise.all([
-          patch.type
-            ? saveOption(addUserOption, "expenseType", patch.type)
-            : null,
           patch.account
             ? saveOption(addUserOption, "account", patch.account)
             : null,
@@ -940,34 +919,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
               <div className="entry-form modal-form">
                 {activeItem === "expenses" ? (
                   <>
-                    <label className="bulk-edit-toggle">
-                      <input
-                        type="checkbox"
-                        checked={expenseBulkTouched.type}
-                        onChange={(e) =>
-                          setExpenseBulkTouched((prev) => ({
-                            ...prev,
-                            type: e.target.checked,
-                          }))
-                        }
-                      />
-                      <span>Type</span>
-                    </label>
-                    <OptionPicker
-                      kind="expenseType"
-                      label="Expense Type"
-                      value={expenseBulkValues.type}
-                      options={toOptionValues(userOptions?.expenseType)}
-                      placeholder="Type"
-                      disabled={!expenseBulkTouched.type}
-                      onChange={(value) =>
-                        setExpenseBulkValues((prev) => ({
-                          ...prev,
-                          type: value,
-                        }))
-                      }
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
                     <label className="bulk-edit-toggle">
                       <input
                         type="checkbox"
@@ -1353,17 +1304,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     />
                     <input name="expense" placeholder="Expense" required />
                     <OptionPicker
-                      kind="expenseType"
-                      label="Expense Type"
-                      name="type"
-                      value={expenseType}
-                      options={toOptionValues(userOptions?.expenseType)}
-                      placeholder="Type"
-                      required
-                      onChange={setExpenseType}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
                       kind="account"
                       label="Account"
                       name="account"
@@ -1479,21 +1419,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                               )
                             }
                             required
-                          />
-                          <OptionPicker
-                            kind="expenseType"
-                            label="Expense Type"
-                            value={draft.type}
-                            options={toOptionValues(userOptions?.expenseType)}
-                            placeholder="Type"
-                            required
-                            onChange={(value) =>
-                              updateSplitExpenseDraft(index, "type", value)
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
                           />
                           <OptionPicker
                             kind="account"
@@ -1959,17 +1884,6 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                 <input name="dayOfMonth" placeholder="Day of Month" required />
                 {recurringKind === "expense" ? (
                   <>
-                    <OptionPicker
-                      kind="expenseType"
-                      label="Expense Type"
-                      name="recurringExpenseType"
-                      value={expenseType}
-                      options={toOptionValues(userOptions?.expenseType)}
-                      placeholder="Type"
-                      required
-                      onChange={setExpenseType}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
                     <OptionPicker
                       kind="account"
                       label="Expense Account"

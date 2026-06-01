@@ -6,7 +6,6 @@ export function buildEmptySplitExpenseDraft(
   const month = todayIsoDate.slice(0, 7);
   return {
     expense: "",
-    type: "",
     account: "",
     category: "",
     subcategory: "",

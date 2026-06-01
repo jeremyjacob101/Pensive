@@ -7,7 +7,6 @@ import type { MenuItemKey } from "./ui";
 export type WorkspaceMutations = {
   createExpense: (args: {
     expense: string;
-    type: string;
     account: string;
     category: string;
     subcategory?: string;
@@ -47,7 +46,6 @@ export type WorkspaceMutations = {
     amount: number;
     frequency: string;
     dayOfMonth: number;
-    recurringExpenseType?: string;
     recurringExpenseAccount?: string;
     recurringExpenseCategory?: string;
     recurringExpenseSubcategory?: string;
@@ -71,7 +69,6 @@ export type WorkspaceMutations = {
   updateExpense: (args: {
     id: Id<"expenses">;
     expense: string;
-    type: string;
     account: string;
     category: string;
     subcategory?: string;
@@ -114,7 +111,6 @@ export type WorkspaceMutations = {
     amount: number;
     frequency: string;
     dayOfMonth: number;
-    recurringExpenseType?: string;
     recurringExpenseAccount?: string;
     recurringExpenseCategory?: string;
     recurringExpenseSubcategory?: string;

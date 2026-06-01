@@ -40,7 +40,6 @@ export async function handleAddExpense(
     const date = String(form.get("date") ?? "");
     await deps.createExpense({
       expense: String(form.get("expense") ?? ""),
-      type: String(form.get("type") ?? ""),
       account: String(form.get("account") ?? ""),
       category: String(form.get("category") ?? ""),
       subcategory: String(form.get("subcategory") ?? "") || undefined,
@@ -53,11 +52,6 @@ export async function handleAddExpense(
       expenseId: randomId16(),
     });
     await Promise.all([
-      saveOption(
-        deps.addUserOption,
-        "expenseType",
-        String(form.get("type") ?? ""),
-      ),
       saveOption(
         deps.addUserOption,
         "account",
@@ -168,10 +162,6 @@ export async function handleAddRecurring(
       amount: toAmount(String(form.get("amount") ?? "")),
       frequency: String(form.get("frequency") ?? ""),
       dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
-      recurringExpenseType:
-        kind === "expense"
-          ? String(form.get("recurringExpenseType") ?? "")
-          : undefined,
       recurringExpenseAccount:
         kind === "expense"
           ? String(form.get("recurringExpenseAccount") ?? "")
@@ -222,7 +212,6 @@ export function handleStartEditExpense(
   setEditingExpenseId(row._id);
   setEditValues({
     expense: row.expense,
-    type: row.type,
     account: row.account,
     category: row.category,
     subcategory: row.subcategory ?? "",
@@ -278,7 +267,6 @@ export function handleStartEditRecurring(
     amount: String(row.amount),
     frequency: row.frequency,
     dayOfMonth: String(row.dayOfMonth),
-    recurringExpenseType: row.recurringExpenseType ?? "",
     recurringExpenseAccount: row.recurringExpenseAccount ?? "",
     recurringExpenseCategory: row.recurringExpenseCategory ?? "",
     recurringExpenseSubcategory: row.recurringExpenseSubcategory ?? "",
@@ -305,7 +293,6 @@ export async function handleUpdateExpense(
     await deps.updateExpense({
       id: row._id,
       expense: deps.editValues.expense ?? "",
-      type: deps.editValues.type ?? "",
       account: deps.editValues.account ?? "",
       category: deps.editValues.category ?? "",
       subcategory: deps.editValues.subcategory || undefined,
@@ -420,10 +407,6 @@ export async function handleUpdateRecurring(
       amount: toAmount(deps.editValues.amount ?? ""),
       frequency: deps.editValues.frequency ?? "",
       dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
-      recurringExpenseType:
-        kind === "expense"
-          ? (deps.editValues.recurringExpenseType ?? "")
-          : undefined,
       recurringExpenseAccount:
         kind === "expense"
           ? (deps.editValues.recurringExpenseAccount ?? "")

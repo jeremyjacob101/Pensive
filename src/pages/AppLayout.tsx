@@ -57,7 +57,6 @@ export function AppLayout() {
     { value: "paidTo", label: "Paid To" },
     { value: "category", label: "Category" },
     { value: "subcategory", label: "Subcategory" },
-    { value: "type", label: "Type" },
     { value: "account", label: "Account" },
     { value: "notes", label: "Notes" },
     { value: "comments", label: "Comments" },

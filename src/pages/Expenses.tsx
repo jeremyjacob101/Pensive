@@ -193,9 +193,7 @@ export function Expenses() {
                 ? row.category
                 : field === "subcategory"
                   ? row.subcategory
-                  : field === "type"
-                    ? row.type
-                    : field === "account"
+                  : field === "account"
                       ? row.account
                       : field === "notes"
                         ? row.notes
@@ -684,11 +682,6 @@ export function Expenses() {
                     "account",
                     firstRow.account,
                   );
-                  const typeColor = getOptionColor(
-                    userOptions,
-                    "expenseType",
-                    firstRow.type,
-                  );
                   const categoryColor = getOptionColor(
                     userOptions,
                     "category",
@@ -735,8 +728,12 @@ export function Expenses() {
                           </div>
                           <span
                             className="entry-card-primary-divider"
-                            style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                            data-tooltip={firstRow.type}
+                            style={{ backgroundColor: dotColor, opacity: 0.8 }}
+                            data-tooltip={
+                              firstRow.subcategory
+                                ? `${firstRow.category} / ${firstRow.subcategory}`
+                                : firstRow.category
+                            }
                             aria-hidden="true"
                           />
                           <div className="entry-card-title-wrap">
@@ -856,11 +853,9 @@ export function Expenses() {
                                   />
                                 </div>
                                 <div className="grouped-expense-row-meta">
-                                  {row.type} · {row.category}
-                                  {row.subcategory
-                                    ? ` / ${row.subcategory}`
-                                    : ""}{" "}
-                                  · {row.account} · {row.paidTo}
+                                  {row.category}
+                                  {row.subcategory ? ` / ${row.subcategory}` : ""} ·{" "}
+                                  {row.account} · {row.paidTo}
                                 </div>
                               </div>
 
@@ -938,25 +933,6 @@ export function Expenses() {
                                                 expense: e.target.value,
                                               }))
                                             }
-                                          />
-                                          <OptionPicker
-                                            kind="expenseType"
-                                            label="Expense Type"
-                                            value={editValues.type ?? ""}
-                                            options={toOptionValues(
-                                              userOptions?.expenseType,
-                                            )}
-                                            placeholder="Type"
-                                            onChange={(value) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                type: value,
-                                              }))
-                                            }
-                                            onCreateOption={saveOption.bind(
-                                              null,
-                                              addUserOption,
-                                            )}
                                           />
                                           <OptionPicker
                                             kind="account"
@@ -1139,11 +1115,6 @@ export function Expenses() {
                 const row = item.row;
                 const isExpanded = expandedExpenseId === row._id;
                 const isEditing = editingExpenseId === row._id;
-                const typeColor = getOptionColor(
-                  userOptions,
-                  "expenseType",
-                  row.type,
-                );
                 const categoryColor = getOptionColor(
                   userOptions,
                   "category",
@@ -1199,8 +1170,12 @@ export function Expenses() {
                         </div>
                         <span
                           className="entry-card-primary-divider"
-                          style={{ backgroundColor: typeColor, opacity: 0.8 }}
-                          data-tooltip={row.type}
+                          style={{ backgroundColor: dotColor, opacity: 0.8 }}
+                          data-tooltip={
+                            row.subcategory
+                              ? `${row.category} / ${row.subcategory}`
+                              : row.category
+                          }
                           aria-hidden="true"
                         />
                         <div className="entry-card-title-wrap">
@@ -1265,9 +1240,6 @@ export function Expenses() {
                     {isExpanded ? (
                       <div className="entry-card-details">
                         <div className="entry-detail-grid static">
-                          <div>
-                            <strong>Type:</strong> {row.type}
-                          </div>
                           <div>
                             <strong>Account:</strong> {row.account}
                           </div>
@@ -1341,25 +1313,6 @@ export function Expenses() {
                                       expense: e.target.value,
                                     }))
                                   }
-                                />
-                                <OptionPicker
-                                  kind="expenseType"
-                                  label="Expense Type"
-                                  value={editValues.type ?? ""}
-                                  options={toOptionValues(
-                                    userOptions?.expenseType,
-                                  )}
-                                  placeholder="Type"
-                                  onChange={(value) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      type: value,
-                                    }))
-                                  }
-                                  onCreateOption={saveOption.bind(
-                                    null,
-                                    addUserOption,
-                                  )}
                                 />
                                 <OptionPicker
                                   kind="account"

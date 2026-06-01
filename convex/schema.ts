@@ -3,6 +3,7 @@ import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 const { users: _authUsers, ...restAuthTables } = authTables;
+void _authUsers;
 
 export default defineSchema({
   ...restAuthTables,
@@ -22,7 +23,6 @@ export default defineSchema({
   expenses: defineTable({
     userId: v.optional(v.id("users")),
     expense: v.string(),
-    type: v.string(),
     account: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
@@ -87,7 +87,6 @@ export default defineSchema({
   userOptions: defineTable({
     userId: v.optional(v.id("users")),
     kind: v.union(
-      v.literal("expenseType"),
       v.literal("account"),
       v.literal("category"),
       v.literal("subcategory"),
@@ -110,7 +109,6 @@ export default defineSchema({
     amount: v.number(),
     frequency: v.string(),
     dayOfMonth: v.number(),
-    recurringExpenseType: v.optional(v.string()),
     recurringExpenseAccount: v.optional(v.string()),
     recurringExpenseCategory: v.optional(v.string()),
     recurringExpenseSubcategory: v.optional(v.string()),

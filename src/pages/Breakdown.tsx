@@ -1,4 +1,4 @@
-import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, EXPENSE_TYPE_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
+import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
 import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
@@ -23,8 +23,6 @@ export function Breakdown() {
     useLocalStorage(EXPENSE_ACCOUNT_DESELECTED_KEY, "[]");
   const [storedIncomingAccountDeselected, setStoredIncomingAccountDeselected] =
     useLocalStorage(INCOMING_ACCOUNT_DESELECTED_KEY, "[]");
-  const [storedExpenseTypeDeselected, setStoredExpenseTypeDeselected] =
-    useLocalStorage(EXPENSE_TYPE_DESELECTED_KEY, "[]");
   const [storedExpenseCategoryDeselected, setStoredExpenseCategoryDeselected] =
     useLocalStorage(EXPENSE_CATEGORY_DESELECTED_KEY, "[]");
   const [storedIncomingTypeDeselected, setStoredIncomingTypeDeselected] =
@@ -158,14 +156,6 @@ export function Breakdown() {
     return [...new Set([...globalAccounts, ...scopedAccounts])].sort();
   }, [incomings, userOptions?.account]);
 
-  const expenseTypeOptions = useMemo(() => {
-    const globalTypes = toOptionValues(userOptions?.expenseType)
-      .map((value) => value.trim())
-      .filter(Boolean);
-    const scopedTypes = expenses.map((row) => row.type.trim()).filter(Boolean);
-    return [...new Set([...globalTypes, ...scopedTypes])].sort();
-  }, [expenses, userOptions?.expenseType]);
-
   const expenseCategoryOptions = useMemo(() => {
     const categories = toOptionValues(userOptions?.category)
       .map((value) => value.trim())
@@ -226,10 +216,6 @@ export function Breakdown() {
     () => new Set(parseStoredList(storedIncomingAccountDeselected)),
     [storedIncomingAccountDeselected],
   );
-  const expenseTypeDeselectedSet = useMemo(
-    () => new Set(parseStoredList(storedExpenseTypeDeselected)),
-    [storedExpenseTypeDeselected],
-  );
   const expenseCategoryDeselectedSet = useMemo(
     () => new Set(parseStoredList(storedExpenseCategoryDeselected)),
     [storedExpenseCategoryDeselected],
@@ -252,13 +238,6 @@ export function Breakdown() {
         (value) => !incomingAccountDeselectedSet.has(value),
       ),
     [incomingAccountDeselectedSet, incomingAccountOptions],
-  );
-  const selectedExpenseTypes = useMemo(
-    () =>
-      expenseTypeOptions.filter(
-        (value) => !expenseTypeDeselectedSet.has(value),
-      ),
-    [expenseTypeDeselectedSet, expenseTypeOptions],
   );
   const selectedExpenseCategories = useMemo(
     () =>
@@ -283,10 +262,6 @@ export function Breakdown() {
     () => new Set(selectedIncomingAccounts),
     [selectedIncomingAccounts],
   );
-  const selectedExpenseTypeSet = useMemo(
-    () => new Set(selectedExpenseTypes),
-    [selectedExpenseTypes],
-  );
   const selectedExpenseCategorySet = useMemo(
     () => new Set(selectedExpenseCategories),
     [selectedExpenseCategories],
@@ -301,7 +276,6 @@ export function Breakdown() {
       expenses.filter(
         (row) =>
           selectedExpenseAccountSet.has(row.account) &&
-          selectedExpenseTypeSet.has(row.type) &&
           selectedExpenseCategorySet.has(expenseCategoryLabel(row)),
       ),
     [
@@ -309,7 +283,6 @@ export function Breakdown() {
       expenses,
       selectedExpenseAccountSet,
       selectedExpenseCategorySet,
-      selectedExpenseTypeSet,
     ],
   );
 
@@ -444,7 +417,6 @@ export function Breakdown() {
   const resetBreakdown = () => {
     setStoredExpenseAccountDeselected("[]");
     setStoredIncomingAccountDeselected("[]");
-    setStoredExpenseTypeDeselected("[]");
     setStoredExpenseCategoryDeselected("[]");
     setStoredIncomingTypeDeselected("[]");
     setStoredDateState("{}");
@@ -493,19 +465,6 @@ export function Breakdown() {
                       expenseAccountOptions.filter(
                         (value) => !nextSet.has(value),
                       ),
-                    ),
-                  );
-                }}
-              />
-              <MultiSelectFilterDropdown
-                label="Expense Type"
-                options={expenseTypeOptions}
-                selected={selectedExpenseTypes}
-                onChange={(next) => {
-                  const nextSet = new Set(next);
-                  setStoredExpenseTypeDeselected(
-                    JSON.stringify(
-                      expenseTypeOptions.filter((value) => !nextSet.has(value)),
                     ),
                   );
                 }}
