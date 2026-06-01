@@ -663,6 +663,47 @@ thead th {
   pointer-events: auto;
 }
 
+.scope-simple-wrap {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 200px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.scope-simple-wrap.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.scope-picker-anchor {
+  position: relative;
+}
+
+.scope-picker-trigger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .scope-calendar-mode-row {
   width: 100%;
   display: grid;
@@ -816,7 +857,7 @@ thead th {
   gap: 10px;
   width: 340px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .pie-chart-panel-modes {
@@ -909,6 +950,12 @@ thead th {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.pie-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pie-pin-btn {

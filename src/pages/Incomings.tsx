@@ -1,17 +1,18 @@
 import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_CATEGORY_DESELECTED_KEY } from "../keys/incomings";
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
+import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
 import { IncomingPaybackLinkManager } from "../components/PaybackLinkManager";
-import { formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
 import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScopeCalendarButton } from "../components/ScopeCalendarButton";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
+import { MonthNavigator } from "../components/MonthNavigator";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { OptionPicker } from "../components/OptionPicker";
@@ -55,8 +56,21 @@ export function Incomings() {
   const addUserOption = useMutation(api.userOptions.add);
   const userOptions = useQuery(api.userOptions.list);
   const monthBounds = useQuery(api.incomings.monthBounds);
-  const { mode, scope, applyCustomRange, applySelectedMonths } =
-    useSingleMonthScope(monthBounds);
+  const {
+    mode,
+    scope,
+    activeMonth,
+    canGoPrevious,
+    canGoNext,
+    canJumpToOldest,
+    canJumpToNewest,
+    goToPreviousMonth,
+    goToNextMonth,
+    jumpToOldest,
+    jumpToNewest,
+    applyCustomRange,
+    applySelectedMonths,
+  } = useSingleMonthScope(monthBounds);
 
   const scopeArgs =
     scope.startDate && scope.endDate
@@ -67,6 +81,12 @@ export function Incomings() {
           targetMonths: scope.targetMonths,
         }
       : "skip";
+  const rangeLabelText =
+    mode === "custom"
+      ? formatRangeLabel(scope.startDate, scope.endDate, false)
+      : activeMonth
+        ? formatRangeLabel(`${activeMonth}-01`, `${activeMonth}-01`, true)
+        : "";
 
   const scopedIncomings = useQuery(api.incomings.listByDateScope, scopeArgs);
   const incomings = useMemo(() => scopedIncomings ?? [], [scopedIncomings]);
@@ -530,14 +550,19 @@ export function Incomings() {
                 }}
               />
             </div>
-            <ScopeCalendarButton
+            <MonthNavigator
+              activeMonth={activeMonth}
               mode={mode}
+              customRangeLabel={rangeLabelText}
               targetMonths={scope.targetMonths}
-              startDate={scope.startDate}
-              endDate={scope.endDate}
-              monthBounds={monthBounds}
-              onApplyMonths={applySelectedMonths}
-              onApplyCustom={applyCustomRange}
+              canGoPrevious={canGoPrevious}
+              canGoNext={canGoNext}
+              canJumpToOldest={canJumpToOldest}
+              canJumpToNewest={canJumpToNewest}
+              onPrevious={goToPreviousMonth}
+              onNext={goToNextMonth}
+              onJumpToOldest={jumpToOldest}
+              onJumpToNewest={jumpToNewest}
             />
             <RangePieChartPanel
               rows={searchFilteredIncomings.map((i) => ({
@@ -556,6 +581,17 @@ export function Incomings() {
               onMonthsChange={applySelectedMonths}
               onReset={() => {}}
               showScopeControls={false}
+              scopeControl={
+                <ScopeCalendarButton
+                  mode={mode}
+                  targetMonths={scope.targetMonths}
+                  startDate={scope.startDate}
+                  endDate={scope.endDate}
+                  monthBounds={monthBounds}
+                  onApplyMonths={applySelectedMonths}
+                  onApplyCustom={applyCustomRange}
+                />
+              }
             />
           </aside>
           <div ref={listRef} className="entry-card-list">

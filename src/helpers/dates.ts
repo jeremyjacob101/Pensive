@@ -33,10 +33,11 @@ export function formatMonthYearShortLabel(value: string): string {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return "";
 
-  return new Intl.DateTimeFormat("en-US", {
+  const month = new Intl.DateTimeFormat("en-US", {
     month: "short",
-    year: "numeric",
   }).format(parsed);
+  const year = formatShortYear(value);
+  return `${month} ${year}`;
 }
 
 export function shiftMonth(month: string, delta: number): string {
@@ -69,11 +70,7 @@ export function formatYearLabel(value: string): string {
 }
 
 export function getTodayIsoDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function getMonthFromIsoDate(value: string): string {

@@ -6,9 +6,10 @@ import { CategoryPieChart } from "./CategoryPieChart";
 import { useEffect, useMemo, useState } from "react";
 import { getOptionColor } from "../helpers/options";
 import type { PieRow } from "../types/pieChart";
+import type { ReactNode } from "react";
 import { Pin } from "lucide-react";
 
-export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset, showScopeControls = true }: {
+export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset, showScopeControls = true, scopeControl }: {
   rows: PieRow[];
   userOptions: UserOptions | undefined;
   mode: "month" | "custom";
@@ -20,6 +21,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
   onMonthsChange: (months: string[]) => void;
   onReset: () => void;
   showScopeControls?: boolean;
+  scopeControl?: ReactNode;
 }) {
   const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(
     mode === "custom",
@@ -193,16 +195,19 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
           Show subcategories
         </label>
 
-        <button
-          type="button"
-          className={`pie-pin-btn${isPinned ? " active" : ""}`}
-          onClick={() => setStoredPinned(isPinned ? "false" : "true")}
-          aria-pressed={isPinned}
-          aria-label={isPinned ? "Unpin pie chart" : "Pin pie chart"}
-          title={isPinned ? "Unpin pie chart" : "Pin pie chart"}
-        >
-          <Pin size={14} strokeWidth={2} />
-        </button>
+        <div className="pie-panel-actions">
+          {scopeControl}
+          <button
+            type="button"
+            className={`pie-pin-btn${isPinned ? " active" : ""}`}
+            onClick={() => setStoredPinned(isPinned ? "false" : "true")}
+            aria-pressed={isPinned}
+            aria-label={isPinned ? "Unpin pie chart" : "Pin pie chart"}
+            title={isPinned ? "Unpin pie chart" : "Pin pie chart"}
+          >
+            <Pin size={14} strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       <CategoryPieChart data={pieData} />
