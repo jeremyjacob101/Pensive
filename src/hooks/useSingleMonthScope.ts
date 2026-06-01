@@ -51,10 +51,7 @@ export function useSingleMonthScope(
       return { startDate: "", endDate: "", targetMonths: [] as string[] };
     }
 
-    const months =
-      selectedMonths.length > 0
-        ? selectedMonths
-        : [resolvedMonth];
+    const months = selectedMonths.length > 0 ? selectedMonths : [resolvedMonth];
     const sortedMonths = [...months].sort((a, b) => a.localeCompare(b));
     const firstMonth = sortedMonths[0] ?? resolvedMonth;
     const lastMonth = sortedMonths[sortedMonths.length - 1] ?? resolvedMonth;

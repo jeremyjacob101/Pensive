@@ -31,7 +31,8 @@ export function MonthNavigator({ activeMonth, mode, customRangeLabel, targetMont
   const displayLabel =
     mode === "custom"
       ? customRangeLabel
-      : monthRangeLabel || (activeMonth ? formatMonthYearShortLabel(`${activeMonth}-01`) : "");
+      : monthRangeLabel ||
+        (activeMonth ? formatMonthYearShortLabel(`${activeMonth}-01`) : "");
 
   return (
     <div className="month-navigator">

@@ -249,7 +249,11 @@ export function Incomings() {
   );
 
   const getScopedDisplayAmount = useCallback(
-    (row: { amount: number; effectiveAmount?: number; monthYears?: string[] }) =>
+    (row: {
+      amount: number;
+      effectiveAmount?: number;
+      monthYears?: string[];
+    }) =>
       mode === "month"
         ? getProportionalEffectiveDisplay(row, scope.targetMonths)
         : {

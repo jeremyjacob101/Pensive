@@ -1,3 +1,4 @@
+import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { PIE_CHART_PINNED_KEY } from "../keys/pieChart";
 import type { UserOptions } from "../types/workspace";
@@ -6,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getOptionColor } from "../helpers/options";
 import type { PieRow } from "../types/pieChart";
 import { Pin } from "lucide-react";
-import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 
 export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset }: {
   rows: PieRow[];
@@ -42,19 +42,19 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
     const targetSet = mode === "month" ? new Set(targetMonths) : null;
     const map = new Map<string, number>();
     for (const row of rows) {
-      let contribution = 0;
-      if (mode === "month") {
-        if (targetMonths.length === 0) continue;
-        const matchingMonths = row.monthYears.filter((m) =>
-          targetSet?.has(m),
-        );
-        if (matchingMonths.length === 0) continue;
-        const monthCount = Math.max(1, row.monthYears.length);
-        const perMonthContribution = row.effectiveAmount / monthCount;
-        contribution = perMonthContribution * matchingMonths.length;
-      } else {
-        contribution = row.effectiveAmount;
-      }
+      const contribution =
+        mode === "month"
+          ? (() => {
+              if (targetMonths.length === 0) return null;
+              const matchingMonths = row.monthYears.filter((m) =>
+                targetSet?.has(m));
+              if (matchingMonths.length === 0) return null;
+              const monthCount = Math.max(1, row.monthYears.length);
+              const perMonthContribution = row.effectiveAmount / monthCount;
+              return perMonthContribution * matchingMonths.length;
+            })()
+          : row.effectiveAmount;
+      if (contribution === null) continue;
       const key =
         showSubcategories && row.subcategory ? row.subcategory : row.category;
       map.set(key, (map.get(key) ?? 0) + contribution);
