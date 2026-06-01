@@ -282,6 +282,21 @@ final class LedgerFeatureViewModel: ObservableObject {
         }
     }
 
+    var filterChoices: [String] {
+        switch kind {
+        case .expense:
+            let values = expenses.flatMap { row in
+                [row.account, row.category].filter { !$0.isEmpty }
+            }
+            return Array(Set(values)).sorted()
+        case .incoming:
+            let values = incomings.flatMap { row in
+                [row.account, row.incomeType].filter { !$0.isEmpty }
+            }
+            return Array(Set(values)).sorted()
+        }
+    }
+
     func createExpense(_ draft: ExpenseEditorDraft) {
         guard kind == .expense else { return }
         Task {
@@ -533,7 +548,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         case .incoming:
             rows = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText).map(incomingRow)
         }
-        state = rows.isEmpty ? .empty(message: "Try changing filters or creating a new entry.") : .content
+        state = .content
     }
 
     private func expenseRow(_ item: Expense) -> LedgerItemViewData {

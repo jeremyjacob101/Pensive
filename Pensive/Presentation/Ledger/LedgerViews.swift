@@ -52,7 +52,7 @@ private struct LedgerScreen: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(viewModel.kind == .expense ? "add_expense_button" : "add_incoming_button")
-                    MultiSelectFilterButton(title: "Filters", choices: filterChoices, selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) }))
+                    MultiSelectFilterButton(title: "Filters", choices: viewModel.filterChoices, selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) }))
                     DateRangePickerButton(startDate: $viewModel.scope.startDate, endDate: $viewModel.scope.endDate)
                     Toggle("Include month overlap", isOn: $viewModel.scope.includeMonthYearOverlapOutsideDate)
                         .onChange(of: viewModel.scope) { _, _ in viewModel.updateScope() }
@@ -118,6 +118,14 @@ private struct LedgerScreen: View {
                         Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
                     }
                 }
+
+                if viewModel.rows.isEmpty {
+                    ContentUnavailableView(
+                        "No results",
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text("Try clearing filters, changing date scope, or editing search.")
+                    )
+                }
             }
             .refreshable { await viewModel.refresh() }
         }
@@ -157,12 +165,6 @@ private struct LedgerScreen: View {
         } message: {
             Text(viewModel.alertText ?? "")
         }
-    }
-
-    private var filterChoices: [String] {
-        viewModel.rows.flatMap { row in
-            row.subtitle.split(separator: "•").map { String($0).trimmingCharacters(in: .whitespaces) }
-        }.reduce(into: Set<String>()) { $0.insert($1) }.sorted()
     }
 }
 

@@ -1846,6 +1846,7 @@ private struct FeatureRootView: View {
                 }
             }
         }
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
