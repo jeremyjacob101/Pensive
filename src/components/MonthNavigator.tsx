@@ -1,10 +1,11 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { formatMonthYearLabel } from "../helpers/dates";
+import { formatMonthYearShortLabel } from "../helpers/dates";
 
-export function MonthNavigator({ activeMonth, mode, customRangeLabel, canGoPrevious, canGoNext, canJumpToOldest, canJumpToNewest, onPrevious, onNext, onJumpToOldest, onJumpToNewest }: {
+export function MonthNavigator({ activeMonth, mode, customRangeLabel, targetMonths, canGoPrevious, canGoNext, canJumpToOldest, canJumpToNewest, onPrevious, onNext, onJumpToOldest, onJumpToNewest }: {
   activeMonth: string | null;
   mode: "month" | "custom";
   customRangeLabel: string;
+  targetMonths?: string[];
   canGoPrevious: boolean;
   canGoNext: boolean;
   canJumpToOldest: boolean;
@@ -14,12 +15,23 @@ export function MonthNavigator({ activeMonth, mode, customRangeLabel, canGoPrevi
   onJumpToOldest: () => void;
   onJumpToNewest: () => void;
 }) {
+  const monthRangeLabel = (() => {
+    if (!targetMonths || targetMonths.length === 0) return "";
+    if (targetMonths.length === 1) {
+      return formatMonthYearShortLabel(`${targetMonths[0]}-01`);
+    }
+    const sorted = [...targetMonths].sort((a, b) => a.localeCompare(b));
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const firstLabel = formatMonthYearShortLabel(`${first}-01`);
+    const lastLabel = formatMonthYearShortLabel(`${last}-01`);
+    return `${firstLabel} – ${lastLabel}`;
+  })();
+
   const displayLabel =
     mode === "custom"
       ? customRangeLabel
-      : activeMonth
-        ? formatMonthYearLabel(`${activeMonth}-01`)
-        : "";
+      : monthRangeLabel || (activeMonth ? formatMonthYearShortLabel(`${activeMonth}-01`) : "");
 
   return (
     <div className="month-navigator">

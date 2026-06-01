@@ -569,6 +569,7 @@ export function Breakdown() {
           activeMonth={activeMonth}
           mode={mode}
           customRangeLabel={rangeLabelText}
+          targetMonths={scope.targetMonths}
           canGoPrevious={canGoPrevious}
           canGoNext={canGoNext}
           canJumpToOldest={canJumpToOldest}

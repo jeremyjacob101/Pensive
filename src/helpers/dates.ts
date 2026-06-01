@@ -29,6 +29,16 @@ export function formatMonthYearLabel(value: string): string {
   }).format(parsed);
 }
 
+export function formatMonthYearShortLabel(value: string): string {
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(parsed);
+}
+
 export function shiftMonth(month: string, delta: number): string {
   const match = month.trim().match(/^(\d{4})-(\d{2})$/);
   if (!match) return month;

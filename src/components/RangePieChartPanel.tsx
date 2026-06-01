@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { getOptionColor } from "../helpers/options";
 import type { PieRow } from "../types/pieChart";
 import { Pin } from "lucide-react";
+import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 
-export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onReset }: {
+export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset }: {
   rows: PieRow[];
   userOptions: UserOptions | undefined;
   mode: "month" | "custom";
@@ -16,6 +17,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
   targetMonths: string[];
   kind: "expense" | "incoming";
   onRangeChange: (start: string, end: string) => void;
+  onMonthsChange: (months: string[]) => void;
   onReset: () => void;
 }) {
   const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(
@@ -37,15 +39,22 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
     kind === "expense" ? "subcategory" : "incomeSubtype";
 
   const pieData = useMemo(() => {
-    if (targetMonths.length === 0) return [];
-    const targetSet = new Set(targetMonths);
+    const targetSet = mode === "month" ? new Set(targetMonths) : null;
     const map = new Map<string, number>();
     for (const row of rows) {
-      const matchingMonths = row.monthYears.filter((m) => targetSet.has(m));
-      if (matchingMonths.length === 0) continue;
-      const monthCount = Math.max(1, row.monthYears.length);
-      const perMonthContribution = row.effectiveAmount / monthCount;
-      const contribution = perMonthContribution * matchingMonths.length;
+      let contribution = 0;
+      if (mode === "month") {
+        if (targetMonths.length === 0) continue;
+        const matchingMonths = row.monthYears.filter((m) =>
+          targetSet?.has(m),
+        );
+        if (matchingMonths.length === 0) continue;
+        const monthCount = Math.max(1, row.monthYears.length);
+        const perMonthContribution = row.effectiveAmount / monthCount;
+        contribution = perMonthContribution * matchingMonths.length;
+      } else {
+        contribution = row.effectiveAmount;
+      }
       const key =
         showSubcategories && row.subcategory ? row.subcategory : row.category;
       map.set(key, (map.get(key) ?? 0) + contribution);
@@ -63,6 +72,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
     return result;
   }, [
     rows,
+    mode,
     targetMonths,
     showSubcategories,
     userOptions,
@@ -106,7 +116,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
           className={`pie-mode-btn${editorMode === "month" ? " active" : ""}`}
           onClick={handleReset}
         >
-          This Month
+          Months
         </button>
         <button
           type="button"
@@ -117,9 +127,18 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
             setCustomEnd(endDate);
           }}
         >
-          Custom Range
+          Custom
         </button>
       </div>
+
+      {editorMode === "month" && (
+        <MonthYearMultiSelect
+          label="Applied Months"
+          value={targetMonths}
+          onChange={onMonthsChange}
+          required
+        />
+      )}
 
       {editorMode === "custom" && (
         <div className="pie-chart-panel-dates">

@@ -614,6 +614,7 @@ thead th {
   gap: 10px;
   width: 340px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .pie-chart-panel-modes {
@@ -2341,6 +2342,8 @@ thead th {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .month-multi-select-error {
@@ -2349,12 +2352,15 @@ thead th {
 }
 
 .month-range-slider {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid #444;
   border-radius: 8px;
   padding: 12px 4px;
   background: rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: #555 transparent;
 }

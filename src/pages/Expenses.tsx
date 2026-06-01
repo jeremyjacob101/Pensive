@@ -68,6 +68,7 @@ export function Expenses() {
     jumpToOldest,
     jumpToNewest,
     applyCustomRange,
+    applySelectedMonths,
     resetToNewestMonth,
   } = useSingleMonthScope(monthBounds);
 
@@ -76,7 +77,7 @@ export function Expenses() {
       ? {
           startDate: scope.startDate,
           endDate: scope.endDate,
-          includeMonthYearOverlapOutsideDate: true,
+          includeMonthYearOverlapOutsideDate: mode === "month",
           targetMonths: scope.targetMonths,
         }
       : "skip";
@@ -226,6 +227,7 @@ export function Expenses() {
 
   const getRowMatchState = useCallback(
     (row: { date: string; monthYears?: string[] }) => {
+      if (mode === "custom") return "full";
       if (!activeDateRange) return "full";
       const dateInRange =
         row.date >= activeDateRange.start && row.date <= activeDateRange.end;
@@ -236,11 +238,12 @@ export function Expenses() {
       if (dateInRange && !monthYearsOverlap) return "dateOnly";
       return "full";
     },
-    [activeDateRange, monthOverlapSet],
+    [activeDateRange, mode, monthOverlapSet],
   );
 
   const getRowMatchDisclaimer = useCallback(
     (row: { date: string; monthYears?: string[] }) => {
+      if (mode === "custom") return null;
       const matchState = getRowMatchState(row);
       if (matchState === "monthYearsOnly") {
         return "applied this month/s, paid in different month";
@@ -250,7 +253,21 @@ export function Expenses() {
       }
       return null;
     },
-    [getRowMatchState],
+    [getRowMatchState, mode],
+  );
+
+  const getScopedDisplayAmount = useCallback(
+    (row: { amount: number; effectiveAmount?: number; monthYears?: string[] }) =>
+      mode === "month"
+        ? getProportionalEffectiveDisplay(row, scope.targetMonths)
+        : {
+            totalRowMonths: 1,
+            matchingSelectedMonths: 1,
+            displayAmount: getEffectiveAmount(row),
+            totalEffectiveAmount: getEffectiveAmount(row),
+            isPartial: false,
+          },
+    [mode, scope.targetMonths],
   );
 
   const displayItems = useMemo(() => {
@@ -287,10 +304,7 @@ export function Expenses() {
           latestCreation: row._creationTime,
           totalAmount: row.amount,
           totalEffectiveAmount: getEffectiveAmount(row),
-          totalDisplayAmount: getProportionalEffectiveDisplay(
-            row,
-            scope.targetMonths,
-          ).displayAmount,
+          totalDisplayAmount: getScopedDisplayAmount(row).displayAmount,
           rows: [row],
         });
         continue;
@@ -299,10 +313,7 @@ export function Expenses() {
       existing.rows.push(row);
       existing.totalAmount += row.amount;
       existing.totalEffectiveAmount += getEffectiveAmount(row);
-      existing.totalDisplayAmount += getProportionalEffectiveDisplay(
-        row,
-        scope.targetMonths,
-      ).displayAmount;
+      existing.totalDisplayAmount += getScopedDisplayAmount(row).displayAmount;
       if (
         row.date > existing.latestDate ||
         (row.date === existing.latestDate &&
@@ -364,7 +375,7 @@ export function Expenses() {
       }
       return b.date.localeCompare(a.date);
     });
-  }, [getRowMatchState, scope.targetMonths, searchFilteredExpenses]);
+  }, [getRowMatchState, getScopedDisplayAmount, searchFilteredExpenses]);
 
   const monthYearsOnlyItems = useMemo(
     () => displayItems.filter((item) => item.matchState === "monthYearsOnly"),
@@ -549,6 +560,7 @@ export function Expenses() {
               activeMonth={activeMonth}
               mode={mode}
               customRangeLabel={rangeLabelText}
+              targetMonths={scope.targetMonths}
               canGoPrevious={canGoPrevious}
               canGoNext={canGoNext}
               canJumpToOldest={canJumpToOldest}
@@ -572,6 +584,7 @@ export function Expenses() {
               targetMonths={scope.targetMonths}
               kind="expense"
               onRangeChange={applyCustomRange}
+              onMonthsChange={applySelectedMonths}
               onReset={resetToNewestMonth}
             />
           </aside>
@@ -780,10 +793,7 @@ export function Expenses() {
                       <div className="entry-card-details grouped-expense-details">
                         {group.rows.map((row, index) => {
                           const isEditing = editingExpenseId === row._id;
-                          const proportional = getProportionalEffectiveDisplay(
-                            row,
-                            scope.targetMonths,
-                          );
+                          const proportional = getScopedDisplayAmount(row);
                           const categoryColor = getOptionColor(
                             userOptions,
                             "category",
@@ -1127,10 +1137,7 @@ export function Expenses() {
                   "account",
                   row.account,
                 );
-                const proportional = getProportionalEffectiveDisplay(
-                  row,
-                  scope.targetMonths,
-                );
+                const proportional = getScopedDisplayAmount(row);
 
                 return (
                   <div

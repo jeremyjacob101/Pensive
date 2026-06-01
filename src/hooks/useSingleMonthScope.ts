@@ -23,6 +23,7 @@ export function useSingleMonthScope(
     }
     return range;
   });
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
 
   const newestBoundMonth = monthBounds?.newestMonth;
   const oldestBoundMonth = monthBounds?.oldestMonth;
@@ -50,13 +51,22 @@ export function useSingleMonthScope(
       return { startDate: "", endDate: "", targetMonths: [] as string[] };
     }
 
+    const months =
+      selectedMonths.length > 0
+        ? selectedMonths
+        : [resolvedMonth];
+    const sortedMonths = [...months].sort((a, b) => a.localeCompare(b));
+    const firstMonth = sortedMonths[0] ?? resolvedMonth;
+    const lastMonth = sortedMonths[sortedMonths.length - 1] ?? resolvedMonth;
+    const startWindow = windowFromMonth(firstMonth);
+    const endWindow = windowFromMonth(lastMonth);
     const window = windowFromMonth(resolvedMonth);
     return {
-      startDate: window.startDate,
-      endDate: window.endDate,
-      targetMonths: [resolvedMonth],
+      startDate: startWindow.startDate || window.startDate,
+      endDate: endWindow.endDate || window.endDate,
+      targetMonths: [...months].sort((a, b) => b.localeCompare(a)),
     };
-  }, [mode, customRange, resolvedMonth]);
+  }, [mode, customRange, resolvedMonth, selectedMonths]);
 
   const canGoPrevious = useMemo(() => {
     if (mode !== "month") return false;
@@ -82,22 +92,27 @@ export function useSingleMonthScope(
 
   const goToPreviousMonth = useCallback(() => {
     if (!canGoPrevious || !validMonth(resolvedMonth)) return;
+    const nextMonth = shiftMonth(resolvedMonth, -1);
     setMode("month");
     setCustomRange(null);
-    setActiveMonth(shiftMonth(resolvedMonth, -1));
+    setSelectedMonths(validMonth(nextMonth) ? [nextMonth] : []);
+    setActiveMonth(nextMonth);
   }, [canGoPrevious, resolvedMonth]);
 
   const goToNextMonth = useCallback(() => {
     if (!canGoNext || !validMonth(resolvedMonth)) return;
+    const nextMonth = shiftMonth(resolvedMonth, 1);
     setMode("month");
     setCustomRange(null);
-    setActiveMonth(shiftMonth(resolvedMonth, 1));
+    setSelectedMonths(validMonth(nextMonth) ? [nextMonth] : []);
+    setActiveMonth(nextMonth);
   }, [canGoNext, resolvedMonth]);
 
   const jumpToOldest = useCallback(() => {
     if (!canJumpToOldest || !validMonth(oldestBoundMonth)) return;
     setMode("month");
     setCustomRange(null);
+    setSelectedMonths([oldestBoundMonth]);
     setActiveMonth(oldestBoundMonth);
   }, [canJumpToOldest, oldestBoundMonth]);
 
@@ -105,6 +120,7 @@ export function useSingleMonthScope(
     if (!canJumpToNewest || !validMonth(newestBoundMonth)) return;
     setMode("month");
     setCustomRange(null);
+    setSelectedMonths([newestBoundMonth]);
     setActiveMonth(newestBoundMonth);
   }, [canJumpToNewest, newestBoundMonth]);
 
@@ -114,12 +130,21 @@ export function useSingleMonthScope(
       : fallbackCurrentMonth();
     setMode("month");
     setCustomRange(null);
+    setSelectedMonths(validMonth(month) ? [month] : []);
     setActiveMonth(month);
   }, [newestBoundMonth]);
 
   const applyCustomRange = useCallback((startDate: string, endDate: string) => {
     setMode("custom");
     setCustomRange({ startDate, endDate });
+  }, []);
+
+  const applySelectedMonths = useCallback((months: string[]) => {
+    const nextMonths = [...months].sort((a, b) => b.localeCompare(a));
+    setMode("month");
+    setCustomRange(null);
+    setSelectedMonths(nextMonths);
+    setActiveMonth(nextMonths[0] ?? null);
   }, []);
 
   return {
@@ -135,6 +160,7 @@ export function useSingleMonthScope(
     jumpToOldest,
     jumpToNewest,
     applyCustomRange,
+    applySelectedMonths,
     resetToNewestMonth,
   };
 }
