@@ -8,7 +8,7 @@ import { getOptionColor } from "../helpers/options";
 import type { PieRow } from "../types/pieChart";
 import { Pin } from "lucide-react";
 
-export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset }: {
+export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate, targetMonths, kind, onRangeChange, onMonthsChange, onReset, showScopeControls = true }: {
   rows: PieRow[];
   userOptions: UserOptions | undefined;
   mode: "month" | "custom";
@@ -19,6 +19,7 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
   onRangeChange: (start: string, end: string) => void;
   onMonthsChange: (months: string[]) => void;
   onReset: () => void;
+  showScopeControls?: boolean;
 }) {
   const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(
     mode === "custom",
@@ -110,73 +111,77 @@ export function RangePieChartPanel({ rows, userOptions, mode, startDate, endDate
 
   return (
     <div className="pie-chart-panel">
-      <div className="pie-chart-panel-modes">
-        <button
-          type="button"
-          className={`pie-mode-btn${editorMode === "month" ? " active" : ""}`}
-          onClick={handleReset}
-        >
-          Months
-        </button>
-        <button
-          type="button"
-          className={`pie-mode-btn${editorMode === "custom" ? " active" : ""}`}
-          onClick={() => {
-            setIsCustomEditorOpen(true);
-            setCustomStart(startDate);
-            setCustomEnd(endDate);
-          }}
-        >
-          Custom
-        </button>
-      </div>
-
-      {editorMode === "month" && (
-        <MonthYearMultiSelect
-          label="Applied Months"
-          value={targetMonths}
-          onChange={onMonthsChange}
-          required
-        />
-      )}
-
-      {editorMode === "custom" && (
-        <div className="pie-chart-panel-dates">
-          <label className="pie-date-field">
-            From
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-            />
-          </label>
-          <label className="pie-date-field">
-            To
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-            />
-          </label>
-          <div className="pie-date-actions">
+      {showScopeControls ? (
+        <>
+          <div className="pie-chart-panel-modes">
             <button
               type="button"
-              className="pie-apply-btn"
-              onClick={handleApply}
-              disabled={!customStart || !customEnd}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              className="pie-reset-btn"
+              className={`pie-mode-btn${editorMode === "month" ? " active" : ""}`}
               onClick={handleReset}
             >
-              Reset
+              Months
+            </button>
+            <button
+              type="button"
+              className={`pie-mode-btn${editorMode === "custom" ? " active" : ""}`}
+              onClick={() => {
+                setIsCustomEditorOpen(true);
+                setCustomStart(startDate);
+                setCustomEnd(endDate);
+              }}
+            >
+              Custom
             </button>
           </div>
-        </div>
-      )}
+
+          {editorMode === "month" && (
+            <MonthYearMultiSelect
+              label="Applied Months"
+              value={targetMonths}
+              onChange={onMonthsChange}
+              required
+            />
+          )}
+
+          {editorMode === "custom" && (
+            <div className="pie-chart-panel-dates">
+              <label className="pie-date-field">
+                From
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                />
+              </label>
+              <label className="pie-date-field">
+                To
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                />
+              </label>
+              <div className="pie-date-actions">
+                <button
+                  type="button"
+                  className="pie-apply-btn"
+                  onClick={handleApply}
+                  disabled={!customStart || !customEnd}
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  className="pie-reset-btn"
+                  onClick={handleReset}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : null}
 
       <div className="pie-panel-toggle-row">
         <label className="pie-subcategory-toggle">

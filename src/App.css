@@ -603,6 +603,208 @@ thead th {
   padding: 0 6px;
 }
 
+.scope-calendar-wrap {
+  position: relative;
+}
+
+.scope-calendar-trigger {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.scope-calendar-trigger:hover {
+  border-color: color-mix(in srgb, var(--text) 55%, transparent 45%);
+  transform: translateY(-1px);
+}
+
+.scope-calendar-trigger-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scope-calendar-chevron {
+  transition: transform 140ms ease;
+}
+
+.scope-calendar-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.scope-calendar-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 300px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px;
+  z-index: 30;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.scope-calendar-popover.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.scope-calendar-mode-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scope-calendar-mode-btn {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 92%, white 8%);
+  color: var(--text);
+  border-radius: 8px;
+  height: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.scope-calendar-mode-btn.active {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--text) 55%, transparent 45%);
+}
+
+.scope-calendar-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.scope-calendar-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--text) 88%, transparent 12%);
+}
+
+.scope-calendar-panel input[type="date"],
+.scope-calendar-panel select {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 96%, white 4%);
+  color: var(--text);
+  border-radius: 8px;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.scope-calendar-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.scope-calendar-actions button {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.scope-calendar-actions .scope-calendar-apply {
+  background: color-mix(in srgb, var(--accent, #2f7ef8) 30%, var(--surface) 70%);
+  border-color: color-mix(in srgb, var(--accent, #2f7ef8) 70%, transparent 30%);
+}
+
+.scope-libs-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scope-lib-trigger {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 95%, white 5%);
+  color: var(--text);
+  border-radius: 10px;
+  min-height: 34px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.scope-lib-open-btn {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.scope-lib-popover {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  z-index: 40;
+}
+
+.scope-lib-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.scope-lib-nav-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+}
+
+.scope-lib-nav-title {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scope-lib-date-input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
 .pie-chart-panel {
   border: 1px solid var(--border);
   background: var(--surface);

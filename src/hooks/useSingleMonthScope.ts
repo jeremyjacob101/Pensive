@@ -30,8 +30,8 @@ export function useSingleMonthScope(
 
   const seedMonth = useMemo(() => {
     if (monthBounds === undefined) return null;
-    return newestBoundMonth ?? fallbackCurrentMonth();
-  }, [monthBounds, newestBoundMonth]);
+    return fallbackCurrentMonth();
+  }, [monthBounds]);
 
   const resolvedMonth = activeMonth ?? seedMonth;
 
@@ -122,14 +122,12 @@ export function useSingleMonthScope(
   }, [canJumpToNewest, newestBoundMonth]);
 
   const resetToNewestMonth = useCallback(() => {
-    const month = validMonth(newestBoundMonth)
-      ? newestBoundMonth
-      : fallbackCurrentMonth();
+    const month = fallbackCurrentMonth();
     setMode("month");
     setCustomRange(null);
     setSelectedMonths(validMonth(month) ? [month] : []);
     setActiveMonth(month);
-  }, [newestBoundMonth]);
+  }, []);
 
   const applyCustomRange = useCallback((startDate: string, endDate: string) => {
     setMode("custom");
