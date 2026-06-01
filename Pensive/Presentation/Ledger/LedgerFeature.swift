@@ -80,9 +80,13 @@ struct LedgerBreakdownSummary: Equatable {
 }
 
 enum LedgerBreakdownComputing {
-    static func expenses(rows: [Expense], mode: LedgerFeatureViewModel.BreakdownMode, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
-        let totalRaw = rows.reduce(0) { $0 + $1.amount }
-        let totalEffective = rows.reduce(0) { $0 + $1.effectiveAmount }
+    static func expenses(rows: [Expense], mode: LedgerFeatureViewModel.BreakdownMode, scope: DateScope, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
+        let totalRaw = rows.reduce(0) { partial, row in
+            partial + LedgerScopeLogic.proportionalContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
+        }
+        let totalEffective = rows.reduce(0) { partial, row in
+            partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+        }
         let grouped: [String: Double] = Dictionary(grouping: rows) { expense in
             switch mode {
             case .category:
@@ -90,8 +94,13 @@ enum LedgerBreakdownComputing {
             case .subcategory:
                 return expense.subcategory?.isEmpty == false ? expense.subcategory! : "Unspecified Subcategory"
             }
-        }.mapValues { $0.reduce(0) { $0 + $1.effectiveAmount } }
+        }.mapValues { groupedRows in
+            groupedRows.reduce(0) { partial, row in
+                partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+            }
+        }
         let slices = grouped
+            .filter { $0.value > 0 }
             .map { key, amount in
                 LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
             }
@@ -99,9 +108,13 @@ enum LedgerBreakdownComputing {
         return LedgerBreakdownSummary(totalRaw: totalRaw, totalEffective: totalEffective, slices: slices)
     }
 
-    static func incomings(rows: [Incoming], mode: LedgerFeatureViewModel.BreakdownMode, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
-        let totalRaw = rows.reduce(0) { $0 + $1.amount }
-        let totalEffective = rows.reduce(0) { $0 + $1.effectiveAmount }
+    static func incomings(rows: [Incoming], mode: LedgerFeatureViewModel.BreakdownMode, scope: DateScope, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
+        let totalRaw = rows.reduce(0) { partial, row in
+            partial + LedgerScopeLogic.proportionalContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
+        }
+        let totalEffective = rows.reduce(0) { partial, row in
+            partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+        }
         let grouped: [String: Double] = Dictionary(grouping: rows) { incoming in
             switch mode {
             case .category:
@@ -109,8 +122,13 @@ enum LedgerBreakdownComputing {
             case .subcategory:
                 return incoming.incomeSubtype?.isEmpty == false ? incoming.incomeSubtype! : "Unspecified Subtype"
             }
-        }.mapValues { $0.reduce(0) { $0 + $1.effectiveAmount } }
+        }.mapValues { groupedRows in
+            groupedRows.reduce(0) { partial, row in
+                partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+            }
+        }
         let slices = grouped
+            .filter { $0.value > 0 }
             .map { key, amount in
                 LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
             }
@@ -520,11 +538,14 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private func expenseRow(_ item: Expense) -> LedgerItemViewData {
         let status = LedgerScopeLogic.scopeStatus(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedRaw = LedgerScopeLogic.proportionalContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedEffective = LedgerScopeLogic.proportionalContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         return LedgerItemViewData(
             id: item.id,
             title: item.name,
             subtitle: [item.type, item.account, item.category].filter { !$0.isEmpty }.joined(separator: " • "),
-            amountLine: "Raw \(money(item.amount)) / Effective \(money(item.effectiveAmount)) (\(item.effectiveAmountMode.rawValue))",
+            amountLine: "In scope Raw \(money(scopedRaw)) / Effective \(money(scopedEffective))\(partial ? " (partial)" : "")",
             appliedLine: "Paid: \(date(item.date))",
             scopeStatus: status,
             monthYears: item.monthYears.map(\.rawValue),
@@ -536,11 +557,14 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private func incomingRow(_ item: Incoming) -> LedgerItemViewData {
         let status = LedgerScopeLogic.scopeStatus(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedRaw = LedgerScopeLogic.proportionalContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedEffective = LedgerScopeLogic.proportionalContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         return LedgerItemViewData(
             id: item.id,
             title: item.name,
             subtitle: [item.paidBy, item.incomeType, item.account].filter { !$0.isEmpty }.joined(separator: " • "),
-            amountLine: "Raw \(money(item.amount)) / Effective \(money(item.effectiveAmount)) (\(item.effectiveAmountMode.rawValue))",
+            amountLine: "In scope Raw \(money(scopedRaw)) / Effective \(money(scopedEffective))\(partial ? " (partial)" : "")",
             appliedLine: "Paid: \(date(item.date))",
             scopeStatus: status,
             monthYears: item.monthYears.map(\.rawValue),
@@ -601,13 +625,13 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     private func makeExpenseBreakdownSummary(rows: [Expense], mode: BreakdownMode) -> LedgerBreakdownSummary {
-        LedgerBreakdownComputing.expenses(rows: rows, mode: mode) { [weak self] key, resolvedMode in
+        LedgerBreakdownComputing.expenses(rows: rows, mode: mode, scope: scope) { [weak self] key, resolvedMode in
             self?.colorToken(for: key, mode: resolvedMode)
         }
     }
 
     private func makeIncomingBreakdownSummary(rows: [Incoming], mode: BreakdownMode) -> LedgerBreakdownSummary {
-        LedgerBreakdownComputing.incomings(rows: rows, mode: mode) { [weak self] key, resolvedMode in
+        LedgerBreakdownComputing.incomings(rows: rows, mode: mode, scope: scope) { [weak self] key, resolvedMode in
             self?.colorToken(for: key, mode: resolvedMode)
         }
     }

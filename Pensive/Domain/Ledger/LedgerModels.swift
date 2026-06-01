@@ -129,6 +129,40 @@ enum LedgerScopeLogic {
         return .dateOnly
     }
 
+    static func normalizedRowMonths(date: Date, monthYears: [MonthYear], calendar: Calendar = calendar) -> [MonthYear] {
+        if !monthYears.isEmpty { return monthYears }
+        guard let fallback = MonthYear(monthFormatter.string(from: date)) else { return [] }
+        return [fallback]
+    }
+
+    static func proportionalContribution(
+        amount: Double,
+        date: Date,
+        monthYears: [MonthYear],
+        scope: DateScope,
+        calendar: Calendar = calendar
+    ) -> Double {
+        let target = Set(targetMonths(startDate: scope.startDate, endDate: scope.endDate, calendar: calendar))
+        let rowMonths = normalizedRowMonths(date: date, monthYears: monthYears, calendar: calendar)
+        let monthCount = max(1, rowMonths.count)
+        let matchingCount = rowMonths.filter { target.contains($0) }.count
+        guard matchingCount > 0 else { return 0 }
+        return (amount / Double(monthCount)) * Double(matchingCount)
+    }
+
+    static func isPartialMatch(
+        date: Date,
+        monthYears: [MonthYear],
+        scope: DateScope,
+        calendar: Calendar = calendar
+    ) -> Bool {
+        let target = Set(targetMonths(startDate: scope.startDate, endDate: scope.endDate, calendar: calendar))
+        let rowMonths = normalizedRowMonths(date: date, monthYears: monthYears, calendar: calendar)
+        let monthCount = max(1, rowMonths.count)
+        let matchingCount = rowMonths.filter { target.contains($0) }.count
+        return matchingCount > 0 && matchingCount < monthCount
+    }
+
     static func isoDate(_ date: Date) -> String {
         isoFormatter.string(from: date)
     }
