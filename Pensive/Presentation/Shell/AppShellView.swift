@@ -1103,12 +1103,12 @@ private struct TrackingTimelineRowCard: View {
                         .accessibilityIdentifier("tracking_buffer_\(row.key)")
                     }
                 }
-                .padding(.top, 10)
+                .padding(.top, 18)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.vertical, 4)
+        .padding(.bottom, isExpanded ? 0 : 8)
     }
 }
 

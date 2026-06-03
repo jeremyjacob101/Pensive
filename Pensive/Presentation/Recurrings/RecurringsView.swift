@@ -17,7 +17,7 @@ struct RecurringsFeatureView: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
-                Section("Expense Recurrings") {
+                Section("Expenses") {
                     if viewModel.expenseRows.isEmpty {
                         Text("No expense recurrings")
                             .foregroundStyle(.secondary)
@@ -27,7 +27,7 @@ struct RecurringsFeatureView: View {
                     }
                 }
 
-                Section("Incoming Recurrings") {
+                Section("Incomings") {
                     if viewModel.incomingRows.isEmpty {
                         Text("No incoming recurrings")
                             .foregroundStyle(.secondary)
