@@ -44,7 +44,6 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         Expense(
             id: id,
             name: "Expense \(id)",
-            type: "Type",
             account: "Checking",
             category: category,
             subcategory: subcategory,

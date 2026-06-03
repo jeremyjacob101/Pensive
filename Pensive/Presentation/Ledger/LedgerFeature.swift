@@ -22,7 +22,6 @@ struct LedgerItemViewData: Identifiable {
 struct ExpenseEditorDraft {
     var id: String?
     var expense: String
-    var type: String
     var account: String
     var category: String
     var subcategory: String?
@@ -225,7 +224,6 @@ final class LedgerFeatureViewModel: ObservableObject {
         do {
             let options = try await api.userOptions.list()
             optionsByKind = [
-                "expenseType": options.expenseType,
                 "account": options.account,
                 "category": options.category,
                 "subcategory": options.subcategory,
@@ -502,7 +500,6 @@ final class LedgerFeatureViewModel: ObservableObject {
         return ExpenseEditorDraft(
             id: item.id,
             expense: item.name,
-            type: item.type,
             account: item.account,
             category: item.category,
             subcategory: item.subcategory,
@@ -559,7 +556,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         return LedgerItemViewData(
             id: item.id,
             title: item.name,
-            subtitle: [item.type, item.account, item.category].filter { !$0.isEmpty }.joined(separator: " • "),
+            subtitle: [item.account, item.category].filter { !$0.isEmpty }.joined(separator: " • "),
             amountLine: "Raw \(money(scopedRaw)) / Effective \(money(scopedEffective))\(partial ? " (partial)" : "")",
             appliedLine: "Paid: \(date(item.date))",
             scopeStatus: status,
@@ -592,12 +589,12 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func expenseCreateDTO(from draft: ExpenseEditorDraft) -> ExpenseMutationDTO {
         let iso = LedgerScopeLogic.isoDate(draft.date)
         let month = String(iso.prefix(7))
-        return ExpenseMutationDTO(expense: draft.expense, type: draft.type, account: draft.account, category: draft.category, subcategory: draft.subcategory, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, monthYears: [month], date: iso, paidTo: draft.paidTo, notes: draft.notes, comments: draft.comments, expenseId: draft.expenseId, baseExpenseId: draft.baseExpenseId, baseExpenseLabel: draft.baseExpenseLabel, subExpenseId: draft.subExpenseId)
+        return ExpenseMutationDTO(expense: draft.expense, account: draft.account, category: draft.category, subcategory: draft.subcategory, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, monthYears: [month], date: iso, paidTo: draft.paidTo, notes: draft.notes, comments: draft.comments, expenseId: draft.expenseId, baseExpenseId: draft.baseExpenseId, baseExpenseLabel: draft.baseExpenseLabel, subExpenseId: draft.subExpenseId)
     }
 
     private func expenseUpdateDTO(from draft: ExpenseEditorDraft, id: String) -> ExpenseUpdateDTO {
         let create = expenseCreateDTO(from: draft)
-        return ExpenseUpdateDTO(id: id, expense: create.expense, type: create.type, account: create.account, category: create.category, subcategory: create.subcategory, amount: create.amount, effectiveAmount: create.effectiveAmount, effectiveAmountMode: create.effectiveAmountMode, monthYears: create.monthYears, date: create.date, paidTo: create.paidTo, notes: create.notes, comments: create.comments, expenseId: create.expenseId, baseExpenseId: create.baseExpenseId, baseExpenseLabel: create.baseExpenseLabel, subExpenseId: create.subExpenseId)
+        return ExpenseUpdateDTO(id: id, expense: create.expense, account: create.account, category: create.category, subcategory: create.subcategory, amount: create.amount, effectiveAmount: create.effectiveAmount, effectiveAmountMode: create.effectiveAmountMode, monthYears: create.monthYears, date: create.date, paidTo: create.paidTo, notes: create.notes, comments: create.comments, expenseId: create.expenseId, baseExpenseId: create.baseExpenseId, baseExpenseLabel: create.baseExpenseLabel, subExpenseId: create.subExpenseId)
     }
 
     private func incomingCreateDTO(from draft: IncomingEditorDraft) -> IncomingMutationDTO {
@@ -678,7 +675,7 @@ enum LedgerFiltering {
             let filterHit = selected.isEmpty || selected.contains(row.account) || selected.contains(row.category)
             guard filterHit else { return false }
             guard !normalized.isEmpty else { return true }
-            let blob = [row.name, row.type, row.account, row.category, row.subcategory ?? "", row.paidTo, row.notes ?? "", row.comments ?? "", row.monthYears.map(\.rawValue).joined(separator: " ")].joined(separator: " ").lowercased()
+            let blob = [row.name, row.account, row.category, row.subcategory ?? "", row.paidTo, row.notes ?? "", row.comments ?? "", row.monthYears.map(\.rawValue).joined(separator: " ")].joined(separator: " ").lowercased()
             return blob.contains(normalized)
         }
     }

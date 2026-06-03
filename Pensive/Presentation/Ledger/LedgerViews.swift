@@ -132,7 +132,7 @@ private struct LedgerScreen: View {
         }
         .sheet(isPresented: $showCreate) {
             if viewModel.kind == .expense {
-                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", type: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
+                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
             } else {
                 IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
             }
@@ -344,7 +344,6 @@ private struct ExpenseEditorSheet: View {
     @State private var selectedIndex = 0
     let mode: EditorMode
 
-    @State private var addType = ""
     @State private var addAccount = ""
     @State private var addCategory = ""
 
@@ -381,7 +380,6 @@ private struct ExpenseEditorSheet: View {
                 }
 
                 TextField("Name", text: binding(\.expense))
-                TextField("Type", text: binding(\.type))
                 TextField("Account", text: binding(\.account))
                 TextField("Category", text: binding(\.category))
                 TextField("Subcategory", text: Binding(get: { currentDraft.subcategory ?? "" }, set: { value in
@@ -403,8 +401,6 @@ private struct ExpenseEditorSheet: View {
                 }))
 
                 Section("Add missing option") {
-                    TextField("New type", text: $addType)
-                    Button("Add type") { Task { await viewModel.addMissingOption(kind: "expenseType", value: addType); addType = "" } }
                     TextField("New account", text: $addAccount)
                     Button("Add account") { Task { await viewModel.addMissingOption(kind: "account", value: addAccount); addAccount = "" } }
                     TextField("New category", text: $addCategory)
@@ -433,9 +429,9 @@ private struct ExpenseEditorSheet: View {
 
     private var isSubmitDisabled: Bool {
         if mode == .edit {
-            return currentDraft.expense.isEmpty || currentDraft.type.isEmpty || currentDraft.account.isEmpty || currentDraft.category.isEmpty || currentDraft.paidTo.isEmpty || currentDraft.amount <= 0
+            return currentDraft.expense.isEmpty || currentDraft.account.isEmpty || currentDraft.category.isEmpty || currentDraft.paidTo.isEmpty || currentDraft.amount <= 0
         }
-        return drafts.isEmpty || drafts.contains { $0.expense.isEmpty || $0.type.isEmpty || $0.account.isEmpty || $0.category.isEmpty || $0.paidTo.isEmpty || $0.amount <= 0 }
+        return drafts.isEmpty || drafts.contains { $0.expense.isEmpty || $0.account.isEmpty || $0.category.isEmpty || $0.paidTo.isEmpty || $0.amount <= 0 }
     }
 
     private func submitCreate() {
@@ -472,7 +468,6 @@ private struct ExpenseEditorSheet: View {
         ExpenseEditorDraft(
             id: nil,
             expense: "",
-            type: template.type,
             account: template.account,
             category: template.category,
             subcategory: template.subcategory,

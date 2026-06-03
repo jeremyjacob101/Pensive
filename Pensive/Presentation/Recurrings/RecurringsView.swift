@@ -55,7 +55,6 @@ struct RecurringsFeatureView: View {
                         amount: 0,
                         frequency: "monthly",
                         dayOfMonth: 1,
-                        recurringExpenseType: nil,
                         recurringExpenseAccount: nil,
                         recurringExpenseCategory: nil,
                         recurringExpenseSubcategory: nil,
@@ -156,7 +155,6 @@ private struct RecurringEditorSheet: View {
                 Stepper("Day of Month: \(draft.dayOfMonth)", value: $draft.dayOfMonth, in: 1 ... 31)
 
                 if draft.kind == .expense {
-                    TextField("Expense Type", text: bindingOptional(\.recurringExpenseType))
                     TextField("Expense Account", text: bindingOptional(\.recurringExpenseAccount))
                     TextField("Expense Category", text: bindingOptional(\.recurringExpenseCategory))
                     TextField("Expense Subcategory", text: bindingOptional(\.recurringExpenseSubcategory))

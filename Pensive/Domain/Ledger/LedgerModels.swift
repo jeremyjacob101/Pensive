@@ -45,7 +45,6 @@ struct DateScope: Equatable {
 struct Expense: Identifiable, Equatable {
     let id: String
     let name: String
-    let type: String
     let account: String
     let category: String
     let subcategory: String?
@@ -203,7 +202,6 @@ extension Expense {
     init(dto: ExpenseDTO) {
         id = dto._id
         name = dto.expense
-        type = dto.type ?? ""
         account = dto.account ?? ""
         category = dto.category ?? ""
         subcategory = dto.subcategory

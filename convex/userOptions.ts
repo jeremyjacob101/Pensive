@@ -4,7 +4,6 @@ import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
 const optionKind = v.union(
-  v.literal("expenseType"),
   v.literal("account"),
   v.literal("category"),
   v.literal("subcategory"),
@@ -13,7 +12,6 @@ const optionKind = v.union(
 );
 
 type OptionKind =
-  | "expenseType"
   | "account"
   | "category"
   | "subcategory"
@@ -21,7 +19,6 @@ type OptionKind =
   | "incomeSubtype";
 
 const OPTION_KINDS: OptionKind[] = [
-  "expenseType",
   "account",
   "category",
   "subcategory",
@@ -340,7 +337,6 @@ export const list = query({
     const userId = await requireUserId(ctx);
 
     const [
-      expenseTypeRows,
       accountRows,
       categoryRows,
       subcategoryRows,
@@ -356,15 +352,6 @@ export const list = query({
     );
 
     return {
-      expenseType: formatOptionList(
-        "expenseType",
-        expenseTypeRows.map((row) => ({
-          value: row.value,
-          color: (row as { color?: string }).color,
-          isDefault: (row as { isDefault?: boolean }).isDefault,
-          isTracking: (row as { isTracking?: boolean }).isTracking,
-        })),
-      ),
       account: formatOptionList(
         "account",
         accountRows.map((row) => ({
@@ -784,30 +771,6 @@ export const rename = mutation({
             recurringIncomingSubtype: targetValue,
           });
         }
-      }
-      return;
-    }
-
-    if (kind === "expenseType") {
-      const expenses = await ctx.db
-        .query("expenses")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect();
-      for (const expense of expenses) {
-        if (expense.type === currentValue) {
-          await ctx.db.patch(expense._id, { type: targetValue });
-        }
-      }
-      const recurrings = await ctx.db
-        .query("recurrings")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId))
-        .collect();
-      for (const recurring of recurrings) {
-        const patch: { recurringExpenseType?: string } = {};
-        if ((recurring.recurringExpenseType ?? "") === currentValue)
-          patch.recurringExpenseType = targetValue;
-        if (Object.keys(patch).length > 0)
-          await ctx.db.patch(recurring._id, patch);
       }
       return;
     }

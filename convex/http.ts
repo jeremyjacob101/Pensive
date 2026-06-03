@@ -28,7 +28,11 @@ http.route({
   path: "/api/auth/sign-in",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = (await request.json()) as { username?: string; email?: string; password?: string };
+    const body = (await request.json()) as {
+      username?: string;
+      email?: string;
+      password?: string;
+    };
     const username = normalizeUsername(body.username ?? body.email ?? "");
     const password = (body.password ?? "").trim();
 
@@ -37,25 +41,29 @@ http.route({
     }
     const email = usernameToAuthEmail(username);
 
-    const result = (await ctx.runAction(api.auth.signIn, {
-      provider: "password",
-      params: {
-        flow: "signIn",
-        email,
-        password,
-      },
-    })) as {
-      tokens?: { token?: string; refreshToken?: string } | null;
-    };
+    const result = await runAuthAction(() =>
+      ctx.runAction(api.auth.signIn, {
+        provider: "password",
+        params: {
+          flow: "signIn",
+          email,
+          password,
+        },
+      }),
+    );
 
-    if (!result?.tokens?.token) {
+    if (!result.ok) {
+      return jsonError(401, "unauthorized", "Username or password is incorrect.");
+    }
+
+    if (!result.value?.tokens?.token) {
       return jsonError(401, "unauthorized", "Username or password is incorrect.");
     }
 
     return jsonOk({
       authenticated: true,
-      token: result.tokens.token,
-      refreshToken: result.tokens.refreshToken ?? null,
+      token: result.value.tokens.token,
+      refreshToken: result.value.tokens.refreshToken ?? null,
       userId: username,
     });
   }),
@@ -65,7 +73,11 @@ http.route({
   path: "/api/auth/sign-up",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const body = (await request.json()) as { username?: string; email?: string; password?: string };
+    const body = (await request.json()) as {
+      username?: string;
+      email?: string;
+      password?: string;
+    };
     const username = normalizeUsername(body.username ?? body.email ?? "");
     const password = (body.password ?? "").trim();
 
@@ -77,25 +89,29 @@ http.route({
     }
     const email = usernameToAuthEmail(username);
 
-    const result = (await ctx.runAction(api.auth.signIn, {
-      provider: "password",
-      params: {
-        flow: "signUp",
-        email,
-        password,
-      },
-    })) as {
-      tokens?: { token?: string; refreshToken?: string } | null;
-    };
+    const result = await runAuthAction(() =>
+      ctx.runAction(api.auth.signIn, {
+        provider: "password",
+        params: {
+          flow: "signUp",
+          email,
+          password,
+        },
+      }),
+    );
 
-    if (!result?.tokens?.token) {
+    if (!result.ok) {
+      return jsonError(422, "validation", authErrorMessage(result.error));
+    }
+
+    if (!result.value?.tokens?.token) {
       return jsonError(500, "server", "Failed to create account.");
     }
 
     return jsonOk({
       authenticated: true,
-      token: result.tokens.token,
-      refreshToken: result.tokens.refreshToken ?? null,
+      token: result.value.tokens.token,
+      refreshToken: result.value.tokens.refreshToken ?? null,
       userId: username,
     });
   }),
@@ -121,17 +137,13 @@ http.route({
       return jsonError(422, "validation", "Missing refresh token.");
     }
 
-    const result = (await ctx.runAction(api.auth.signIn, {
-      provider: "password",
-      params: {
-        flow: "refreshToken",
+    const result = await runAuthAction(() =>
+      ctx.runAction(api.auth.signIn, {
         refreshToken,
-      },
-    })) as {
-      tokens?: { token?: string; refreshToken?: string } | null;
-    };
+      }),
+    );
 
-    if (!result?.tokens?.token) {
+    if (!result.ok || !result.value?.tokens?.token) {
       return jsonError(401, "unauthorized", "Session expired.");
     }
 
@@ -144,8 +156,8 @@ http.route({
 
     return jsonOk({
       authenticated: true,
-      token: result.tokens.token,
-      refreshToken: result.tokens.refreshToken ?? refreshToken,
+      token: result.value.tokens.token,
+      refreshToken: result.value.tokens.refreshToken ?? refreshToken,
       userId: identity ? normalizeUsername(identity.subject) : null,
     });
   }),
@@ -288,6 +300,35 @@ function jsonError(status: number, code: string, message: string): Response {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+async function runAuthAction(
+  run: () => Promise<{
+    tokens?: { token?: string; refreshToken?: string } | null;
+  }>,
+): Promise<
+  | {
+      ok: true;
+      value: { tokens?: { token?: string; refreshToken?: string } | null };
+    }
+  | { ok: false; error: unknown }
+> {
+  try {
+    return { ok: true, value: await run() };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+function authErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("Invalid password")) {
+    return "Password must be at least 8 characters.";
+  }
+  if (message.includes("already")) {
+    return "That username is already taken.";
+  }
+  return "Failed to create account.";
 }
 
 function normalizeUsername(value: string): string {

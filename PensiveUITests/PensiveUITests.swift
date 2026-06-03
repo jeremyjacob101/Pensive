@@ -36,7 +36,7 @@ final class PensiveUITests: XCTestCase {
         let rowTitle = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_title_'")).firstMatch
         XCTAssertTrue(rowTitle.waitForExistence(timeout: 10))
 
-        let expandButton = app.buttons["chevron.down"].firstMatch
+        let expandButton = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_expand_'")).firstMatch
         XCTAssertTrue(expandButton.waitForExistence(timeout: 10))
         expandButton.tap()
         let picker = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_start_month_'")).firstMatch
@@ -48,8 +48,9 @@ final class PensiveUITests: XCTestCase {
         app.launch()
         openTab(named: "Tracking", app: app)
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_title_'")).firstMatch.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["chevron.down"].firstMatch.waitForExistence(timeout: 10))
-        app.buttons["chevron.down"].firstMatch.tap()
+        let relaunchedExpandButton = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_row_expand_'")).firstMatch
+        XCTAssertTrue(relaunchedExpandButton.waitForExistence(timeout: 10))
+        relaunchedExpandButton.tap()
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_start_month_'")).firstMatch.waitForExistence(timeout: 10))
         XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'tracking_buffer_'")).firstMatch.waitForExistence(timeout: 10))
     }

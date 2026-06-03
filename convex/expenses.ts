@@ -235,7 +235,6 @@ export const previousMonthBefore = query({
 export const create = mutation({
   args: {
     expense: v.string(),
-    type: v.string(),
     account: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
@@ -276,7 +275,6 @@ export const bulkCreate = mutation({
     rows: v.array(
       v.object({
         expense: v.string(),
-        type: v.string(),
         account: v.string(),
         category: v.string(),
         subcategory: v.optional(v.string()),
@@ -338,7 +336,6 @@ export const update = mutation({
   args: {
     id: v.id("expenses"),
     expense: v.string(),
-    type: v.string(),
     account: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
@@ -396,7 +393,6 @@ export const bulkPatchVisible = mutation({
   args: {
     ids: v.array(v.id("expenses")),
     patch: v.object({
-      type: v.optional(v.string()),
       account: v.optional(v.string()),
       category: v.optional(v.string()),
       subcategory: v.optional(v.union(v.string(), v.null())),

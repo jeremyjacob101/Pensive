@@ -1063,6 +1063,7 @@ private struct TrackingTimelineRowCard: View {
                         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("tracking_row_expand_\(row.key)")
             }
             TrackingPipelinePreview(segments: row.segments)
             if isExpanded {

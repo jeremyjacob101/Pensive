@@ -197,7 +197,6 @@ struct ExpenseDTO: Codable {
     let _id: String
     let _creationTime: Double?
     let expense: String
-    let type: String?
     let account: String?
     let category: String?
     let subcategory: String?
@@ -237,7 +236,6 @@ struct IncomingDTO: Codable {
 
 struct ExpenseMutationDTO: Codable {
     let expense: String
-    let type: String
     let account: String
     let category: String
     let subcategory: String?
@@ -258,7 +256,6 @@ struct ExpenseMutationDTO: Codable {
 struct ExpenseUpdateDTO: Codable {
     let id: String
     let expense: String
-    let type: String
     let account: String
     let category: String
     let subcategory: String?
@@ -314,7 +311,7 @@ struct IncomingUpdateDTO: Codable {
 }
 
 struct ExpenseBulkPatchRequest: Codable { let ids: [String]; let patch: ExpensePatchDTO }
-struct ExpensePatchDTO: Codable { let type: String?; let account: String?; let category: String?; let subcategory: String?; let paidTo: String?; let notes: String?; let comments: String? }
+struct ExpensePatchDTO: Codable { let account: String?; let category: String?; let subcategory: String?; let paidTo: String?; let notes: String?; let comments: String? }
 
 struct IncomingBulkPatchRequest: Codable { let ids: [String]; let patch: IncomingPatchDTO }
 struct IncomingPatchDTO: Codable { let incomeType: String?; let incomeSubtype: String?; let account: String?; let paidBy: String?; let notes: String?; let comments: String? }
@@ -336,7 +333,6 @@ struct RecurringDTO: Codable {
     let amount: Double
     let frequency: String
     let dayOfMonth: Int
-    let recurringExpenseType: String?
     let recurringExpenseAccount: String?
     let recurringExpenseCategory: String?
     let recurringExpenseSubcategory: String?
@@ -355,7 +351,6 @@ struct RecurringMutationDTO: Codable {
     let amount: Double
     let frequency: String
     let dayOfMonth: Int
-    let recurringExpenseType: String?
     let recurringExpenseAccount: String?
     let recurringExpenseCategory: String?
     let recurringExpenseSubcategory: String?
@@ -375,7 +370,6 @@ struct RecurringUpdateDTO: Codable {
     let amount: Double
     let frequency: String
     let dayOfMonth: Int
-    let recurringExpenseType: String?
     let recurringExpenseAccount: String?
     let recurringExpenseCategory: String?
     let recurringExpenseSubcategory: String?
@@ -411,7 +405,6 @@ struct SaveCellRequest: Codable { let tableId: String; let rowIndex: Int; let co
 struct TableIDRequest: Codable { let tableId: String }
 
 struct UserOptionsListResponse: Codable {
-    let expenseType: [UserOptionRow]
     let account: [UserOptionRow]
     let category: [UserOptionRow]
     let subcategory: [UserOptionRow]

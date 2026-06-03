@@ -24,7 +24,6 @@ struct RecurringEditorDraft {
     var amount: Double
     var frequency: String
     var dayOfMonth: Int
-    var recurringExpenseType: String?
     var recurringExpenseAccount: String?
     var recurringExpenseCategory: String?
     var recurringExpenseSubcategory: String?
@@ -145,11 +144,10 @@ final class RecurringsFeatureViewModel: ObservableObject {
         guard (1 ... 31).contains(draft.dayOfMonth) else { alertText = "Day of month must be 1-31."; return false }
 
         if draft.kind == .expense {
-            guard !(draft.recurringExpenseType ?? "").isEmpty,
-                  !(draft.recurringExpenseAccount ?? "").isEmpty,
+            guard !(draft.recurringExpenseAccount ?? "").isEmpty,
                   !(draft.recurringExpenseCategory ?? "").isEmpty,
                   !(draft.recurringExpensePaidTo ?? "").isEmpty else {
-                alertText = "Expense recurring requires type, account, category, and paid to."
+                alertText = "Expense recurring requires account, category, and paid to."
                 return false
             }
         } else {
@@ -172,7 +170,6 @@ final class RecurringsFeatureViewModel: ObservableObject {
             amount: normalized.amount,
             frequency: normalized.frequency,
             dayOfMonth: normalized.dayOfMonth,
-            recurringExpenseType: normalized.recurringExpenseType,
             recurringExpenseAccount: normalized.recurringExpenseAccount,
             recurringExpenseCategory: normalized.recurringExpenseCategory,
             recurringExpenseSubcategory: normalized.recurringExpenseSubcategory,
@@ -195,7 +192,6 @@ final class RecurringsFeatureViewModel: ObservableObject {
             amount: normalized.amount,
             frequency: normalized.frequency,
             dayOfMonth: normalized.dayOfMonth,
-            recurringExpenseType: normalized.recurringExpenseType,
             recurringExpenseAccount: normalized.recurringExpenseAccount,
             recurringExpenseCategory: normalized.recurringExpenseCategory,
             recurringExpenseSubcategory: normalized.recurringExpenseSubcategory,
@@ -216,7 +212,6 @@ final class RecurringsFeatureViewModel: ObservableObject {
             normalized.recurringIncomingSubtype = nil
             normalized.recurringIncomingAccount = nil
         } else {
-            normalized.recurringExpenseType = nil
             normalized.recurringExpenseAccount = nil
             normalized.recurringExpenseCategory = nil
             normalized.recurringExpenseSubcategory = nil
@@ -261,7 +256,6 @@ final class RecurringsFeatureViewModel: ObservableObject {
     private func detailsForRow(_ row: RecurringDTO, kind: RecurringKind) -> [String] {
         if kind == .expense {
             return [
-                "Type: \(row.recurringExpenseType ?? "")",
                 "Account: \(row.recurringExpenseAccount ?? "")",
                 "Category: \(row.recurringExpenseCategory ?? "")",
                 "Subcategory: \(row.recurringExpenseSubcategory ?? "")",
@@ -306,7 +300,6 @@ final class RecurringsFeatureViewModel: ObservableObject {
             amount: row.amount,
             frequency: row.frequency,
             dayOfMonth: row.dayOfMonth,
-            recurringExpenseType: row.recurringExpenseType,
             recurringExpenseAccount: row.recurringExpenseAccount,
             recurringExpenseCategory: row.recurringExpenseCategory,
             recurringExpenseSubcategory: row.recurringExpenseSubcategory,
