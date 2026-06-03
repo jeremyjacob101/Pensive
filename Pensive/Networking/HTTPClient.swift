@@ -28,6 +28,21 @@ struct HTTPRequestSpec {
     let method: Method
     let isIdempotent: Bool
     let isMutation: Bool
+    let allowsAuthRecovery: Bool
+
+    init(
+        endpoint: String,
+        method: Method,
+        isIdempotent: Bool,
+        isMutation: Bool,
+        allowsAuthRecovery: Bool = true
+    ) {
+        self.endpoint = endpoint
+        self.method = method
+        self.isIdempotent = isIdempotent
+        self.isMutation = isMutation
+        self.allowsAuthRecovery = allowsAuthRecovery
+    }
 }
 
 protocol HTTPClientObserver {
@@ -39,21 +54,31 @@ protocol HTTPClientProtocol {
 }
 
 final class HTTPClient: HTTPClientProtocol {
+    typealias AuthRecoveryHandler = () async -> Bool
+
     private let transport: ConvexTransport
     private let decoder = JSONDecoder()
     private let observer: HTTPClientObserver?
+    var authRecoveryHandler: AuthRecoveryHandler?
 
-    init(transport: ConvexTransport, observer: HTTPClientObserver? = nil) {
+    init(
+        transport: ConvexTransport,
+        observer: HTTPClientObserver? = nil,
+        authRecoveryHandler: AuthRecoveryHandler? = nil
+    ) {
         self.transport = transport
         self.observer = observer
+        self.authRecoveryHandler = authRecoveryHandler
     }
 
     func send<T: Decodable, B: Encodable>(_ spec: HTTPRequestSpec, body: B?) async throws -> T {
         let timeout: TimeInterval = spec.isMutation ? 30 : 20
         let retries = spec.isIdempotent ? 2 : 0
         var lastError: Error?
+        var attemptedAuthRecovery = false
+        var attempt = 0
 
-        for attempt in 0...retries {
+        while attempt <= retries {
             do {
                 let response = try await transport.perform(spec: spec, body: body, timeout: timeout)
                 let correlation = correlationID(from: response.headers)
@@ -83,10 +108,20 @@ final class HTTPClient: HTTPClientProtocol {
                     throw mapEnvelopeOrStatusError(nil, statusCode: response.statusCode)
                 }
             } catch let error as APIError {
+                if error == .unauthorized,
+                   spec.allowsAuthRecovery,
+                   !attemptedAuthRecovery,
+                   let authRecoveryHandler {
+                    attemptedAuthRecovery = true
+                    if await authRecoveryHandler() {
+                        continue
+                    }
+                }
                 throw error
             } catch {
                 lastError = error
                 if attempt == retries { break }
+                attempt += 1
                 try await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.1...0.35) * 1_000_000_000))
             }
         }

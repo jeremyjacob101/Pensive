@@ -9,6 +9,7 @@ protocol SessionStoring: AnyObject {
     func signIn(username: String, password: String)
     func signUp(username: String, password: String)
     func signOut()
+    func recoverProtectedSession() async -> Bool
     func handleProtectedRequestFailure(_ error: Error)
 }
 
@@ -46,10 +47,8 @@ final class SessionStore: SessionStoring {
                 do {
                     var response = try await self.authAPI.session()
                     if !response.authenticated,
-                       let refreshToken = self.tokenStore.currentRefreshToken,
-                       !refreshToken.isEmpty {
-                        _ = try await self.authAPI.refresh(refreshToken: refreshToken)
-                        response = try await self.authAPI.session()
+                       let refreshedResponse = try await self.refreshSessionFromStoredToken() {
+                        response = refreshedResponse
                     }
                     if response.authenticated, let userId = response.userId, !userId.isEmpty {
                         self.persistTokens(from: response)
@@ -60,6 +59,10 @@ final class SessionStore: SessionStoring {
                         self.transition(to: .unauthenticated)
                     }
                 } catch {
+                    if let apiError = error as? APIError, apiError == .unauthorized {
+                        self.expireSession()
+                        return
+                    }
                     let mapped = self.mapAuthError(error)
                     // Never hard-block launch on session bootstrap errors.
                     // Fall back to unauthenticated so the user can sign in immediately.
@@ -162,34 +165,30 @@ final class SessionStore: SessionStoring {
 
         Task { [weak self] in
             guard let self else { return }
+            _ = await self.recoverProtectedSession()
+        }
+    }
 
-            do {
-                let session = try await self.authAPI.session()
-                if session.authenticated, let userId = session.userId, !userId.isEmpty {
-                    self.persistTokens(from: session)
-                    self.authMessage = nil
-                    self.transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
-                    return
-                }
-            } catch {
-                if let refreshToken = self.tokenStore.currentRefreshToken, !refreshToken.isEmpty {
-                    do {
-                        let refreshed = try await self.authAPI.refresh(refreshToken: refreshToken)
-                        self.persistTokens(from: refreshed)
-                        let session = try await self.authAPI.session()
-                        if session.authenticated, let userId = session.userId, !userId.isEmpty {
-                            self.transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
-                            return
-                        }
-                    } catch {
-                        // Fall through to force sign-out.
-                    }
-                }
+    func recoverProtectedSession() async -> Bool {
+        guard let refreshToken = tokenStore.currentRefreshToken, !refreshToken.isEmpty else {
+            expireSession()
+            return false
+        }
+
+        do {
+            let response = try await refreshSession(using: refreshToken)
+            authMessage = nil
+            if response.authenticated, let userId = response.userId, !userId.isEmpty {
+                transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
             }
-
-            self.clearSessionArtifacts()
-            self.authMessage = AuthError.sessionExpired.userMessage
-            self.transition(to: .unauthenticated)
+            return tokenStore.currentToken?.isEmpty == false
+        } catch {
+            if let apiError = error as? APIError, apiError == .unauthorized {
+                expireSession()
+            } else {
+                authMessage = mapAuthError(error).userMessage
+            }
+            return false
         }
     }
 
@@ -203,6 +202,28 @@ final class SessionStore: SessionStoring {
             accessToken: response.token ?? tokenStore.currentToken,
             refreshToken: response.refreshToken ?? tokenStore.currentRefreshToken
         )
+    }
+
+    private func refreshSessionFromStoredToken() async throws -> SessionResponse? {
+        guard let refreshToken = tokenStore.currentRefreshToken, !refreshToken.isEmpty else {
+            return nil
+        }
+        return try await refreshSession(using: refreshToken)
+    }
+
+    private func refreshSession(using refreshToken: String) async throws -> SessionResponse {
+        let refreshed = try await authAPI.refresh(refreshToken: refreshToken)
+        persistTokens(from: refreshed)
+        if refreshed.authenticated, let userId = refreshed.userId, !userId.isEmpty {
+            return refreshed
+        }
+        return try await authAPI.session()
+    }
+
+    private func expireSession() {
+        clearSessionArtifacts()
+        authMessage = AuthError.sessionExpired.userMessage
+        transition(to: .unauthenticated)
     }
 
     private func transition(to next: AuthState) {

@@ -9,7 +9,7 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300)
         ]
 
-        let summary = LedgerBreakdownComputing.expenses(rows: rows, mode: .category) { key, _ in
+        let summary = LedgerBreakdownComputing.expenses(rows: rows, mode: .category, scope: may2026Scope) { key, _ in
             key == "Food" ? "#3366FF" : nil
         }
 
@@ -30,7 +30,7 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             incoming(id: "c", type: "Gift", subtype: "Family", amount: 1000, effective: 1000)
         ]
 
-        let summary = LedgerBreakdownComputing.incomings(rows: rows, mode: .subcategory) { _, _ in nil }
+        let summary = LedgerBreakdownComputing.incomings(rows: rows, mode: .subcategory, scope: may2026Scope) { _, _ in nil }
 
         XCTAssertEqual(summary.totalRaw, 14000, accuracy: 0.0001)
         XCTAssertEqual(summary.totalEffective, 13800, accuracy: 0.0001)
@@ -82,6 +82,18 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             baseIncomingId: nil,
             subIncomingId: nil
         )
+    }
+
+    private var may2026Scope: DateScope {
+        DateScope(
+            startDate: date(year: 2026, month: 5, day: 1),
+            endDate: date(year: 2026, month: 5, day: 31),
+            includeMonthYearOverlapOutsideDate: true
+        )
+    }
+
+    private func date(year: Int, month: Int, day: Int) -> Date {
+        DateComponents(calendar: Calendar(identifier: .gregorian), year: year, month: month, day: day).date!
     }
 
     func testTrackingMonthRangeIsInclusiveAndOrdered() {

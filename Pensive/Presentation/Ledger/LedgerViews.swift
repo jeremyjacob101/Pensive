@@ -79,7 +79,7 @@ private struct LedgerScreen: View {
                             },
                             label: {
                                 HStack {
-                                    Text("Applied this month | Paid Elsewhere")
+                                    Text("Paid Elsewhere")
                                     Spacer()
                                     Text("(\(appliedThisMonthPaidDifferentRows.count))")
                                         .foregroundStyle(.secondary)
@@ -100,7 +100,7 @@ private struct LedgerScreen: View {
                             },
                             label: {
                                 HStack {
-                                    Text("Paid this month | Applied elsewhere")
+                                    Text("Applied Elsewhere")
                                     Spacer()
                                     Text("(\(paidThisMonthAppliedDifferentRows.count))")
                                         .foregroundStyle(.secondary)

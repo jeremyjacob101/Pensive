@@ -493,17 +493,19 @@ private enum Req {
     static func get(_ path: String) -> HTTPRequestSpec { .init(endpoint: path, method: .get, isIdempotent: true, isMutation: false) }
     static func query(_ path: String) -> HTTPRequestSpec { .init(endpoint: path, method: .post, isIdempotent: true, isMutation: false) }
     static func mutation(_ path: String) -> HTTPRequestSpec { .init(endpoint: path, method: .post, isIdempotent: false, isMutation: true) }
+    static func authGet(_ path: String) -> HTTPRequestSpec { .init(endpoint: path, method: .get, isIdempotent: true, isMutation: false, allowsAuthRecovery: false) }
+    static func authMutation(_ path: String) -> HTTPRequestSpec { .init(endpoint: path, method: .post, isIdempotent: false, isMutation: true, allowsAuthRecovery: false) }
 }
 
 private final class AuthClient: AuthAPI {
     private let client: HTTPClientProtocol
     init(client: HTTPClientProtocol) { self.client = client }
 
-    func signIn(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.mutation("api/auth/sign-in"), body: request) }
-    func signUp(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.mutation("api/auth/sign-up"), body: request) }
-    func refresh(refreshToken: String) async throws -> SessionResponse { try await client.send(Req.mutation("api/auth/refresh"), body: ["refreshToken": refreshToken]) }
-    func signOut() async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/auth/sign-out"), body: EmptyBody()) }
-    func session() async throws -> SessionResponse { try await client.send(Req.get("api/auth/session"), body: Optional<EmptyBody>.none) }
+    func signIn(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.authMutation("api/auth/sign-in"), body: request) }
+    func signUp(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.authMutation("api/auth/sign-up"), body: request) }
+    func refresh(refreshToken: String) async throws -> SessionResponse { try await client.send(Req.authMutation("api/auth/refresh"), body: ["refreshToken": refreshToken]) }
+    func signOut() async throws { let _: EmptyResponse = try await client.send(Req.authMutation("api/auth/sign-out"), body: EmptyBody()) }
+    func session() async throws -> SessionResponse { try await client.send(Req.authGet("api/auth/session"), body: Optional<EmptyBody>.none) }
 }
 
 private final class ExpensesClient: ExpensesAPI {

@@ -14,6 +14,7 @@
 		339F14E959BC67DD3B2A7286 /* PensiveUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */; };
 		3878FF85A81FB0C58414CACD /* LedgerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726D060B5033637BD6C1931C /* LedgerModels.swift */; };
 		3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */; };
+		4C798FC6CB50493AB847739E /* HTTPClientAuthRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */; };
 		570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1060E8EA814D7616BF2AC146 /* PensiveApp.swift */; };
 		59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D911F3785CF260C05649961 /* LedgerViews.swift */; };
 		5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */; };
@@ -77,6 +78,7 @@
 		B82D63F0A8E92A7956EE6586 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
 		D02316F31B0A05A53566C05A /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
+		D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClientAuthRecoveryTests.swift; sourceTree = "<group>"; };
 		D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		D71033083881BE72A1960881 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexTransport.swift; sourceTree = "<group>"; };
@@ -243,6 +245,7 @@
 		9CA9B78435C5A244F95A76D4 /* PensiveTests */ = {
 			isa = PBXGroup;
 			children = (
+				D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */,
 				552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */,
 				066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */,
 			);
@@ -440,6 +443,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4C798FC6CB50493AB847739E /* HTTPClientAuthRecoveryTests.swift in Sources */,
 				3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */,
 				5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */,
 			);
