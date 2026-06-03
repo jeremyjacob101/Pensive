@@ -1170,16 +1170,27 @@ private struct TrackingPipelinePreview: View {
 }
 
 private enum OptionsKind: String, CaseIterable, Identifiable {
-    case expenseType
     case account
     case category
     case subcategory
     case incomeType
     case incomeSubtype
 
+    static let selectableCases: [OptionsKind] = [.account, .category, .incomeType]
+
     var id: String { rawValue }
     var title: String { rawValue }
+    var displayTitle: String {
+        switch self {
+        case .account: return "Account"
+        case .category: return "Category"
+        case .subcategory: return "Subcategory"
+        case .incomeType: return "Income Type"
+        case .incomeSubtype: return "Income Subtype"
+        }
+    }
     var supportsParent: Bool { self == .subcategory || self == .incomeSubtype }
+    var supportsNestedOptions: Bool { self == .category || self == .incomeType }
 
     var parentKind: OptionsKind? {
         switch self {
@@ -1194,7 +1205,7 @@ private enum OptionsKind: String, CaseIterable, Identifiable {
 private final class OptionsViewModel: ObservableObject {
     @Published private(set) var state: ViewLoadState = .loading
     @Published private(set) var optionsByKind: [OptionsKind: [UserOptionRow]] = [:]
-    @Published var selectedKind: OptionsKind = .expenseType
+    @Published var selectedKind: OptionsKind = .account
     @Published var inlineError: String?
     @Published var successText: String?
     @Published private(set) var trackingMismatchCount: Int = 0
@@ -1221,7 +1232,6 @@ private final class OptionsViewModel: ObservableObject {
             let list = try await optionsListRequest
             let tracking = try await trackingListRequest
             optionsByKind = [
-                .expenseType: list.expenseType,
                 .account: list.account,
                 .category: list.category,
                 .subcategory: list.subcategory,
@@ -1239,19 +1249,31 @@ private final class OptionsViewModel: ObservableObject {
     }
 
     var parentChoices: [String] {
-        guard let parentKind = selectedKind.parentKind else { return [] }
+        parentChoices(for: selectedKind)
+    }
+
+    func parentChoices(for kind: OptionsKind) -> [String] {
+        guard let parentKind = kind.parentKind else { return [] }
         return (optionsByKind[parentKind] ?? []).map(\.value).sorted()
     }
 
-    func parentChoicesExcluding(_ parentValue: String?) -> [String] {
-        guard let parentValue = normalized(parentValue), !parentValue.isEmpty else {
-            return parentChoices
+    func childKind(for kind: OptionsKind) -> OptionsKind? {
+        switch kind {
+        case .category: return .subcategory
+        case .incomeType: return .incomeSubtype
+        default: return nil
         }
-        return parentChoices.filter { $0 != parentValue }
     }
 
-    func moveToSubtypeTargets(excluding sourceValue: String) -> [String] {
-        let values = (optionsByKind[selectedKind] ?? []).map(\.value)
+    func parentChoicesExcluding(kind: OptionsKind, parentValue: String?) -> [String] {
+        guard let parentValue = normalized(parentValue), !parentValue.isEmpty else {
+            return parentChoices(for: kind)
+        }
+        return parentChoices(for: kind).filter { $0 != parentValue }
+    }
+
+    func moveToSubtypeTargets(kind: OptionsKind, excluding sourceValue: String) -> [String] {
+        let values = (optionsByKind[kind] ?? []).map(\.value)
         return values.filter { $0 != sourceValue }.sorted()
     }
 
@@ -1265,7 +1287,11 @@ private final class OptionsViewModel: ObservableObject {
     }
 
     var supportsTrackingForSelectedKind: Bool {
-        switch selectedKind {
+        supportsTracking(kind: selectedKind)
+    }
+
+    func supportsTracking(kind: OptionsKind) -> Bool {
+        switch kind {
         case .category, .subcategory, .incomeType, .incomeSubtype:
             return true
         default:
@@ -1274,22 +1300,92 @@ private final class OptionsViewModel: ObservableObject {
     }
 
     var rows: [OptionsDisplayRow] {
-        (optionsByKind[selectedKind] ?? []).sorted { lhs, rhs in
+        switch selectedKind {
+        case .category:
+            return nestedRows(parentKind: .category, childKind: .subcategory)
+        case .incomeType:
+            return nestedRows(parentKind: .incomeType, childKind: .incomeSubtype)
+        default:
+            return flatRows(kind: selectedKind)
+        }
+    }
+
+    var rowGroups: [OptionsDisplayGroup] {
+        switch selectedKind {
+        case .category:
+            return nestedGroups(parentKind: .category, childKind: .subcategory)
+        case .incomeType:
+            return nestedGroups(parentKind: .incomeType, childKind: .incomeSubtype)
+        default:
+            return flatRows(kind: selectedKind).map { OptionsDisplayGroup(parent: $0, children: []) }
+        }
+    }
+
+    private func flatRows(kind: OptionsKind) -> [OptionsDisplayRow] {
+        (optionsByKind[kind] ?? []).sorted { lhs, rhs in
             if lhs.parentValue == rhs.parentValue {
                 return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
             }
             return (lhs.parentValue ?? "") < (rhs.parentValue ?? "")
         }.map { row in
-            let key = trackingKey(kind: selectedKind.rawValue, value: row.value, parentValue: row.parentValue)
-            let effectiveIsTracking = row.isTracking || trackedKeysFromTrackingRows.contains(key)
-            return OptionsDisplayRow(
-                value: row.value,
-                color: row.color,
-                isDefault: row.isDefault,
-                isTracking: effectiveIsTracking,
-                parentValue: row.parentValue
-            )
+            displayRow(from: row, kind: kind, indentationLevel: 0)
         }
+    }
+
+    private func nestedRows(parentKind: OptionsKind, childKind: OptionsKind) -> [OptionsDisplayRow] {
+        nestedGroups(parentKind: parentKind, childKind: childKind).flatMap { group in
+            [group.parent] + group.children
+        }
+    }
+
+    private func nestedGroups(parentKind: OptionsKind, childKind: OptionsKind) -> [OptionsDisplayGroup] {
+        let parents = (optionsByKind[parentKind] ?? []).sorted { lhs, rhs in
+            lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+        }
+        let childrenByParent = Dictionary(grouping: optionsByKind[childKind] ?? []) { row in
+            normalized(row.parentValue) ?? ""
+        }
+        var displayedChildKeys: Set<String> = []
+        var groups: [OptionsDisplayGroup] = []
+
+        for parent in parents {
+            let children = (childrenByParent[parent.value] ?? []).sorted { lhs, rhs in
+                lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            let childRows = children.map { child in
+                displayedChildKeys.insert(child.selfKey)
+                return displayRow(from: child, kind: childKind, indentationLevel: 1)
+            }
+            groups.append(OptionsDisplayGroup(
+                parent: displayRow(from: parent, kind: parentKind, indentationLevel: 0),
+                children: childRows
+            ))
+        }
+
+        let orphanChildren = (optionsByKind[childKind] ?? []).filter { !displayedChildKeys.contains($0.selfKey) }.sorted { lhs, rhs in
+            if lhs.parentValue == rhs.parentValue {
+                return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            return (lhs.parentValue ?? "") < (rhs.parentValue ?? "")
+        }
+        groups.append(contentsOf: orphanChildren.map {
+            OptionsDisplayGroup(parent: displayRow(from: $0, kind: childKind, indentationLevel: 0), children: [])
+        })
+        return groups
+    }
+
+    private func displayRow(from row: UserOptionRow, kind: OptionsKind, indentationLevel: Int) -> OptionsDisplayRow {
+        let key = trackingKey(kind: kind.rawValue, value: row.value, parentValue: row.parentValue)
+        let effectiveIsTracking = row.isTracking || trackedKeysFromTrackingRows.contains(key)
+        return OptionsDisplayRow(
+            kind: kind,
+            value: row.value,
+            color: row.color,
+            isDefault: row.isDefault,
+            isTracking: effectiveIsTracking,
+            parentValue: row.parentValue,
+            indentationLevel: indentationLevel
+        )
     }
 
     func add(kind: OptionsKind, value: String, parentValue: String?) async {
@@ -1453,18 +1549,27 @@ private final class OptionsViewModel: ObservableObject {
 }
 
 private struct OptionsDisplayRow: Identifiable {
+    let kind: OptionsKind
     let value: String
     let color: String
     let isDefault: Bool
     let isTracking: Bool
     let parentValue: String?
-    var id: String { "\(value)|\(parentValue ?? "")" }
+    let indentationLevel: Int
+    var id: String { "\(kind.rawValue)|\(value)|\(parentValue ?? "")" }
+}
+
+private struct OptionsDisplayGroup: Identifiable {
+    let parent: OptionsDisplayRow
+    let children: [OptionsDisplayRow]
+    var id: String { parent.id }
 }
 
 private struct OptionsFeatureView: View {
     @StateObject private var viewModel: OptionsViewModel
     @State private var addValue = ""
     @State private var addParent = ""
+    @State private var addAsSubtype = false
     @State private var renameByRow: [String: String] = [:]
     @State private var colorByRow: [String: String] = [:]
     @State private var rowPendingDelete: OptionsDisplayRow?
@@ -1481,109 +1586,54 @@ private struct OptionsFeatureView: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
-                Section("Kind") {
-                    Picker("Kind", selection: $viewModel.selectedKind) {
-                        ForEach(OptionsKind.allCases) { kind in
-                            Text(kind.title).tag(kind)
+                Section {
+                    Picker("Options", selection: $viewModel.selectedKind) {
+                        ForEach(OptionsKind.selectableCases) { kind in
+                            Text(kind.displayTitle).tag(kind)
                         }
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.segmented)
                 }
 
                 Section("Add Option") {
                     TextField("Value", text: $addValue)
-                    if viewModel.selectedKind.supportsParent {
+                    if viewModel.selectedKind.supportsNestedOptions {
+                        Toggle("Add as subtype", isOn: $addAsSubtype)
+                    }
+                    let addKind = addAsSubtype ? (viewModel.childKind(for: viewModel.selectedKind) ?? viewModel.selectedKind) : viewModel.selectedKind
+                    if addKind.supportsParent {
                         Picker("Parent", selection: $addParent) {
                             Text("Select Parent").tag("")
-                            ForEach(viewModel.parentChoices, id: \.self) { parent in
+                            ForEach(viewModel.parentChoices(for: addKind), id: \.self) { parent in
                                 Text(parent).tag(parent)
                             }
                         }
                     }
                     Button("Add") {
-                        Task { await viewModel.add(kind: viewModel.selectedKind, value: addValue, parentValue: addParent) }
+                        Task { await viewModel.add(kind: addKind, value: addValue, parentValue: addParent) }
                     }
                 }
 
-                Section("Options") {
-                    ForEach(viewModel.rows, id: \.selfKey) { row in
-                        VStack(alignment: .leading, spacing: 8) {
-                            let rowKey = row.selfKey
-                            HStack {
-                                Text(row.value).font(.headline)
-                                Spacer()
-                                Circle().fill(color(from: row.color) ?? .gray).frame(width: 14, height: 14)
-                            }
-                            if let parent = row.parentValue, !parent.isEmpty {
-                                Text("Parent: \(parent)").font(.footnote).foregroundStyle(.secondary)
-                            }
-                            HStack {
-                                Toggle("Default", isOn: Binding(get: { row.isDefault }, set: { next in
-                                    Task { await viewModel.setDefault(kind: viewModel.selectedKind, value: row.value, isDefault: next, parentValue: row.parentValue) }
-                                }))
-                                if viewModel.supportsTrackingForSelectedKind {
-                                    Toggle("Tracking", isOn: Binding(get: { row.isTracking }, set: { next in
-                                        Task { await viewModel.setTracking(kind: viewModel.selectedKind, value: row.value, isTracking: next, parentValue: row.parentValue) }
-                                    }))
+                if viewModel.selectedKind.supportsNestedOptions || viewModel.selectedKind == .account {
+                    ForEach(viewModel.rowGroups) { group in
+                        Section {
+                            VStack(alignment: .leading, spacing: 10) {
+                                optionEditor(for: group.parent)
+                                ForEach(group.children, id: \.selfKey) { child in
+                                    Divider()
+                                    optionEditor(for: child)
+                                        .padding(.leading, 18)
                                 }
                             }
-                            .font(.footnote)
-
-                            TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
-                            Button("Apply Rename") {
-                                Task {
-                                    await viewModel.rename(
-                                        kind: viewModel.selectedKind,
-                                        value: row.value,
-                                        nextValue: renameByRow[rowKey, default: row.value],
-                                        parentValue: row.parentValue
-                                    )
-                                }
-                            }
-                            .buttonStyle(.bordered)
-
-                            TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
-                            Button("Update Color") {
-                                Task {
-                                    await viewModel.updateColor(
-                                        kind: viewModel.selectedKind,
-                                        value: row.value,
-                                        color: colorByRow[rowKey, default: row.color],
-                                        parentValue: row.parentValue
-                                    )
-                                }
-                            }
-                            .buttonStyle(.bordered)
-
-                            if viewModel.selectedKind == .category || viewModel.selectedKind == .incomeType {
-                                Button("Move to subtype") {
-                                    moveToSubtypeContext = row
-                                    moveTarget = ""
-                                }
-                                .buttonStyle(.bordered)
-                            }
-
-                            if viewModel.selectedKind == .subcategory || viewModel.selectedKind == .incomeSubtype {
-                                HStack {
-                                    Button("Move subtype under parent") {
-                                        moveSubtypeContext = row
-                                        moveSubtypeTargetParent = ""
-                                    }
-                                    .buttonStyle(.bordered)
-
-                                    Button("Promote subtype to parent") {
-                                        promoteSubtypeContext = row
-                                    }
-                                    .buttonStyle(.bordered)
-                                }
-                            }
-
-                            Button("Delete", role: .destructive) {
-                                rowPendingDelete = row
-                            }
-                            .buttonStyle(.bordered)
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 4)
+                    }
+                } else {
+                    Section("Options") {
+                        ForEach(viewModel.rowGroups) { group in
+                            optionEditor(for: group.parent)
+                                .padding(.vertical, 4)
+                        }
                     }
                 }
                 if viewModel.trackingMismatchCount > 0 {
@@ -1613,7 +1663,7 @@ private struct OptionsFeatureView: View {
                 Button("Delete", role: .destructive) {
                     if let row = rowPendingDelete {
                         Task {
-                            await viewModel.remove(kind: viewModel.selectedKind, value: row.value, parentValue: row.parentValue)
+                            await viewModel.remove(kind: row.kind, value: row.value, parentValue: row.parentValue)
                             rowPendingDelete = nil
                         }
                     }
@@ -1625,7 +1675,7 @@ private struct OptionsFeatureView: View {
                     Form {
                         Picker("Target parent", selection: $moveTarget) {
                             Text("Select Parent").tag("")
-                            ForEach(viewModel.moveToSubtypeTargets(excluding: row.value), id: \.self) { value in
+                            ForEach(viewModel.moveToSubtypeTargets(kind: row.kind, excluding: row.value), id: \.self) { value in
                                 Text(value).tag(value)
                             }
                         }
@@ -1638,7 +1688,7 @@ private struct OptionsFeatureView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Move") {
                                 Task {
-                                    await viewModel.moveToSubtype(kind: viewModel.selectedKind, sourceValue: row.value, targetValue: moveTarget)
+                                    await viewModel.moveToSubtype(kind: row.kind, sourceValue: row.value, targetValue: moveTarget)
                                     moveToSubtypeContext = nil
                                 }
                             }
@@ -1652,7 +1702,7 @@ private struct OptionsFeatureView: View {
                     Form {
                         Picker("Target parent", selection: $moveSubtypeTargetParent) {
                             Text("Select Parent").tag("")
-                            ForEach(viewModel.parentChoicesExcluding(row.parentValue), id: \.self) { value in
+                            ForEach(viewModel.parentChoicesExcluding(kind: row.kind, parentValue: row.parentValue), id: \.self) { value in
                                 Text(value).tag(value)
                             }
                         }
@@ -1666,7 +1716,7 @@ private struct OptionsFeatureView: View {
                             Button("Move") {
                                 guard let sourceParent = row.parentValue else { return }
                                 Task {
-                                    await viewModel.moveSubtype(kind: viewModel.selectedKind, value: row.value, sourceParentValue: sourceParent, targetParentValue: moveSubtypeTargetParent)
+                                    await viewModel.moveSubtype(kind: row.kind, value: row.value, sourceParentValue: sourceParent, targetParentValue: moveSubtypeTargetParent)
                                     moveSubtypeContext = nil
                                 }
                             }
@@ -1689,7 +1739,7 @@ private struct OptionsFeatureView: View {
                             Button("Promote") {
                                 guard let sourceParent = row.parentValue else { return }
                                 Task {
-                                    await viewModel.promoteSubtype(kind: viewModel.selectedKind, value: row.value, parentValue: sourceParent)
+                                    await viewModel.promoteSubtype(kind: row.kind, value: row.value, parentValue: sourceParent)
                                     promoteSubtypeContext = nil
                                 }
                             }
@@ -1699,6 +1749,91 @@ private struct OptionsFeatureView: View {
             }
         }
         .task { viewModel.onAppear() }
+        .onChange(of: viewModel.selectedKind) {
+            addAsSubtype = false
+            addParent = ""
+        }
+    }
+
+    @ViewBuilder
+    private func optionEditor(for row: OptionsDisplayRow) -> some View {
+        let rowKey = row.selfKey
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(row.value)
+                    .font(row.indentationLevel == 0 ? .headline : .body)
+                Spacer()
+                Circle().fill(color(from: row.color) ?? .gray).frame(width: 14, height: 14)
+            }
+            if let parent = row.parentValue, !parent.isEmpty {
+                Text("Parent: \(parent)").font(.footnote).foregroundStyle(.secondary)
+            }
+            HStack {
+                Toggle("Default", isOn: Binding(get: { row.isDefault }, set: { next in
+                    Task { await viewModel.setDefault(kind: row.kind, value: row.value, isDefault: next, parentValue: row.parentValue) }
+                }))
+                if viewModel.supportsTracking(kind: row.kind) {
+                    Toggle("Tracking", isOn: Binding(get: { row.isTracking }, set: { next in
+                        Task { await viewModel.setTracking(kind: row.kind, value: row.value, isTracking: next, parentValue: row.parentValue) }
+                    }))
+                }
+            }
+            .font(.footnote)
+
+            TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
+            Button("Apply Rename") {
+                Task {
+                    await viewModel.rename(
+                        kind: row.kind,
+                        value: row.value,
+                        nextValue: renameByRow[rowKey, default: row.value],
+                        parentValue: row.parentValue
+                    )
+                }
+            }
+            .buttonStyle(.bordered)
+
+            TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
+            Button("Update Color") {
+                Task {
+                    await viewModel.updateColor(
+                        kind: row.kind,
+                        value: row.value,
+                        color: colorByRow[rowKey, default: row.color],
+                        parentValue: row.parentValue
+                    )
+                }
+            }
+            .buttonStyle(.bordered)
+
+            if row.kind == .category || row.kind == .incomeType {
+                Button("Move to subtype") {
+                    moveToSubtypeContext = row
+                    moveTarget = ""
+                }
+                .buttonStyle(.bordered)
+            }
+
+            if row.kind == .subcategory || row.kind == .incomeSubtype {
+                HStack {
+                    Button("Move subtype under parent") {
+                        moveSubtypeContext = row
+                        moveSubtypeTargetParent = ""
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("Promote subtype to parent") {
+                        promoteSubtypeContext = row
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
+            Button("Delete", role: .destructive) {
+                rowPendingDelete = row
+            }
+            .buttonStyle(.bordered)
+        }
     }
 
     private func color(from hex: String) -> Color? {
@@ -1716,7 +1851,7 @@ private extension UserOptionRow {
 }
 
 private extension OptionsDisplayRow {
-    var selfKey: String { "\(value)|\(parentValue ?? "")" }
+    var selfKey: String { id }
 }
 
 @MainActor
