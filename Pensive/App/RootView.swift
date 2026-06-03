@@ -22,7 +22,6 @@ struct RootView: View {
 
             case .authenticated(let session):
                 AppShellView(userId: session.userId, api: container.api, onSignOut: authViewModel.signOut)
-                    .accessibilityIdentifier("home_view")
 
             case .authError(let error):
                 VStack(spacing: 12) {

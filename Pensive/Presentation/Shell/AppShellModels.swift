@@ -37,6 +37,31 @@ enum AppTab: String, CaseIterable, Hashable {
         }
     }
 
+    var assetName: String {
+        "lucide-finance-\(rawValue)"
+    }
+
+    var color: Color {
+        switch self {
+        case .expenses:
+            return Color(red: 239.0 / 255.0, green: 68.0 / 255.0, blue: 68.0 / 255.0)
+        case .incomings:
+            return Color(red: 34.0 / 255.0, green: 197.0 / 255.0, blue: 94.0 / 255.0)
+        case .breakdown:
+            return Color(red: 56.0 / 255.0, green: 189.0 / 255.0, blue: 248.0 / 255.0)
+        case .recurrings:
+            return Color(red: 249.0 / 255.0, green: 115.0 / 255.0, blue: 22.0 / 255.0)
+        case .tracking:
+            return Color(red: 168.0 / 255.0, green: 85.0 / 255.0, blue: 247.0 / 255.0)
+        case .notepad:
+            return Color(red: 234.0 / 255.0, green: 179.0 / 255.0, blue: 8.0 / 255.0)
+        case .options:
+            return Color(red: 236.0 / 255.0, green: 72.0 / 255.0, blue: 153.0 / 255.0)
+        case .user:
+            return Color(red: 100.0 / 255.0, green: 116.0 / 255.0, blue: 139.0 / 255.0)
+        }
+    }
+
     static let defaultTab: AppTab = .expenses
 }
 

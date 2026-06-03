@@ -15,6 +15,8 @@ final class PensiveUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.otherElements["root_view"].waitForExistence(timeout: 10))
+        XCTAssertTrue(element(id: "shell_navigation_menu", app: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(element(id: "tab_expenses", app: app).waitForExistence(timeout: 10))
     }
 
     func testTrackingRowPersistsStartMonthAndBufferWithinSession() {
@@ -77,32 +79,25 @@ final class PensiveUITests: XCTestCase {
     private func openTab(named tabName: String, app: XCUIApplication) {
         dismissBlockingAlertIfPresent(app)
 
-        let raw = tabName.lowercased()
-        let tabByID = app.tabBars.buttons["tab_\(raw)"]
-        if tabByID.waitForExistence(timeout: 1) {
-            tabByID.tap()
+        let raw = normalizedTabName(tabName)
+        if element(id: "tab_\(raw)", app: app).waitForExistence(timeout: 0.5) {
             return
         }
 
-        let direct = app.tabBars.buttons[tabName]
-        if direct.waitForExistence(timeout: 1) {
-            direct.tap()
-            return
+        let menu = element(id: "shell_navigation_menu", app: app)
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        menu.tap()
+
+        let menuItemByID = element(id: "menu_tab_\(raw)", app: app)
+        if menuItemByID.waitForExistence(timeout: 2) {
+            menuItemByID.tap()
+        } else {
+            let menuItemByTitle = app.buttons[tabName]
+            XCTAssertTrue(menuItemByTitle.waitForExistence(timeout: 2))
+            menuItemByTitle.tap()
         }
 
-        for _ in 0 ..< 3 {
-            let more = app.tabBars.buttons["More"]
-            if more.waitForExistence(timeout: 1) {
-                more.tap()
-            }
-            if tapOverflowTab(named: tabName, app: app) {
-                return
-            }
-            scrollOverflowList(app: app)
-            dismissBlockingAlertIfPresent(app)
-        }
-
-        XCTFail("Could not open tab named \(tabName)")
+        XCTAssertTrue(element(id: "tab_\(raw)", app: app).waitForExistence(timeout: 10))
     }
 
     private func dismissBlockingAlertIfPresent(_ app: XCUIApplication) {
@@ -117,29 +112,11 @@ final class PensiveUITests: XCTestCase {
         }
     }
 
-    private func tapOverflowTab(named tabName: String, app: XCUIApplication) -> Bool {
-        let predicate = NSPredicate(format: "label == %@", tabName)
-        let match = app.descendants(matching: .any).matching(predicate).firstMatch
-        if match.waitForExistence(timeout: 1), match.isHittable {
-            match.tap()
-            return true
-        }
-        return false
+    private func normalizedTabName(_ tabName: String) -> String {
+        tabName.lowercased().replacingOccurrences(of: " ", with: "")
     }
 
-    private func scrollOverflowList(app: XCUIApplication) {
-        if app.tables.firstMatch.exists {
-            app.tables.firstMatch.swipeUp()
-            return
-        }
-        if app.collectionViews.firstMatch.exists {
-            app.collectionViews.firstMatch.swipeUp()
-            return
-        }
-        if app.scrollViews.firstMatch.exists {
-            app.scrollViews.firstMatch.swipeUp()
-            return
-        }
-        app.swipeUp()
+    private func element(id: String, app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)[id]
     }
 }

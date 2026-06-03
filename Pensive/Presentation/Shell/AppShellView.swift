@@ -2056,19 +2056,27 @@ struct AppShellView: View {
     @StateObject private var quickAddVM = QuickAddFormViewModel()
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ForEach(AppTab.allCases, id: \.self) { tab in
-                NavigationStack(path: binding(for: tab)) {
-                    FeatureRootView(tab: tab, userId: userId, api: api, onSignOut: onSignOut) {
-                        quickAddPresented = true
-                    }
+        ZStack(alignment: .topLeading) {
+            NavigationStack(path: binding(for: selectedTab)) {
+                FeatureRootView(tab: selectedTab, userId: userId, api: api, onSignOut: onSignOut) {
+                    quickAddPresented = true
                 }
-                .tabItem {
-                    Label(tab.title, systemImage: tab.systemImage)
-                }
-                .tag(tab)
-                .accessibilityIdentifier("tab_\(tab.rawValue)")
             }
+            .id(selectedTab)
+            .accessibilityIdentifier("tab_\(selectedTab.rawValue)")
+
+            ShellNavigationMenu(selectedTab: $selectedTab)
+                .padding(.leading, 12)
+                .padding(.top, 2)
+
+            Rectangle()
+                .fill(.clear)
+                .frame(width: 1, height: 1)
+                .accessibilityElement(children: .ignore)
+                .accessibilityIdentifier("tab_\(selectedTab.rawValue)")
+                .accessibilityLabel(selectedTab.title)
+                .accessibilityHidden(false)
+                .allowsHitTesting(false)
         }
         .sheet(isPresented: $quickAddPresented, onDismiss: {
             quickAddVM.reset()
@@ -2170,6 +2178,75 @@ struct AppShellView: View {
         case .options: optionsPathData = value
         case .user: userPathData = value
         }
+    }
+}
+
+private struct ShellNavigationMenu: View {
+    @Binding var selectedTab: AppTab
+
+    var body: some View {
+        Menu {
+            Button {
+                selectedTab = selectedTab
+            } label: {
+                Label(menuTitle(for: selectedTab), image: selectedTab.assetName)
+            }
+            .accessibilityIdentifier("menu_tab_\(selectedTab.rawValue)")
+
+            Divider()
+
+            ForEach(AppTab.allCases.filter { $0 != selectedTab }, id: \.self) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Label(menuTitle(for: tab), image: tab.assetName)
+                }
+                .accessibilityIdentifier("menu_tab_\(tab.rawValue)")
+            }
+        } label: {
+            Image(selectedTab.assetName)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(selectedTab.color)
+                .frame(width: 48, height: 48)
+                .shellNavigationGlassCircle()
+                .contentShape(Circle())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Navigation Menu")
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("shell_navigation_menu")
+        .accessibilityLabel("Navigation Menu")
+    }
+
+    private func menuTitle(for tab: AppTab) -> String {
+        tab == .user ? "Sign Out" : tab.title
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func shellNavigationGlassCircle() -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            self.glassEffect(.regular.interactive(), in: Circle())
+        } else {
+            shellNavigationMaterialCircle()
+        }
+        #else
+        shellNavigationMaterialCircle()
+        #endif
+    }
+
+    func shellNavigationMaterialCircle() -> some View {
+        background(.ultraThinMaterial, in: Circle())
+            .overlay(
+                Circle()
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
     }
 }
 
