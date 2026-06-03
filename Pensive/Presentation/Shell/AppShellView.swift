@@ -1031,10 +1031,12 @@ private struct TrackingFeatureView: View {
     }
 
     private func toggleExpanded(_ id: String) {
-        if expandedRowIDs.contains(id) {
-            expandedRowIDs.remove(id)
-        } else {
-            expandedRowIDs.insert(id)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            if expandedRowIDs.contains(id) {
+                expandedRowIDs.remove(id)
+            } else {
+                expandedRowIDs.insert(id)
+            }
         }
     }
 }
@@ -1054,9 +1056,11 @@ private struct TrackingTimelineRowCard: View {
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
                 Spacer()
                 Button(action: onToggleExpanded) {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    Image(systemName: "chevron.down")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
                 }
                 .buttonStyle(.plain)
             }
@@ -1109,6 +1113,7 @@ private struct TrackingTimelineRowCard: View {
             }
         }
         .padding(.bottom, isExpanded ? 0 : 8)
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
     }
 }
 
