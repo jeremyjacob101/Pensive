@@ -162,65 +162,6 @@ export const setStatus = mutation({
   },
 });
 
-export const cleanupRecurringKindFields = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await requireUserId(ctx);
-    const rows = await ctx.db
-      .query("recurrings")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .collect();
-    for (const row of rows) {
-      await ctx.db.patch(
-        row._id,
-        row.kind === "expense"
-          ? {
-              recurringIncomingPaidBy: undefined,
-              recurringIncomingType: undefined,
-              recurringIncomingSubtype: undefined,
-              recurringIncomingAccount: undefined,
-            }
-          : {
-              recurringExpenseAccount: undefined,
-              recurringExpenseCategory: undefined,
-              recurringExpenseSubcategory: undefined,
-              recurringExpensePaidTo: undefined,
-            },
-      );
-    }
-    return { updated: rows.length };
-  },
-});
-
-export const cleanupRecurringKindFieldsForUser = internalMutation({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const rows = await ctx.db
-      .query("recurrings")
-      .withIndex("by_user_id", (q) => q.eq("userId", userId))
-      .collect();
-    for (const row of rows) {
-      await ctx.db.patch(
-        row._id,
-        row.kind === "expense"
-          ? {
-              recurringIncomingPaidBy: undefined,
-              recurringIncomingType: undefined,
-              recurringIncomingSubtype: undefined,
-              recurringIncomingAccount: undefined,
-            }
-          : {
-              recurringExpenseAccount: undefined,
-              recurringExpenseCategory: undefined,
-              recurringExpenseSubcategory: undefined,
-              recurringExpensePaidTo: undefined,
-            },
-      );
-    }
-    return { updated: rows.length };
-  },
-});
-
 function formatJerusalemNow() {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
