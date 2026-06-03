@@ -1056,10 +1056,10 @@ private struct TrackingTimelineRowCard: View {
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
                 Spacer()
                 Button(action: onToggleExpanded) {
-                    Image(systemName: "chevron.down")
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .contentTransition(.symbolEffect(.replace))
                         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
                 }
                 .buttonStyle(.plain)
@@ -1578,6 +1578,7 @@ private struct OptionsFeatureView: View {
     @State private var promoteSubtypeContext: OptionsDisplayRow?
     @State private var moveTarget = ""
     @State private var moveSubtypeTargetParent = ""
+    @State private var expandedAccountIDs: Set<String> = []
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -1614,7 +1615,15 @@ private struct OptionsFeatureView: View {
                     }
                 }
 
-                if viewModel.selectedKind.supportsNestedOptions || viewModel.selectedKind == .account {
+                if viewModel.selectedKind == .account {
+                    ForEach(viewModel.rowGroups) { group in
+                        Section {
+                            accountCard(for: group.parent)
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowBackground(Color.clear)
+                    }
+                } else if viewModel.selectedKind.supportsNestedOptions {
                     ForEach(viewModel.rowGroups) { group in
                         Section {
                             VStack(alignment: .leading, spacing: 10) {
@@ -1656,6 +1665,7 @@ private struct OptionsFeatureView: View {
                 }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(viewModel.selectedKind == .account ? .compact : .default)
             .navigationTitle("Options")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
@@ -1752,7 +1762,88 @@ private struct OptionsFeatureView: View {
         .onChange(of: viewModel.selectedKind) {
             addAsSubtype = false
             addParent = ""
+            expandedAccountIDs.removeAll()
         }
+    }
+
+    @ViewBuilder
+    private func accountCard(for row: OptionsDisplayRow) -> some View {
+        let rowKey = row.selfKey
+        let accountColor = color(from: row.color) ?? .gray
+        let isExpanded = expandedAccountIDs.contains(row.id)
+
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                    if isExpanded {
+                        expandedAccountIDs.remove(row.id)
+                    } else {
+                        expandedAccountIDs.insert(row.id)
+                    }
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(accountColor)
+                        .frame(width: 12, height: 12)
+                    Text(row.value)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
+                }
+                .frame(minHeight: 34)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    Divider()
+                    TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
+                    Button("Apply Rename") {
+                        Task {
+                            await viewModel.rename(
+                                kind: row.kind,
+                                value: row.value,
+                                nextValue: renameByRow[rowKey, default: row.value],
+                                parentValue: row.parentValue
+                            )
+                        }
+                    }
+                    .buttonStyle(.bordered)
+
+                    TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
+                    Button("Update Color") {
+                        Task {
+                            await viewModel.updateColor(
+                                kind: row.kind,
+                                value: row.value,
+                                color: colorByRow[rowKey, default: row.color],
+                                parentValue: row.parentValue
+                            )
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 18)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(accountColor, lineWidth: 1.5)
+        )
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
     }
 
     @ViewBuilder
