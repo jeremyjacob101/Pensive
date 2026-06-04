@@ -204,7 +204,7 @@ export const materializeDueExpensesForUser = internalMutation({
   },
 });
 
-export const materializeDueExpensesForAllUsers = internalMutation({
+export const materializeDueExpensesForAllUsers = mutation({
   args: { runDate: v.string() },
   handler: async (ctx, { runDate }) => {
     const day = parseDay(runDate);
