@@ -59,6 +59,54 @@ final class SessionStoreAuthRefreshTests: XCTestCase {
         XCTAssertEqual(tokenStore.currentRefreshToken, "new-refresh")
     }
 
+    func testRecoverProtectedSessionUsesSessionWhenRefreshResponseHasNoUserId() async throws {
+        let tokenStore = InMemoryAuthTokenStore(accessToken: "expired-access", refreshToken: "valid-refresh")
+        let authAPI = MockAuthAPI(
+            sessionResponses: [
+                .init(authenticated: true, userId: "alice", token: nil, refreshToken: nil),
+            ],
+            refreshResponse: .init(authenticated: true, userId: nil, token: "new-access", refreshToken: "new-refresh")
+        )
+        let store = SessionStore(authAPI: authAPI, tokenStore: tokenStore)
+
+        let authenticated = expectation(description: "Transitions using the follow-up session response")
+        store.onStateChange = { state in
+            if case .authenticated(let session) = state, session.userId == "alice" {
+                authenticated.fulfill()
+            }
+        }
+
+        let recovered = await store.recoverProtectedSession()
+        await fulfillment(of: [authenticated], timeout: 2.0)
+
+        XCTAssertTrue(recovered)
+        XCTAssertEqual(authAPI.refreshCallCount, 1)
+        XCTAssertEqual(authAPI.sessionCallCount, 1)
+        XCTAssertEqual(tokenStore.currentToken, "new-access")
+        XCTAssertEqual(tokenStore.currentRefreshToken, "new-refresh")
+    }
+
+    func testConcurrentProtectedRecoverySharesSingleRefresh() async throws {
+        let tokenStore = InMemoryAuthTokenStore(accessToken: "expired-access", refreshToken: "valid-refresh")
+        let authAPI = MockAuthAPI(
+            sessionResponses: [],
+            refreshResponse: .init(authenticated: true, userId: "alice", token: "new-access", refreshToken: "new-refresh"),
+            refreshDelayNanoseconds: 100_000_000
+        )
+        let store = SessionStore(authAPI: authAPI, tokenStore: tokenStore)
+
+        async let first = store.recoverProtectedSession()
+        async let second = store.recoverProtectedSession()
+
+        let (firstRecovered, secondRecovered) = await (first, second)
+
+        XCTAssertTrue(firstRecovered)
+        XCTAssertTrue(secondRecovered)
+        XCTAssertEqual(authAPI.refreshCallCount, 1)
+        XCTAssertEqual(tokenStore.currentToken, "new-access")
+        XCTAssertEqual(tokenStore.currentRefreshToken, "new-refresh")
+    }
+
     func testRecoverProtectedSessionClearsTokensWhenRefreshTokenIsRevoked() async throws {
         let tokenStore = InMemoryAuthTokenStore(accessToken: "expired-access", refreshToken: "revoked-refresh")
         let authAPI = MockAuthAPI(
@@ -104,12 +152,20 @@ private final class MockAuthAPI: AuthAPI {
     private var sessionResponses: [SessionResponse]
     private let refreshResult: SessionResponse
     private let refreshError: Error?
+    private let refreshDelayNanoseconds: UInt64?
     private(set) var refreshCallCount = 0
+    private(set) var sessionCallCount = 0
 
-    init(sessionResponses: [SessionResponse], refreshResponse: SessionResponse, refreshError: Error? = nil) {
+    init(
+        sessionResponses: [SessionResponse],
+        refreshResponse: SessionResponse,
+        refreshError: Error? = nil,
+        refreshDelayNanoseconds: UInt64? = nil
+    ) {
         self.sessionResponses = sessionResponses
         self.refreshResult = refreshResponse
         self.refreshError = refreshError
+        self.refreshDelayNanoseconds = refreshDelayNanoseconds
     }
 
     func signIn(_ request: SignInRequest) async throws -> SessionResponse {
@@ -122,6 +178,9 @@ private final class MockAuthAPI: AuthAPI {
 
     func refresh(refreshToken: String) async throws -> SessionResponse {
         refreshCallCount += 1
+        if let refreshDelayNanoseconds {
+            try? await Task.sleep(nanoseconds: refreshDelayNanoseconds)
+        }
         if let refreshError {
             throw refreshError
         }
@@ -131,6 +190,7 @@ private final class MockAuthAPI: AuthAPI {
     func signOut() async throws {}
 
     func session() async throws -> SessionResponse {
+        sessionCallCount += 1
         guard !sessionResponses.isEmpty else {
             return .init(authenticated: false, userId: nil, token: nil, refreshToken: nil)
         }

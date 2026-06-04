@@ -25,6 +25,8 @@ final class SessionStore: SessionStoring {
 
     private var bootstrapTask: Task<Void, Never>?
     private var authTask: Task<Void, Never>?
+    private var recoveryTask: (id: Int, task: Task<Bool, Never>)?
+    private var nextRecoveryTaskID = 0
 
     init(
         authAPI: AuthAPI,
@@ -98,6 +100,7 @@ final class SessionStore: SessionStoring {
 
         stateQueue.sync {
             authTask?.cancel()
+            cancelRecoveryTaskLocked()
             transition(to: .authenticating)
 
             authTask = Task { [weak self] in
@@ -143,6 +146,7 @@ final class SessionStore: SessionStoring {
     func signOut() {
         stateQueue.sync {
             authTask?.cancel()
+            cancelRecoveryTaskLocked()
             authTask = Task { [weak self] in
                 guard let self else { return }
                 defer { self.stateQueue.sync { self.authTask = nil } }
@@ -170,6 +174,31 @@ final class SessionStore: SessionStoring {
     }
 
     func recoverProtectedSession() async -> Bool {
+        let recovery = stateQueue.sync { () -> (id: Int, task: Task<Bool, Never>) in
+            if let recoveryTask {
+                return recoveryTask
+            }
+
+            let id = nextRecoveryTaskID
+            nextRecoveryTaskID += 1
+            let task = Task { [weak self] in
+                guard let self else { return false }
+                return await self.performProtectedSessionRecovery()
+            }
+            recoveryTask = (id, task)
+            return (id, task)
+        }
+
+        let recovered = await recovery.task.value
+        stateQueue.sync {
+            if recoveryTask?.id == recovery.id {
+                recoveryTask = nil
+            }
+        }
+        return recovered
+    }
+
+    private func performProtectedSessionRecovery() async -> Bool {
         guard let refreshToken = tokenStore.currentRefreshToken, !refreshToken.isEmpty else {
             expireSession()
             return false
@@ -177,12 +206,14 @@ final class SessionStore: SessionStoring {
 
         do {
             let response = try await refreshSession(using: refreshToken)
+            guard !Task.isCancelled else { return false }
             authMessage = nil
             if response.authenticated, let userId = response.userId, !userId.isEmpty {
                 transition(to: .authenticated(UserSession(userId: userId, establishedAt: Date())))
             }
             return tokenStore.currentToken?.isEmpty == false
         } catch {
+            if Task.isCancelled { return false }
             if let apiError = error as? APIError, apiError == .unauthorized {
                 expireSession()
             } else {
@@ -190,6 +221,11 @@ final class SessionStore: SessionStoring {
             }
             return false
         }
+    }
+
+    private func cancelRecoveryTaskLocked() {
+        recoveryTask?.task.cancel()
+        recoveryTask = nil
     }
 
     private func clearSessionArtifacts() {
