@@ -77,6 +77,7 @@ struct PaginationOpts: Codable {
 struct PaginationRequest: Codable { let paginationOpts: PaginationOpts }
 struct PaginatedResponse<T: Decodable>: Decodable { let page: [T]; let isDone: Bool; let continueCursor: String? }
 struct AccountExpensesRequest: Codable { let account: String; let paginationOpts: PaginationOpts }
+struct AccountIncomingsRequest: Codable { let account: String; let paginationOpts: PaginationOpts }
 
 // MARK: - Protocols
 
@@ -116,6 +117,7 @@ protocol ExpensesAPI {
 }
 
 protocol IncomingsAPI {
+    func listByAccount(_ request: AccountIncomingsRequest) async throws -> PaginatedResponse<IncomingDTO>
     func listByDateScope(_ request: DateScopeRequest) async throws -> [IncomingDTO]
     func monthBounds() async throws -> MonthBoundsResponse
     func create(_ request: IncomingMutationDTO) async throws -> DocumentID<ConvexEntity.Incoming>
@@ -525,6 +527,7 @@ private final class IncomingsClient: IncomingsAPI {
     private let client: HTTPClientProtocol
     init(client: HTTPClientProtocol) { self.client = client }
 
+    func listByAccount(_ request: AccountIncomingsRequest) async throws -> PaginatedResponse<IncomingDTO> { try await client.send(Req.query("api/incomings/list-by-account"), body: request) }
     func listByDateScope(_ request: DateScopeRequest) async throws -> [IncomingDTO] { try await client.send(Req.query("api/incomings/list-by-date-scope"), body: request) }
     func monthBounds() async throws -> MonthBoundsResponse { try await client.send(Req.get("api/incomings/month-bounds"), body: Optional<EmptyBody>.none) }
     func create(_ request: IncomingMutationDTO) async throws -> DocumentID<ConvexEntity.Incoming> { DocumentID(try await client.send(Req.mutation("api/incomings/create"), body: request) as String) }

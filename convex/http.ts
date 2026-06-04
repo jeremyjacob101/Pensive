@@ -206,6 +206,9 @@ routePost("/api/expenses/unlink-expense-from-partners", (ctx, body) =>
 routeGet("/api/incomings/month-bounds", (ctx) =>
   ctx.runQuery(api.incomings.monthBounds, {}),
 );
+routePost("/api/incomings/list-by-account", (ctx, body) =>
+  ctx.runQuery(api.incomings.listByAccount, body),
+);
 routePost("/api/incomings/list-by-date-scope", (ctx, body) =>
   ctx.runQuery(api.incomings.listByDateScope, body),
 );

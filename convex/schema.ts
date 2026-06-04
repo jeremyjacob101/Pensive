@@ -68,6 +68,7 @@ export default defineSchema({
     subIncomingId: v.optional(v.string()),
   })
     .index("by_user_id_date", ["userId", "date"])
+    .index("by_user_account_date", ["userId", "account", "date"])
     .index("by_user_id", ["userId"])
     .index("by_incoming_id", ["incomingId"])
     .index("by_user_base_incoming_id", ["userId", "baseIncomingId"])

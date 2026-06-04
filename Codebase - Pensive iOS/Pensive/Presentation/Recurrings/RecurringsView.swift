@@ -6,6 +6,7 @@ private struct RowID: Identifiable {
 
 struct RecurringsFeatureView: View {
     @StateObject private var viewModel: RecurringsFeatureViewModel
+    @State private var selectedKind: RecurringKind = .expense
     @State private var showCreate = false
     @State private var editingID: RowID?
     @State private var deleteID: String?
@@ -17,24 +18,20 @@ struct RecurringsFeatureView: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
-                Section("Expenses") {
-                    if viewModel.expenseRows.isEmpty {
-                        Text("No expense recurrings")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(viewModel.expenseRows) { row in
-                        recurringRow(row)
-                    }
+                Picker("Kind", selection: $selectedKind) {
+                    Text("Expenses").tag(RecurringKind.expense)
+                    Text("Incomings").tag(RecurringKind.incoming)
+                }
+                .pickerStyle(.segmented)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+
+                if selectedRows.isEmpty {
+                    Text(selectedKind == .expense ? "No expense recurrings" : "No incoming recurrings")
+                        .foregroundStyle(.secondary)
                 }
 
-                Section("Incomings") {
-                    if viewModel.incomingRows.isEmpty {
-                        Text("No incoming recurrings")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(viewModel.incomingRows) { row in
-                        recurringRow(row)
-                    }
+                ForEach(selectedRows) { row in
+                    recurringRow(row)
                 }
             }
             .refreshable { await viewModel.refresh() }
@@ -47,24 +44,7 @@ struct RecurringsFeatureView: View {
                 RecurringEditorSheet(
                     viewModel: viewModel,
                     mode: .create,
-                    initialDraft: .init(
-                        id: nil,
-                        status: "active",
-                        kind: .expense,
-                        name: "",
-                        amount: 0,
-                        frequency: "monthly",
-                        dayOfMonth: 1,
-                        recurringExpenseAccount: nil,
-                        recurringExpenseCategory: nil,
-                        recurringExpenseSubcategory: nil,
-                        recurringExpensePaidTo: nil,
-                        recurringIncomingPaidBy: nil,
-                        recurringIncomingType: nil,
-                        recurringIncomingSubtype: nil,
-                        recurringIncomingAccount: nil,
-                        notes: nil
-                    )
+                    initialDraft: newDraft(kind: selectedKind)
                 )
             }
             .sheet(item: $editingID) { id in
@@ -88,6 +68,31 @@ struct RecurringsFeatureView: View {
         }
         .navigationTitle("Recurrings")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var selectedRows: [RecurringItemViewData] {
+        selectedKind == .expense ? viewModel.expenseRows : viewModel.incomingRows
+    }
+
+    private func newDraft(kind: RecurringKind) -> RecurringEditorDraft {
+        .init(
+            id: nil,
+            status: "active",
+            kind: kind,
+            name: "",
+            amount: 0,
+            frequency: "monthly",
+            dayOfMonth: 1,
+            recurringExpenseAccount: nil,
+            recurringExpenseCategory: nil,
+            recurringExpenseSubcategory: nil,
+            recurringExpensePaidTo: nil,
+            recurringIncomingPaidBy: nil,
+            recurringIncomingType: nil,
+            recurringIncomingSubtype: nil,
+            recurringIncomingAccount: nil,
+            notes: nil
+        )
     }
 
     private func recurringRow(_ row: RecurringItemViewData) -> some View {
