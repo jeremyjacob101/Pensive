@@ -8,7 +8,20 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+node_modules.
+.node_modules
+.node_modules.
+/node_modules
+node_modules/
+/node_modules/
+
 dist
+.dist
+dist.
+.dist.
+/dist/
+/dist
+dist/
 dist-ssr
 *.local
 
@@ -33,6 +46,7 @@ Codebase - Pensive iOS/Config/Local.xcconfig
 *.tsbuildinfo
 
 .env
+.env.*
 .env.example
 env
 env.
