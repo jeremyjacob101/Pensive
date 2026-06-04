@@ -1771,6 +1771,7 @@ private struct OptionsFeatureView: View {
     private func accountCard(for row: OptionsDisplayRow) -> some View {
         let rowKey = row.selfKey
         let accountColor = color(from: row.color) ?? .gray
+        let cardFill = accountColor.opacity(0.14)
         let isExpanded = expandedAccountIDs.contains(row.id)
 
         VStack(alignment: .leading, spacing: 10) {
@@ -1818,8 +1819,12 @@ private struct OptionsFeatureView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
-                    Button("Update Color") {
+                    ColorPicker(
+                        "Color",
+                        selection: colorSelectionBinding(for: row),
+                        supportsOpacity: false
+                    )
+                    Button("Save Color") {
                         Task {
                             await viewModel.updateColor(
                                 kind: row.kind,
@@ -1838,11 +1843,11 @@ private struct OptionsFeatureView: View {
         .padding(.vertical, 18)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                .fill(cardFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(accountColor, lineWidth: 1.5)
+                .strokeBorder(accountColor.opacity(0.55), lineWidth: 1)
         )
         .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
     }
@@ -1935,6 +1940,28 @@ private struct OptionsFeatureView: View {
         let green = Double((value >> 8) & 0xff) / 255.0
         let blue = Double(value & 0xff) / 255.0
         return Color(red: red, green: green, blue: blue)
+    }
+
+    private func colorSelectionBinding(for row: OptionsDisplayRow) -> Binding<Color> {
+        let rowKey = row.selfKey
+        return Binding(
+            get: { color(from: colorByRow[rowKey, default: row.color]) ?? .gray },
+            set: { colorByRow[rowKey] = hex(from: $0) ?? row.color }
+        )
+    }
+
+    private func hex(from color: Color) -> String? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        return String(
+            format: "#%02X%02X%02X",
+            Int(red * 255),
+            Int(green * 255),
+            Int(blue * 255)
+        )
     }
 }
 
