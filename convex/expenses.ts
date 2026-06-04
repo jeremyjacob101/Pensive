@@ -145,6 +145,23 @@ export const list = query({
   },
 });
 
+export const listByAccount = query({
+  args: {
+    account: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { account, paginationOpts }) => {
+    const userId = await requireUserId(ctx);
+    const numItems = Math.min(paginationOpts.numItems, 20);
+    return await ctx.db
+      .query("expenses")
+      .withIndex("by_user_account_date", (q) =>
+        q.eq("userId", userId).eq("account", account))
+      .order("desc")
+      .paginate({ ...paginationOpts, numItems });
+  },
+});
+
 export const listByDateScope = query({
   args: {
     startDate: v.string(),

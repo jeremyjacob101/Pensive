@@ -167,6 +167,7 @@ http.route({
 
 // Expenses
 routeGet("/api/expenses/month-bounds", (ctx) => ctx.runQuery(api.expenses.monthBounds, {}));
+routePost("/api/expenses/list-by-account", (ctx, body) => ctx.runQuery(api.expenses.listByAccount, body));
 routePost("/api/expenses/list-by-date-scope", (ctx, body) => ctx.runQuery(api.expenses.listByDateScope, body));
 routePost("/api/expenses/create", (ctx, body) => ctx.runMutation(api.expenses.create, body));
 routePost("/api/expenses/update", (ctx, body) => ctx.runMutation(api.expenses.update, body));

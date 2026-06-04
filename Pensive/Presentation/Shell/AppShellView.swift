@@ -1210,9 +1210,14 @@ private final class OptionsViewModel: ObservableObject {
     @Published var inlineError: String?
     @Published var successText: String?
     @Published private(set) var trackingMismatchCount: Int = 0
+    @Published private(set) var accountExpenses: [String: [ExpenseDTO]] = [:]
+    @Published private(set) var loadingAccountExpenseIDs: Set<String> = []
+    @Published private(set) var accountExpenseErrors: [String: String] = [:]
 
     private let api: ConvexAPI
     private var trackedKeysFromTrackingRows: Set<String> = []
+    private var accountExpenseCursors: [String: String?] = [:]
+    private var accountExpenseIsDone: Set<String> = []
 
     init(api: ConvexAPI) {
         self.api = api
@@ -1247,6 +1252,56 @@ private final class OptionsViewModel: ObservableObject {
                 state = .error(message: "Failed to load options")
             }
         }
+    }
+
+    func loadInitialExpenses(for row: OptionsDisplayRow) async {
+        accountExpenses[row.selfKey] = []
+        accountExpenseCursors[row.selfKey] = nil
+        accountExpenseIsDone.remove(row.selfKey)
+        accountExpenseErrors[row.selfKey] = nil
+        await loadMoreExpenses(for: row)
+    }
+
+    func loadMoreExpenses(for row: OptionsDisplayRow) async {
+        let key = row.selfKey
+        guard !loadingAccountExpenseIDs.contains(key), !accountExpenseIsDone.contains(key) else { return }
+        loadingAccountExpenseIDs.insert(key)
+        defer { loadingAccountExpenseIDs.remove(key) }
+
+        do {
+            let page = try await api.expenses.listByAccount(.init(
+                account: row.value,
+                paginationOpts: .init(cursor: accountExpenseCursors[key] ?? nil, numItems: 20)
+            ))
+            accountExpenses[key, default: []].append(contentsOf: page.page)
+            accountExpenseCursors[key] = page.continueCursor
+            if page.isDone {
+                accountExpenseIsDone.insert(key)
+            }
+            accountExpenseErrors[key] = nil
+        } catch {
+            accountExpenseErrors[key] = "Failed to load account expenses."
+        }
+    }
+
+    func hasLoadedExpenses(for row: OptionsDisplayRow) -> Bool {
+        accountExpenses[row.selfKey] != nil
+    }
+
+    func expenses(for row: OptionsDisplayRow) -> [ExpenseDTO] {
+        accountExpenses[row.selfKey] ?? []
+    }
+
+    func isLoadingExpenses(for row: OptionsDisplayRow) -> Bool {
+        loadingAccountExpenseIDs.contains(row.selfKey)
+    }
+
+    func isDoneLoadingExpenses(for row: OptionsDisplayRow) -> Bool {
+        accountExpenseIsDone.contains(row.selfKey)
+    }
+
+    func expenseError(for row: OptionsDisplayRow) -> String? {
+        accountExpenseErrors[row.selfKey]
     }
 
     var parentChoices: [String] {
@@ -1577,9 +1632,10 @@ private struct OptionsFeatureView: View {
     @State private var moveToSubtypeContext: OptionsDisplayRow?
     @State private var moveSubtypeContext: OptionsDisplayRow?
     @State private var promoteSubtypeContext: OptionsDisplayRow?
+    @State private var accountEditorContext: OptionsDisplayRow?
     @State private var moveTarget = ""
     @State private var moveSubtypeTargetParent = ""
-    @State private var expandedAccountIDs: Set<String> = []
+    @State private var selectedAccountID: String?
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -1617,13 +1673,30 @@ private struct OptionsFeatureView: View {
                 }
 
                 if viewModel.selectedKind == .account {
-                    ForEach(viewModel.rowGroups) { group in
-                        Section {
-                            accountCard(for: group.parent)
+                    Section("Accounts") {
+                        VStack(spacing: -18) {
+                            ForEach(Array(viewModel.rowGroups.enumerated()), id: \.element.id) { index, group in
+                                VStack(spacing: 0) {
+                                    accountStackCard(
+                                        for: group.parent,
+                                        index: index,
+                                        isSelected: selectedAccountID == group.parent.id
+                                    )
+                                    .zIndex(Double(viewModel.rowGroups.count - index))
+
+                                    if selectedAccountID == group.parent.id {
+                                        accountExpenseFeed(for: group.parent)
+                                            .padding(.top, 8)
+                                            .padding(.bottom, 24)
+                                            .transition(.opacity.combined(with: .move(edge: .top)))
+                                    }
+                                }
+                            }
                         }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
-                        .listRowBackground(Color.clear)
+                        .padding(.vertical, 8)
                     }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(Color.clear)
                 } else if viewModel.selectedKind.supportsNestedOptions {
                     ForEach(viewModel.rowGroups) { group in
                         Section {
@@ -1758,98 +1831,208 @@ private struct OptionsFeatureView: View {
                     }
                 }
             }
+            .sheet(item: $accountEditorContext) { row in
+                NavigationStack {
+                    Form {
+                        Section(row.value) {
+                            TextField("Rename", text: Binding(get: { renameByRow[row.selfKey, default: row.value] }, set: { renameByRow[row.selfKey] = $0 }))
+                            ColorPicker(
+                                "Color",
+                                selection: colorSelectionBinding(for: row),
+                                supportsOpacity: false
+                            )
+                        }
+
+                        Section {
+                            Button("Apply Rename") {
+                                Task {
+                                    await viewModel.rename(
+                                        kind: row.kind,
+                                        value: row.value,
+                                        nextValue: renameByRow[row.selfKey, default: row.value],
+                                        parentValue: row.parentValue
+                                    )
+                                    accountEditorContext = nil
+                                }
+                            }
+
+                            Button("Save Color") {
+                                Task {
+                                    await viewModel.updateColor(
+                                        kind: row.kind,
+                                        value: row.value,
+                                        color: colorByRow[row.selfKey, default: row.color],
+                                        parentValue: row.parentValue
+                                    )
+                                    accountEditorContext = nil
+                                }
+                            }
+
+                            Button("Delete Account", role: .destructive) {
+                                rowPendingDelete = row
+                                accountEditorContext = nil
+                            }
+                        }
+                    }
+                    .navigationTitle("Edit Account")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .presentationDetents([.medium])
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") { accountEditorContext = nil }
+                        }
+                    }
+                }
+            }
         }
         .task { viewModel.onAppear() }
         .onChange(of: viewModel.selectedKind) {
             addAsSubtype = false
             addParent = ""
-            expandedAccountIDs.removeAll()
+            accountEditorContext = nil
+            selectedAccountID = nil
         }
     }
 
     @ViewBuilder
-    private func accountCard(for row: OptionsDisplayRow) -> some View {
-        let rowKey = row.selfKey
+    private func accountStackCard(for row: OptionsDisplayRow, index: Int, isSelected: Bool) -> some View {
         let accountColor = color(from: row.color) ?? .gray
-        let cardFill = accountColor.opacity(0.14)
-        let isExpanded = expandedAccountIDs.contains(row.id)
+        let cardFill = accountColor.opacity(isSelected ? 0.28 : 0.20)
 
-        VStack(alignment: .leading, spacing: 10) {
-            Button {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-                    if isExpanded {
-                        expandedAccountIDs.remove(row.id)
-                    } else {
-                        expandedAccountIDs.insert(row.id)
-                    }
-                }
-            } label: {
-                HStack(spacing: 12) {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(cardFill)
+            RoundedRectangle(cornerRadius: 16)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            .white.opacity(0.18),
+                            accountColor.opacity(0.04),
+                            .black.opacity(0.04)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(accountColor.opacity(isSelected ? 0.55 : 0.35), lineWidth: 1)
+
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top, spacing: 12) {
                     Circle()
                         .fill(accountColor)
                         .frame(width: 12, height: 12)
+                        .padding(.top, 4)
                     Text(row.value)
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
+                        .lineLimit(1)
                     Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
+                    Button {
+                        accountEditorContext = row
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .frame(minHeight: 34)
-                .contentShape(Rectangle())
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 10) {
-                    Divider()
-                    TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
-                    Button("Apply Rename") {
-                        Task {
-                            await viewModel.rename(
-                                kind: row.kind,
-                                value: row.value,
-                                nextValue: renameByRow[rowKey, default: row.value],
-                                parentValue: row.parentValue
-                            )
-                        }
-                    }
-                    .buttonStyle(.bordered)
-
-                    ColorPicker(
-                        "Color",
-                        selection: colorSelectionBinding(for: row),
-                        supportsOpacity: false
-                    )
-                    Button("Save Color") {
-                        Task {
-                            await viewModel.updateColor(
-                                kind: row.kind,
-                                value: row.value,
-                                color: colorByRow[rowKey, default: row.color],
-                                parentValue: row.parentValue
-                            )
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            .padding(18)
+        }
+        .frame(minHeight: isSelected ? 126 : 112)
+        .shadow(color: accountColor.opacity(0.12), radius: 10, y: 6)
+        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .onTapGesture {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+                selectedAccountID = isSelected ? nil : row.id
+            }
+            if !isSelected, !viewModel.hasLoadedExpenses(for: row) {
+                Task { await viewModel.loadInitialExpenses(for: row) }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 18)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(cardFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(accountColor.opacity(0.55), lineWidth: 1)
-        )
-        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
+    }
+
+    @ViewBuilder
+    private func accountExpenseFeed(for row: OptionsDisplayRow) -> some View {
+        let expenses = viewModel.expenses(for: row)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Latest Expenses")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 4)
+
+            if expenses.isEmpty, viewModel.isLoadingExpenses(for: row) {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 52)
+            } else if let error = viewModel.expenseError(for: row) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                    Button("Try Again") {
+                        Task { await viewModel.loadMoreExpenses(for: row) }
+                    }
+                    .font(.footnote.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            } else if expenses.isEmpty {
+                Text("No expenses yet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(expenses.enumerated()), id: \.element._id) { index, expense in
+                        accountExpenseRow(expense)
+                            .onAppear {
+                                guard index == expenses.count - 1 else { return }
+                                Task { await viewModel.loadMoreExpenses(for: row) }
+                            }
+                        if index < expenses.count - 1 {
+                            Divider().padding(.leading, 14)
+                        }
+                    }
+                    if viewModel.isLoadingExpenses(for: row) {
+                        ProgressView()
+                            .padding(.vertical, 14)
+                    } else if !viewModel.isDoneLoadingExpenses(for: row) {
+                        Button("Load More") {
+                            Task { await viewModel.loadMoreExpenses(for: row) }
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .padding(.vertical, 14)
+                    }
+                }
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    private func accountExpenseRow(_ expense: ExpenseDTO) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(expense.expense)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text([expense.category, expense.date].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " • "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Text(expense.amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .padding(14)
     }
 
     @ViewBuilder
