@@ -1,8 +1,10 @@
 {
+  "buildCommand": "npm run web:build",
+  "outputDirectory": "Codebase - Pensive Web/dist",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/index.html"
     }
   ]
 }

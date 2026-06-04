@@ -1,24 +1,28 @@
 {
-  "name": "codebase-pensive",
+  "name": "pensive-unified",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --config config/vite.config.ts",
-    "build": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p config/tsconfig.node.json && vite build --config config/vite.config.ts",
-    "dist": "sh -c 'npm run build; status=$?; rm -rf dist; exit $status'",
-    "clean:env-local": "rm -f .env.local",
-    "watch:env-local-clean": "sh -c 'while true; do rm -f .env.local; sleep 2; done'",
-    "clean:dist": "rm -rf dist",
-    "lint": "eslint .",
-    "format": "prettier --ignore-path config/.prettierignore --cache --write \"**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\"",
-    "format:check": "prettier --ignore-path config/.prettierignore --check \"**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\"",
-    "preview": "vite preview --config config/vite.config.ts"
+    "dev": "npm run web:dev",
+    "build": "npm run web:build",
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy",
+    "convex:deployments": "convex deployments",
+    "convex:codegen": "convex codegen",
+    "convex:typecheck": "tsc -p convex/tsconfig.json",
+    "web:dev": "vite --config \"Codebase - Pensive Web/config/vite.config.ts\"",
+    "web:build": "tsc --noEmit -p \"Codebase - Pensive Web/config/tsconfig.app.json\" && tsc --noEmit -p \"Codebase - Pensive Web/config/tsconfig.node.json\" && vite build --config \"Codebase - Pensive Web/config/vite.config.ts\"",
+    "web:preview": "vite preview --config \"Codebase - Pensive Web/config/vite.config.ts\"",
+    "ios:test": "./scripts/test-ios-stable.sh",
+    "lint": "eslint --config \"Codebase - Pensive Web/eslint.config.js\" \"Codebase - Pensive Web\"",
+    "format": "prettier --ignore-path \"Codebase - Pensive Web/config/.prettierignore\" --cache --write \"Codebase - Pensive Web/**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\" \"convex/**/*.ts\"",
+    "format:check": "prettier --ignore-path \"Codebase - Pensive Web/config/.prettierignore\" --check \"Codebase - Pensive Web/**/*.{js,jsx,cjs,mjs,ts,tsx,cts,mts}\" \"convex/**/*.ts\""
   },
   "prettier": {
     "plugins": [
-      "./config/prettier-one-line-imports.mjs",
-      "./config/prettier-one-line-props.mjs"
+      "./Codebase - Pensive Web/config/prettier-one-line-imports.mjs",
+      "./Codebase - Pensive Web/config/prettier-one-line-props.mjs"
     ],
     "singleLineImports": true,
     "sortTopImportsByLength": true,
