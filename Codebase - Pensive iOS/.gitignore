@@ -1,0 +1,29 @@
+.DS_Store
+.env
+.env.*
+
+# Xcode
+DerivedData/
+build/
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+
+# Local iOS config secrets
+Config/Local.xcconfig
+
+node_modules
+node_modules.
+.node_modules
+.node_modules.
+/node_modules
+node_modules/
+/node_modules/
+
+dist
+.dist
+dist.
+.dist.
+/dist/
+/dist
+dist/

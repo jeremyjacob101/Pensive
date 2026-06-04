@@ -1,0 +1,866 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C0A9CD9A2B5176DE940EC51 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F8155C7EF63E9520D985E5 /* SessionStore.swift */; };
+		2880EF2873615DD899935E23 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FC40024A84513ECC515CEC /* RootView.swift */; };
+		32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */; };
+		33337397C5FD86C2E8F7E49C /* RecurringsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */; };
+		339F14E959BC67DD3B2A7286 /* PensiveUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */; };
+		3878FF85A81FB0C58414CACD /* LedgerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726D060B5033637BD6C1931C /* LedgerModels.swift */; };
+		3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */; };
+		4C798FC6CB50493AB847739E /* HTTPClientAuthRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */; };
+		570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1060E8EA814D7616BF2AC146 /* PensiveApp.swift */; };
+		59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D911F3785CF260C05649961 /* LedgerViews.swift */; };
+		5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */; };
+		72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9D0A2E816730A432528113 /* RecurringsFeature.swift */; };
+		88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */; };
+		8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */; };
+		9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCE0385815003415646F8C4 /* AuthState.swift */; };
+		9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */; };
+		A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */; };
+		AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D71033083881BE72A1960881 /* Assets.xcassets */; };
+		B29B65867F1DD23E83411C90 /* PensiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */; };
+		BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */; };
+		C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27991D4F555E429982C9C524 /* AppEnvironment.swift */; };
+		CF035D7019DEA233A9017889 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */; };
+		D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */; };
+		DA16EC759C47927E7062061C /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */; };
+		E6CDB1D2FD90169D1C4AB86E /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487A86873988C9719FAF2797 /* AuthViewModel.swift */; };
+		EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079923627B6EFA6F2BE16E7 /* AppShellView.swift */; };
+		F3838279BB7FB0590509ECC2 /* ConvexTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9DC62D9DB84E21B0D8D4ABF4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA66C46FF58A88A2F2CB6A4F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7CC550A6AF542C8F80D81633;
+			remoteInfo = Pensive;
+		};
+		A986359F653C927D679F82BD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA66C46FF58A88A2F2CB6A4F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7CC550A6AF542C8F80D81633;
+			remoteInfo = Pensive;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreAuthRefreshTests.swift; sourceTree = "<group>"; };
+		0FCE0385815003415646F8C4 /* AuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthState.swift; sourceTree = "<group>"; };
+		1060E8EA814D7616BF2AC146 /* PensiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveApp.swift; sourceTree = "<group>"; };
+		12C8A5DC05FE932702BEE04F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		14B0A5238291F25F063E45FD /* Pensive.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pensive.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		27991D4F555E429982C9C524 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeature.swift; sourceTree = "<group>"; };
+		3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsView.swift; sourceTree = "<group>"; };
+		37FC40024A84513ECC515CEC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
+		4079923627B6EFA6F2BE16E7 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
+		487A86873988C9719FAF2797 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		4AD07860CCEEF4EB4CBEA43A /* PensiveUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PensiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFilterStore.swift; sourceTree = "<group>"; };
+		552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerBreakdownComputingTests.swift; sourceTree = "<group>"; };
+		5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellModels.swift; sourceTree = "<group>"; };
+		5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedControls.swift; sourceTree = "<group>"; };
+		6D911F3785CF260C05649961 /* LedgerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerViews.swift; sourceTree = "<group>"; };
+		726D060B5033637BD6C1931C /* LedgerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModels.swift; sourceTree = "<group>"; };
+		8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexAPI.swift; sourceTree = "<group>"; };
+		B6338EF50F2E870528AF809B /* PensiveTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PensiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B82D63F0A8E92A7956EE6586 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
+		D02316F31B0A05A53566C05A /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
+		D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClientAuthRecoveryTests.swift; sourceTree = "<group>"; };
+		D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		D71033083881BE72A1960881 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexTransport.swift; sourceTree = "<group>"; };
+		D98F13E54929428601D27C98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DC9D0A2E816730A432528113 /* RecurringsFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsFeature.swift; sourceTree = "<group>"; };
+		E6F8155C7EF63E9520D985E5 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthTokenStore.swift; sourceTree = "<group>"; };
+		F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveUITests.swift; sourceTree = "<group>"; };
+		F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsMutationLogic.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1C1FFB6B1DD8686D7A8281C1 /* Shell */ = {
+			isa = PBXGroup;
+			children = (
+				5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */,
+				4079923627B6EFA6F2BE16E7 /* AppShellView.swift */,
+				5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */,
+			);
+			path = Shell;
+			sourceTree = "<group>";
+		};
+		1D522BA251E12249494BF054 /* Ledger */ = {
+			isa = PBXGroup;
+			children = (
+				726D060B5033637BD6C1931C /* LedgerModels.swift */,
+				F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */,
+			);
+			path = Ledger;
+			sourceTree = "<group>";
+		};
+		22C9030D2E7714DB37D2394D /* Pensive */ = {
+			isa = PBXGroup;
+			children = (
+				96D8839C00886EC20A18C611 /* App */,
+				609BA47750AD46433462D184 /* Data */,
+				73CD8E309FE5F43C9A2480E3 /* Domain */,
+				B47FC0530584C45A5C991800 /* Infrastructure */,
+				485AB31FBE8F46D15967D630 /* Networking */,
+				C1B7A9F02F0A68E2AA7B1F20 /* Presentation */,
+				5F2CB463C7C9E9A47E770859 /* Resources */,
+			);
+			path = Pensive;
+			sourceTree = "<group>";
+		};
+		293593E5DD77D12AAF932D98 /* PensiveUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */,
+				D6331E3C7A197ED85CEC7198 /* PensiveUITestsLaunchTests.swift */,
+			);
+			path = PensiveUITests;
+			sourceTree = "<group>";
+		};
+		2F136751F7C794BE19E328E9 = {
+			isa = PBXGroup;
+			children = (
+				610BC97EA3E07DCF7F10367A /* Config */,
+				22C9030D2E7714DB37D2394D /* Pensive */,
+				9CA9B78435C5A244F95A76D4 /* PensiveTests */,
+				293593E5DD77D12AAF932D98 /* PensiveUITests */,
+				4F2E6AD7625848357DE98ECB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		31335DE7BFA6640EEBD5707F /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		485AB31FBE8F46D15967D630 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				D8DCC4A5D09BD130AF383AA2 /* ConvexTransport.swift */,
+				BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		48693613505F00F7FEBFEEE7 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				487A86873988C9719FAF2797 /* AuthViewModel.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		4B3E13B7F560582FF8E2A044 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				0FCE0385815003415646F8C4 /* AuthState.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		4E9B17E00541E8AB90A2990A /* API */ = {
+			isa = PBXGroup;
+			children = (
+				8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */,
+			);
+			path = API;
+			sourceTree = "<group>";
+		};
+		4F2E6AD7625848357DE98ECB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				14B0A5238291F25F063E45FD /* Pensive.app */,
+				B6338EF50F2E870528AF809B /* PensiveTests.xctest */,
+				4AD07860CCEEF4EB4CBEA43A /* PensiveUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5F2CB463C7C9E9A47E770859 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D71033083881BE72A1960881 /* Assets.xcassets */,
+				D98F13E54929428601D27C98 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		609BA47750AD46433462D184 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				E6F8155C7EF63E9520D985E5 /* SessionStore.swift */,
+				4E9B17E00541E8AB90A2990A /* API */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		610BC97EA3E07DCF7F10367A /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				12C8A5DC05FE932702BEE04F /* Debug.xcconfig */,
+				B82D63F0A8E92A7956EE6586 /* Release.xcconfig */,
+				D02316F31B0A05A53566C05A /* Staging.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		73CD8E309FE5F43C9A2480E3 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				4B3E13B7F560582FF8E2A044 /* Auth */,
+				1D522BA251E12249494BF054 /* Ledger */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		96D8839C00886EC20A18C611 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */,
+				1060E8EA814D7616BF2AC146 /* PensiveApp.swift */,
+				37FC40024A84513ECC515CEC /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		9CA9B78435C5A244F95A76D4 /* PensiveTests */ = {
+			isa = PBXGroup;
+			children = (
+				D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */,
+				552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */,
+				066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */,
+			);
+			path = PensiveTests;
+			sourceTree = "<group>";
+		};
+		B47FC0530584C45A5C991800 /* Infrastructure */ = {
+			isa = PBXGroup;
+			children = (
+				27991D4F555E429982C9C524 /* AppEnvironment.swift */,
+				E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */,
+				31335DE7BFA6640EEBD5707F /* Persistence */,
+			);
+			path = Infrastructure;
+			sourceTree = "<group>";
+		};
+		C1B7A9F02F0A68E2AA7B1F20 /* Presentation */ = {
+			isa = PBXGroup;
+			children = (
+				48693613505F00F7FEBFEEE7 /* Auth */,
+				DCF720E836A0C8BC588DB44E /* Ledger */,
+				F3715626E52514AAE4DAFAE6 /* Recurrings */,
+				1C1FFB6B1DD8686D7A8281C1 /* Shell */,
+			);
+			path = Presentation;
+			sourceTree = "<group>";
+		};
+		DCF720E836A0C8BC588DB44E /* Ledger */ = {
+			isa = PBXGroup;
+			children = (
+				2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */,
+				6D911F3785CF260C05649961 /* LedgerViews.swift */,
+			);
+			path = Ledger;
+			sourceTree = "<group>";
+		};
+		F3715626E52514AAE4DAFAE6 /* Recurrings */ = {
+			isa = PBXGroup;
+			children = (
+				DC9D0A2E816730A432528113 /* RecurringsFeature.swift */,
+				3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */,
+			);
+			path = Recurrings;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		623956006B0E9D6271F65626 /* PensiveTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6C5D76E6CB42427C8FB3FB6D /* Build configuration list for PBXNativeTarget "PensiveTests" */;
+			buildPhases = (
+				F7A73C19D841971C1112F5D4 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3363DE45FDB5B7C7A8A5A60B /* PBXTargetDependency */,
+			);
+			name = PensiveTests;
+			packageProductDependencies = (
+			);
+			productName = PensiveTests;
+			productReference = B6338EF50F2E870528AF809B /* PensiveTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		70FD305C9BF26D8DBF4EEC62 /* PensiveUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C0E7C94D0A6BA1D80AE9FA12 /* Build configuration list for PBXNativeTarget "PensiveUITests" */;
+			buildPhases = (
+				632CA8D03E8D01F8B9FBF075 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				37A0ACEB27FA94E1A098BD5F /* PBXTargetDependency */,
+			);
+			name = PensiveUITests;
+			packageProductDependencies = (
+			);
+			productName = PensiveUITests;
+			productReference = 4AD07860CCEEF4EB4CBEA43A /* PensiveUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		7CC550A6AF542C8F80D81633 /* Pensive */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BBE5749A67A7A515696938D3 /* Build configuration list for PBXNativeTarget "Pensive" */;
+			buildPhases = (
+				867FD8BED6D40B94266B4303 /* Sources */,
+				C350C241FAE1C0EBB3FED830 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Pensive;
+			packageProductDependencies = (
+			);
+			productName = Pensive;
+			productReference = 14B0A5238291F25F063E45FD /* Pensive.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DA66C46FF58A88A2F2CB6A4F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					623956006B0E9D6271F65626 = {
+						ProvisioningStyle = Automatic;
+					};
+					70FD305C9BF26D8DBF4EEC62 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 7CC550A6AF542C8F80D81633;
+					};
+					7CC550A6AF542C8F80D81633 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 0A24FBE51EA8375188765627 /* Build configuration list for PBXProject "Pensive" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2F136751F7C794BE19E328E9;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4F2E6AD7625848357DE98ECB /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7CC550A6AF542C8F80D81633 /* Pensive */,
+				623956006B0E9D6271F65626 /* PensiveTests */,
+				70FD305C9BF26D8DBF4EEC62 /* PensiveUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C350C241FAE1C0EBB3FED830 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		632CA8D03E8D01F8B9FBF075 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B29B65867F1DD23E83411C90 /* PensiveUITests.swift in Sources */,
+				339F14E959BC67DD3B2A7286 /* PensiveUITestsLaunchTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		867FD8BED6D40B94266B4303 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA16EC759C47927E7062061C /* AppContainer.swift in Sources */,
+				C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */,
+				D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */,
+				EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */,
+				9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */,
+				32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */,
+				E6CDB1D2FD90169D1C4AB86E /* AuthViewModel.swift in Sources */,
+				9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */,
+				F3838279BB7FB0590509ECC2 /* ConvexTransport.swift in Sources */,
+				CF035D7019DEA233A9017889 /* HTTPClient.swift in Sources */,
+				88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */,
+				BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */,
+				3878FF85A81FB0C58414CACD /* LedgerModels.swift in Sources */,
+				59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */,
+				8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */,
+				570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */,
+				72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */,
+				33337397C5FD86C2E8F7E49C /* RecurringsView.swift in Sources */,
+				2880EF2873615DD899935E23 /* RootView.swift in Sources */,
+				0C0A9CD9A2B5176DE940EC51 /* SessionStore.swift in Sources */,
+				A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F7A73C19D841971C1112F5D4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4C798FC6CB50493AB847739E /* HTTPClientAuthRecoveryTests.swift in Sources */,
+				3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */,
+				5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3363DE45FDB5B7C7A8A5A60B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7CC550A6AF542C8F80D81633 /* Pensive */;
+			targetProxy = A986359F653C927D679F82BD /* PBXContainerItemProxy */;
+		};
+		37A0ACEB27FA94E1A098BD5F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7CC550A6AF542C8F80D81633 /* Pensive */;
+			targetProxy = 9DC62D9DB84E21B0D8D4ABF4 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		01266489B5B3C747EE9A4FAB /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D02316F31B0A05A53566C05A /* Staging.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Staging;
+		};
+		0F4EC73C8ED6AC788C4FF33D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 12C8A5DC05FE932702BEE04F /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1F98883A1CCD1BEC30C593F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
+			};
+			name = Debug;
+		};
+		2109D94E6A5012F5C62221CB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Pensive;
+			};
+			name = Release;
+		};
+		3AA4294E65C6A9DFFFE25138 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
+			};
+			name = Staging;
+		};
+		58BD425F5287409FD8E2AA68 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Pensive/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5F54D8115D4928079D984C60 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Pensive;
+			};
+			name = Staging;
+		};
+		8BE6C11515E62E6CD96DBD33 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveTests;
+				PRODUCT_NAME = PensiveTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pensive.app/Pensive";
+			};
+			name = Release;
+		};
+		926A395FDB4553B4BF4E18A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Pensive/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E1BDB344FBB44FE4CB34DE54 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = B82D63F0A8E92A7956EE6586 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E20054765DAAD4377D20F36B /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Pensive/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = Pensive;
+				PRODUCT_NAME = Pensive;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Staging;
+		};
+		EBD146C8CA0633AE3B8EAB84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = PensiveUITests;
+				PRODUCT_NAME = PensiveUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Pensive;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0A24FBE51EA8375188765627 /* Build configuration list for PBXProject "Pensive" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0F4EC73C8ED6AC788C4FF33D /* Debug */,
+				E1BDB344FBB44FE4CB34DE54 /* Release */,
+				01266489B5B3C747EE9A4FAB /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6C5D76E6CB42427C8FB3FB6D /* Build configuration list for PBXNativeTarget "PensiveTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1F98883A1CCD1BEC30C593F7 /* Debug */,
+				8BE6C11515E62E6CD96DBD33 /* Release */,
+				3AA4294E65C6A9DFFFE25138 /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BBE5749A67A7A515696938D3 /* Build configuration list for PBXNativeTarget "Pensive" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				926A395FDB4553B4BF4E18A4 /* Debug */,
+				58BD425F5287409FD8E2AA68 /* Release */,
+				E20054765DAAD4377D20F36B /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C0E7C94D0A6BA1D80AE9FA12 /* Build configuration list for PBXNativeTarget "PensiveUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EBD146C8CA0633AE3B8EAB84 /* Debug */,
+				2109D94E6A5012F5C62221CB /* Release */,
+				5F54D8115D4928079D984C60 /* Staging */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DA66C46FF58A88A2F2CB6A4F /* Project object */;
+}

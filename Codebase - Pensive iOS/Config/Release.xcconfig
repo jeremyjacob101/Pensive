@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+APP_ENV_NAME = Release
+LOG_LEVEL = error
+CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)marvelous-fish-603.convex.cloud
+CONVEX_HTTP_ACTION_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)marvelous-fish-603.convex.site
+AUTH_CLIENT_ID = pensive-ios-release

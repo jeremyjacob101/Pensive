@@ -1,0 +1,20 @@
+{
+  "name": "pensive-ios-convex",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Convex tooling for the Pensive iOS repo",
+  "scripts": {
+    "convex:dev": "convex dev",
+    "convex:deploy": "convex deploy",
+    "convex:deployments": "convex deployments",
+    "convex:heal-http": "convex dev --once && convex deploy"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "convex": "^1.39.1",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@convex-dev/auth": "^0.0.92"
+  }
+}
