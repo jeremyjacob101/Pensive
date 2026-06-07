@@ -1525,7 +1525,7 @@ private final class OptionsViewModel: ObservableObject {
         )
     }
 
-    func add(kind: OptionsKind, value: String, parentValue: String?) async {
+    func add(kind: OptionsKind, value: String, parentValue: String?, color: String? = nil) async {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             inlineError = "Option name cannot be empty."
@@ -1537,8 +1537,22 @@ private final class OptionsViewModel: ObservableObject {
             return
         }
 
+        let normalizedColor = color.flatMap(sanitizeHexColor)
+        if color != nil, normalizedColor == nil {
+            inlineError = "Color must be a valid 6-digit hex value."
+            return
+        }
+
         do {
             try await api.userOptions.add(.init(kind: kind.rawValue, value: trimmed, parentValue: normalized(parentValue)))
+            if let normalizedColor {
+                try await api.userOptions.updateColor(.init(
+                    kind: kind.rawValue,
+                    value: trimmed,
+                    color: normalizedColor,
+                    parentValue: normalized(parentValue)
+                ))
+            }
             await refresh()
             successText = "Added \(trimmed)."
             inlineError = nil
@@ -1716,11 +1730,135 @@ private enum AccountLedgerTab: String, CaseIterable, Identifiable {
     }
 }
 
+private struct AccountLedgerBottomPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = .infinity
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
+    }
+}
+
+private struct OptionCreateDraft {
+    var value = ""
+    var parentValue = ""
+    var addAsSubtype = false
+    var color = "#EC4899"
+}
+
+private struct OptionCreateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: OptionsViewModel
+    let selectedKind: OptionsKind
+    @Binding var draft: OptionCreateDraft
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Name", text: $draft.value)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+
+                    if selectedKind.supportsNestedOptions {
+                        Toggle("Add as subtype", isOn: $draft.addAsSubtype)
+                            .onChange(of: draft.addAsSubtype) { _, _ in
+                                draft.parentValue = ""
+                            }
+                    }
+
+                    if addKind.supportsParent {
+                        Picker("Parent", selection: $draft.parentValue) {
+                            Text("Select Parent").tag("")
+                            ForEach(viewModel.parentChoices(for: addKind), id: \.self) { parent in
+                                Text(parent).tag(parent)
+                            }
+                        }
+                    }
+
+                    if addKind == .account {
+                        ColorPicker(
+                            "Color",
+                            selection: Binding(
+                                get: { optionCreateColor(from: draft.color) ?? .pink },
+                                set: { draft.color = optionCreateHex(from: $0) ?? draft.color }
+                            ),
+                            supportsOpacity: false
+                        )
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Create") {
+                        Task {
+                            await viewModel.add(
+                                kind: addKind,
+                                value: draft.value,
+                                parentValue: draft.parentValue,
+                                color: addKind == .account ? draft.color : nil
+                            )
+                            dismiss()
+                        }
+                    }
+                    .disabled(isCreateDisabled)
+                }
+            }
+        }
+    }
+
+    private var addKind: OptionsKind {
+        draft.addAsSubtype ? (viewModel.childKind(for: selectedKind) ?? selectedKind) : selectedKind
+    }
+
+    private var title: String {
+        switch addKind {
+        case .account: return "New Account"
+        case .category: return "New Category"
+        case .subcategory: return "New Subcategory"
+        case .incomeType: return "New Income Type"
+        case .incomeSubtype: return "New Income Subtype"
+        }
+    }
+
+    private var isCreateDisabled: Bool {
+        let hasName = !draft.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasParent = !addKind.supportsParent || !draft.parentValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return !hasName || !hasParent
+    }
+
+    private func optionCreateColor(from hex: String) -> Color? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
+    }
+
+    private func optionCreateHex(from color: Color) -> String? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        return String(
+            format: "#%02X%02X%02X",
+            Int(red * 255),
+            Int(green * 255),
+            Int(blue * 255)
+        )
+    }
+}
+
 private struct OptionsFeatureView: View {
     @StateObject private var viewModel: OptionsViewModel
-    @State private var addValue = ""
-    @State private var addParent = ""
-    @State private var addAsSubtype = false
+    @State private var createDraft = OptionCreateDraft()
+    @State private var showCreateOption = false
     @State private var renameByRow: [String: String] = [:]
     @State private var colorByRow: [String: String] = [:]
     @State private var rowPendingDelete: OptionsDisplayRow?
@@ -1748,25 +1886,6 @@ private struct OptionsFeatureView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                }
-
-                Section("Add Option") {
-                    TextField("Value", text: $addValue)
-                    if viewModel.selectedKind.supportsNestedOptions {
-                        Toggle("Add as subtype", isOn: $addAsSubtype)
-                    }
-                    let addKind = addAsSubtype ? (viewModel.childKind(for: viewModel.selectedKind) ?? viewModel.selectedKind) : viewModel.selectedKind
-                    if addKind.supportsParent {
-                        Picker("Parent", selection: $addParent) {
-                            Text("Select Parent").tag("")
-                            ForEach(viewModel.parentChoices(for: addKind), id: \.self) { parent in
-                                Text(parent).tag(parent)
-                            }
-                        }
-                    }
-                    Button("Add") {
-                        Task { await viewModel.add(kind: addKind, value: addValue, parentValue: addParent) }
-                    }
                 }
 
                 if viewModel.selectedKind == .account {
@@ -1825,6 +1944,19 @@ private struct OptionsFeatureView: View {
             .navigationTitle("Options")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        createDraft = OptionCreateDraft()
+                        viewModel.inlineError = nil
+                        viewModel.successText = nil
+                        showCreateOption = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityIdentifier("options_add_toolbar")
+                }
+            }
             .alert("Delete option?", isPresented: Binding(get: { rowPendingDelete != nil }, set: { if !$0 { rowPendingDelete = nil } })) {
                 Button("Delete", role: .destructive) {
                     if let row = rowPendingDelete {
@@ -1913,6 +2045,13 @@ private struct OptionsFeatureView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showCreateOption) {
+                OptionCreateSheet(
+                    viewModel: viewModel,
+                    selectedKind: viewModel.selectedKind,
+                    draft: $createDraft
+                )
+            }
             .sheet(item: $accountEditorContext) { row in
                 NavigationStack {
                     Form {
@@ -1926,30 +2065,6 @@ private struct OptionsFeatureView: View {
                         }
 
                         Section {
-                            Button("Apply Rename") {
-                                Task {
-                                    await viewModel.rename(
-                                        kind: row.kind,
-                                        value: row.value,
-                                        nextValue: renameByRow[row.selfKey, default: row.value],
-                                        parentValue: row.parentValue
-                                    )
-                                    accountEditorContext = nil
-                                }
-                            }
-
-                            Button("Save Color") {
-                                Task {
-                                    await viewModel.updateColor(
-                                        kind: row.kind,
-                                        value: row.value,
-                                        color: colorByRow[row.selfKey, default: row.color],
-                                        parentValue: row.parentValue
-                                    )
-                                    accountEditorContext = nil
-                                }
-                            }
-
                             Button("Delete Account", role: .destructive) {
                                 rowPendingDelete = row
                                 accountEditorContext = nil
@@ -1958,10 +2073,19 @@ private struct OptionsFeatureView: View {
                     }
                     .navigationTitle("Edit Account")
                     .navigationBarTitleDisplayMode(.inline)
-                    .presentationDetents([.medium])
+                    .presentationDetents([.height(300)])
                     .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") { accountEditorContext = nil }
+                        }
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") { accountEditorContext = nil }
+                            Button("Save") {
+                                Task {
+                                    await saveAccountChanges(for: row)
+                                    accountEditorContext = nil
+                                }
+                            }
+                            .disabled(!accountHasChanges(row))
                         }
                     }
                 }
@@ -1969,8 +2093,8 @@ private struct OptionsFeatureView: View {
         }
         .task { viewModel.onAppear() }
         .onChange(of: viewModel.selectedKind) {
-            addAsSubtype = false
-            addParent = ""
+            createDraft = OptionCreateDraft()
+            showCreateOption = false
             accountEditorContext = nil
             selectedAccountID = nil
             selectedAccountLedgerTab = .expenses
@@ -1990,53 +2114,71 @@ private struct OptionsFeatureView: View {
         return viewModel.rowGroups.map(\.parent).first { $0.id == selectedAccountID }
     }
 
+    private func accountHasChanges(_ row: OptionsDisplayRow) -> Bool {
+        let nextName = renameByRow[row.selfKey, default: row.value].trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextColor = normalizedHex(colorByRow[row.selfKey, default: row.color])
+        let currentColor = normalizedHex(row.color)
+        return !nextName.isEmpty && (nextName != row.value || (nextColor != nil && nextColor != currentColor))
+    }
+
+    private func saveAccountChanges(for row: OptionsDisplayRow) async {
+        let nextName = renameByRow[row.selfKey, default: row.value].trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextColor = normalizedHex(colorByRow[row.selfKey, default: row.color]) ?? row.color
+        let nameChanged = !nextName.isEmpty && nextName != row.value
+        let colorChanged = normalizedHex(nextColor) != normalizedHex(row.color)
+
+        if nameChanged {
+            await viewModel.rename(
+                kind: row.kind,
+                value: row.value,
+                nextValue: nextName,
+                parentValue: row.parentValue
+            )
+        }
+
+        if colorChanged {
+            await viewModel.updateColor(
+                kind: row.kind,
+                value: nameChanged ? nextName : row.value,
+                color: nextColor,
+                parentValue: row.parentValue
+            )
+        }
+    }
+
     @ViewBuilder
     private func accountStackOverview() -> some View {
         let rows = viewModel.rowGroups.map(\.parent)
-        VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Text("Accounts")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
-                Spacer()
-                Button {
-                    addValue = ""
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.title3.weight(.medium))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 4)
+        let cardHeight: CGFloat = 152
 
+        VStack(alignment: .leading, spacing: 14) {
             if rows.isEmpty {
                 Text("No accounts yet.")
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(18)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 12)
             } else {
-                ZStack(alignment: .top) {
-                    ForEach(Array(rows.prefix(8).enumerated()), id: \.element.id) { index, row in
+                VStack(spacing: -98) {
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         accountStackCard(for: row, index: index)
-                            .offset(y: CGFloat(index) * 52)
-                            .scaleEffect(1 - CGFloat(index) * 0.018)
-                            .zIndex(Double(rows.count - index))
+                            .frame(height: cardHeight)
+                            .zIndex(Double(index))
                     }
                 }
-                .frame(height: CGFloat(min(rows.count, 8) - 1) * 52 + 180)
+                .padding(.top, 4)
             }
         }
-        .padding(18)
-        .background(accountScreenBackground, in: RoundedRectangle(cornerRadius: 28))
+        .padding(.top, 2)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 18)
     }
 
     @ViewBuilder
     private func accountDetailScroller() -> some View {
         let rows = viewModel.rowGroups.map(\.parent)
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Button {
                     withAnimation(.spring(response: 0.38, dampingFraction: 0.88)) {
@@ -2046,7 +2188,7 @@ private struct OptionsFeatureView: View {
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(width: 34, height: 34)
                 }
                 .buttonStyle(.plain)
@@ -2054,7 +2196,9 @@ private struct OptionsFeatureView: View {
                 Spacer()
                 Text(selectedAccountRow?.value ?? "Account")
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
                 Spacer()
                 Button {
                     if let selectedAccountRow {
@@ -2063,11 +2207,12 @@ private struct OptionsFeatureView: View {
                 } label: {
                     Image(systemName: "pencil")
                         .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.78))
+                        .foregroundStyle(.secondary)
                         .frame(width: 34, height: 34)
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 4)
 
             TabView(selection: Binding(get: { selectedAccountID ?? "" }, set: { next in
                 withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
@@ -2081,35 +2226,27 @@ private struct OptionsFeatureView: View {
                         .tag(row.id)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .frame(height: 230)
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: 202)
+
+            accountPageDots(rows: rows)
+                .frame(maxWidth: .infinity)
+                .padding(.top, -12)
 
             if let selectedAccount = selectedAccountRow {
                 accountLedgerTabs(for: selectedAccount)
             }
         }
-        .padding(18)
-        .background(accountScreenBackground, in: RoundedRectangle(cornerRadius: 28))
-    }
-
-    private var accountScreenBackground: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.08, green: 0.09, blue: 0.17),
-                Color(red: 0.12, green: 0.12, blue: 0.25),
-                Color(red: 0.08, green: 0.08, blue: 0.16)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        .padding(.top, 8)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 18)
     }
 
     @ViewBuilder
     private func accountStackCard(for row: OptionsDisplayRow, index: Int) -> some View {
         accountCardSurface(for: row, isFocused: index == 0, compact: true)
             .matchedGeometryEffect(id: row.id, in: accountCardNamespace)
-            .frame(height: 150)
-            .contentShape(RoundedRectangle(cornerRadius: 18))
+            .contentShape(RoundedRectangle(cornerRadius: 20))
             .onTapGesture {
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
                     selectedAccountID = row.id
@@ -2125,55 +2262,82 @@ private struct OptionsFeatureView: View {
     private func accountHeroCard(for row: OptionsDisplayRow, isFocused: Bool) -> some View {
         accountCardSurface(for: row, isFocused: isFocused, compact: false)
             .matchedGeometryEffect(id: row.id, in: accountCardNamespace)
-            .frame(height: 188)
+            .frame(height: 202)
             .onTapGesture {
                 accountEditorContext = row
             }
+    }
+
+    private func accountPageDots(rows: [OptionsDisplayRow]) -> some View {
+        HStack(spacing: 7) {
+            ForEach(rows) { row in
+                Circle()
+                    .fill(row.id == selectedAccountID ? Color.primary.opacity(0.72) : Color.secondary.opacity(0.28))
+                    .frame(width: row.id == selectedAccountID ? 7 : 6, height: row.id == selectedAccountID ? 7 : 6)
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: selectedAccountID)
     }
 
     @ViewBuilder
     private func accountCardSurface(for row: OptionsDisplayRow, isFocused: Bool, compact: Bool) -> some View {
         let accountColor = color(from: row.color) ?? .gray
         let palette = accountPalette(for: accountColor, index: Int(row.id.hashValue.magnitude % 10_000))
+        let cornerRadius: CGFloat = compact ? 20 : 22
 
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(LinearGradient(colors: palette, startPoint: .topLeading, endPoint: .bottomTrailing))
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(
+                    LinearGradient(
+                        colors: palette,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
             Circle()
-                .fill(.white.opacity(0.18))
-                .frame(width: compact ? 132 : 170, height: compact ? 132 : 170)
-                .offset(x: compact ? -38 : -24, y: compact ? -58 : -48)
+                .fill(.white.opacity(compact ? 0.13 : 0.18))
+                .frame(width: compact ? 136 : 188, height: compact ? 136 : 188)
+                .offset(x: compact ? -42 : -34, y: compact ? -68 : -58)
 
             RoundedRectangle(cornerRadius: 42)
-                .fill(.white.opacity(0.13))
-                .frame(width: compact ? 178 : 220, height: compact ? 112 : 144)
-                .rotationEffect(.degrees(-24))
-                .offset(x: compact ? 130 : 154, y: compact ? -42 : -56)
+                .fill(.white.opacity(compact ? 0.10 : 0.14))
+                .frame(width: compact ? 190 : 236, height: compact ? 116 : 146)
+                .rotationEffect(.degrees(-21))
+                .offset(x: compact ? 132 : 158, y: compact ? -46 : -56)
 
             RoundedRectangle(cornerRadius: 52)
-                .stroke(.white.opacity(0.14), lineWidth: 24)
-                .frame(width: compact ? 210 : 260, height: compact ? 138 : 176)
-                .rotationEffect(.degrees(-26))
-                .offset(x: compact ? -74 : -54, y: compact ? 58 : 70)
+                .stroke(.white.opacity(compact ? 0.10 : 0.14), lineWidth: compact ? 20 : 24)
+                .frame(width: compact ? 220 : 268, height: compact ? 142 : 178)
+                .rotationEffect(.degrees(-24))
+                .offset(x: compact ? -82 : -58, y: compact ? 64 : 74)
 
-            VStack(alignment: .leading, spacing: compact ? 18 : 24) {
+            VStack(alignment: .leading, spacing: compact ? 14 : 24) {
                 HStack(alignment: .center) {
                     accountGlyph(for: row, color: .white.opacity(0.58))
                     Spacer()
                     Text(row.value)
-                        .font(.caption.weight(.bold))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.94))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.72)
                 }
 
                 if compact {
-                    Text(row.value)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.96))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
                     Spacer(minLength: 0)
+                    VStack(alignment: .center, spacing: 6) {
+                        Text(row.value)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.82))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+                        Text("Account")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.98))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    Spacer(minLength: 2)
                 } else {
                     Spacer(minLength: 0)
 
@@ -2186,13 +2350,13 @@ private struct OptionsFeatureView: View {
                             Text("ILS")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.white.opacity(0.72))
-                            Text(isFocused ? "Account" : "Tap to view")
-                                .font(.title.weight(.semibold))
+                            Text("Account")
+                                .font(.largeTitle.weight(.semibold))
                                 .foregroundStyle(.white)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
                         }
-                        Text("Swipe cards, scroll transactions")
+                        Text(isFocused ? "Transactions" : "Account")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.72))
                     }
@@ -2201,14 +2365,14 @@ private struct OptionsFeatureView: View {
             }
             .padding(compact ? 18 : 20)
 
-            RoundedRectangle(cornerRadius: 18)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .stroke(
-                    LinearGradient(colors: [.white.opacity(0.32), .white.opacity(0.04)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    LinearGradient(colors: [.white.opacity(0.34), .white.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1
                 )
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .shadow(color: palette[0].opacity(0.24), radius: 18, x: 0, y: 12)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .shadow(color: palette[0].opacity(0.26), radius: compact ? 16 : 22, x: 0, y: compact ? 10 : 14)
     }
 
     private func accountGlyph(for row: OptionsDisplayRow, color: Color) -> some View {
@@ -2223,20 +2387,36 @@ private struct OptionsFeatureView: View {
     }
 
     private func accountPalette(for color: Color, index: Int) -> [Color] {
-        let builtIn: [[Color]] = [
-            [Color(red: 0.38, green: 0.45, blue: 0.65), Color(red: 0.18, green: 0.20, blue: 0.40)],
-            [Color(red: 0.94, green: 0.48, blue: 0.52), Color(red: 0.56, green: 0.31, blue: 0.57)],
-            [Color(red: 0.59, green: 0.42, blue: 0.66), Color(red: 0.25, green: 0.24, blue: 0.48)],
-            [Color(red: 0.96, green: 0.67, blue: 0.58), Color(red: 0.72, green: 0.43, blue: 0.58)],
-            [Color(red: 0.21, green: 0.23, blue: 0.48), Color(red: 0.12, green: 0.14, blue: 0.32)]
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(color).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
+            return [
+                color.opacity(0.82),
+                Color(red: 0.58, green: 0.45, blue: 0.68),
+                Color(red: 0.16, green: 0.17, blue: 0.34)
+            ]
+        }
+
+        let hueShift = CGFloat((index % 3) - 1) * 0.028
+        let companionHue = hue + hueShift < 0 ? hue + hueShift + 1 : (hue + hueShift > 1 ? hue + hueShift - 1 : hue + hueShift)
+        let vividSaturation = max(0.44, min(0.82, saturation + 0.18))
+        let softSaturation = max(0.34, min(0.68, saturation + 0.08))
+        let topBrightness = max(0.66, min(0.92, brightness + 0.18))
+        let midBrightness = max(0.48, min(0.78, brightness + 0.02))
+        let bottomBrightness = max(0.24, min(0.48, brightness - 0.22))
+
+        return [
+            Color(hue: Double(companionHue), saturation: Double(softSaturation), brightness: Double(topBrightness)),
+            Color(hue: Double(hue), saturation: Double(vividSaturation), brightness: Double(midBrightness)),
+            Color(hue: Double(hue), saturation: Double(max(0.38, saturation)), brightness: Double(bottomBrightness))
         ]
-        let palette = builtIn[index % builtIn.count]
-        return [color.opacity(0.36), palette[0], palette[1]]
     }
 
     @ViewBuilder
     private func accountLedgerTabs(for row: OptionsDisplayRow) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Picker("Account Ledger", selection: $selectedAccountLedgerTab) {
                 ForEach(AccountLedgerTab.allCases) { tab in
                     Text(tab.title).tag(tab)
@@ -2258,21 +2438,15 @@ private struct OptionsFeatureView: View {
                 accountIncomingFeed(for: row)
             }
         }
-        .padding(14)
-        .background(Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 18))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(.white.opacity(0.10), lineWidth: 1)
-        )
     }
 
     @ViewBuilder
     private func accountExpenseFeed(for row: OptionsDisplayRow) -> some View {
         let expenses = viewModel.expenses(for: row)
         VStack(alignment: .leading, spacing: 12) {
-            Text("Latest Expenses")
+            Text("Last transactions")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
 
             if expenses.isEmpty, viewModel.isLoadingExpenses(for: row) {
@@ -2289,42 +2463,41 @@ private struct OptionsFeatureView: View {
                     .font(.footnote.weight(.semibold))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .padding(.vertical, 8)
             } else if expenses.isEmpty {
                 Text("No expenses yet.")
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.vertical, 8)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(expenses.enumerated()), id: \.element._id) { index, expense in
-                            accountExpenseRow(expense)
-                                .onAppear {
-                                    guard index == expenses.count - 1 else { return }
-                                    Task { await viewModel.loadMoreExpenses(for: row) }
-                                }
-                            if index < expenses.count - 1 {
-                                Divider().overlay(.white.opacity(0.08)).padding(.leading, 14)
-                            }
-                        }
-                        if viewModel.isLoadingExpenses(for: row) {
-                            ProgressView()
-                                .padding(.vertical, 14)
-                        } else if !viewModel.isDoneLoadingExpenses(for: row) {
-                            Button("Load More") {
-                                Task { await viewModel.loadMoreExpenses(for: row) }
-                            }
-                            .font(.footnote.weight(.semibold))
-                            .padding(.vertical, 14)
+                VStack(spacing: 0) {
+                    ForEach(Array(expenses.enumerated()), id: \.element._id) { index, expense in
+                        accountExpenseRow(expense)
+                        if index < expenses.count - 1 {
+                            Divider().padding(.leading, 4)
                         }
                     }
+                    if viewModel.isLoadingExpenses(for: row) {
+                        ProgressView()
+                            .padding(.vertical, 14)
+                    } else if !viewModel.isDoneLoadingExpenses(for: row) {
+                        Button("Load More") {
+                            Task { await viewModel.loadMoreExpenses(for: row) }
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                    }
+                    accountLedgerBottomSentinel()
                 }
-                .frame(maxHeight: 430)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .onPreferenceChange(AccountLedgerBottomPreferenceKey.self) { minY in
+                    guard shouldLoadAccountLedgerPage(bottomMinY: minY),
+                          !viewModel.isLoadingExpenses(for: row),
+                          !viewModel.isDoneLoadingExpenses(for: row) else { return }
+                    Task { await viewModel.loadMoreExpenses(for: row) }
+                }
             }
         }
     }
@@ -2333,9 +2506,9 @@ private struct OptionsFeatureView: View {
     private func accountIncomingFeed(for row: OptionsDisplayRow) -> some View {
         let incomings = viewModel.incomings(for: row)
         VStack(alignment: .leading, spacing: 12) {
-            Text("Latest Incomings")
+            Text("Last transactions")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.58))
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
 
             if incomings.isEmpty, viewModel.isLoadingIncomings(for: row) {
@@ -2352,44 +2525,60 @@ private struct OptionsFeatureView: View {
                     .font(.footnote.weight(.semibold))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .padding(.vertical, 8)
             } else if incomings.isEmpty {
                 Text("No incomings yet.")
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.58))
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(14)
-                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.vertical, 8)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Array(incomings.enumerated()), id: \.element._id) { index, incoming in
-                            accountIncomingRow(incoming)
-                                .onAppear {
-                                    guard index == incomings.count - 1 else { return }
-                                    Task { await viewModel.loadMoreIncomings(for: row) }
-                                }
-                            if index < incomings.count - 1 {
-                                Divider().overlay(.white.opacity(0.08)).padding(.leading, 14)
-                            }
-                        }
-                        if viewModel.isLoadingIncomings(for: row) {
-                            ProgressView()
-                                .padding(.vertical, 14)
-                        } else if !viewModel.isDoneLoadingIncomings(for: row) {
-                            Button("Load More") {
-                                Task { await viewModel.loadMoreIncomings(for: row) }
-                            }
-                            .font(.footnote.weight(.semibold))
-                            .padding(.vertical, 14)
+                VStack(spacing: 0) {
+                    ForEach(Array(incomings.enumerated()), id: \.element._id) { index, incoming in
+                        accountIncomingRow(incoming)
+                        if index < incomings.count - 1 {
+                            Divider().padding(.leading, 4)
                         }
                     }
+                    if viewModel.isLoadingIncomings(for: row) {
+                        ProgressView()
+                            .padding(.vertical, 14)
+                    } else if !viewModel.isDoneLoadingIncomings(for: row) {
+                        Button("Load More") {
+                            Task { await viewModel.loadMoreIncomings(for: row) }
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                    }
+                    accountLedgerBottomSentinel()
                 }
-                .frame(maxHeight: 430)
-                .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                .onPreferenceChange(AccountLedgerBottomPreferenceKey.self) { minY in
+                    guard shouldLoadAccountLedgerPage(bottomMinY: minY),
+                          !viewModel.isLoadingIncomings(for: row),
+                          !viewModel.isDoneLoadingIncomings(for: row) else { return }
+                    Task { await viewModel.loadMoreIncomings(for: row) }
+                }
             }
         }
+    }
+
+    private func shouldLoadAccountLedgerPage(bottomMinY: CGFloat) -> Bool {
+        bottomMinY > 0 && bottomMinY < UIScreen.main.bounds.height - 48
+    }
+
+    private func accountLedgerBottomSentinel() -> some View {
+        Color.clear
+            .frame(height: 1)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: AccountLedgerBottomPreferenceKey.self,
+                        value: proxy.frame(in: .global).minY
+                    )
+                }
+            )
     }
 
     private func accountExpenseRow(_ expense: ExpenseDTO) -> some View {
@@ -2397,19 +2586,20 @@ private struct OptionsFeatureView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(expense.expense)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text([expense.category, expense.date].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " • "))
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
             Text(expense.amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
         }
-        .padding(14)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 4)
     }
 
     private func accountIncomingRow(_ incoming: IncomingDTO) -> some View {
@@ -2417,19 +2607,20 @@ private struct OptionsFeatureView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(incoming.incoming)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text([incoming.incomeType, incoming.date].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " • "))
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.50))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
             Text(incoming.amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
         }
-        .padding(14)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 4)
     }
 
     @ViewBuilder
@@ -2542,6 +2733,12 @@ private struct OptionsFeatureView: View {
             Int(green * 255),
             Int(blue * 255)
         )
+    }
+
+    private func normalizedHex(_ hex: String) -> String? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().replacingOccurrences(of: "#", with: "")
+        guard clean.range(of: #"^[0-9A-F]{6}$"#, options: .regularExpression) != nil else { return nil }
+        return "#\(clean)"
     }
 }
 
