@@ -52,6 +52,10 @@ function toMonth(value: string, monthYears?: string[]) {
   return fallback ?? null;
 }
 
+function normalizeAccountLookup(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function normalizeSharedFields(args: {
   baseIncomingId?: string;
   subIncomingId?: string;
@@ -143,12 +147,47 @@ export const listByAccount = query({
   handler: async (ctx, { account, paginationOpts }) => {
     const userId = await requireUserId(ctx);
     const numItems = Math.min(paginationOpts.numItems, 20);
-    return await ctx.db
-      .query("incomings")
-      .withIndex("by_user_account_date", (q) =>
-        q.eq("userId", userId).eq("account", account))
-      .order("desc")
-      .paginate({ ...paginationOpts, numItems });
+    const trimmedAccount = account.trim();
+    const normalizedCursorPrefix = "normalized:";
+    const shouldUseNormalizedLookup =
+      paginationOpts.cursor?.startsWith(normalizedCursorPrefix) ?? false;
+
+    if (!shouldUseNormalizedLookup) {
+      const exactPage = await ctx.db
+        .query("incomings")
+        .withIndex("by_user_account_date", (q) =>
+          q.eq("userId", userId).eq("account", trimmedAccount))
+        .order("desc")
+        .paginate({ ...paginationOpts, numItems });
+
+      if (exactPage.page.length > 0 || !exactPage.isDone) {
+        return exactPage;
+      }
+    }
+
+    const normalizedAccount = normalizeAccountLookup(trimmedAccount);
+    const offset = shouldUseNormalizedLookup
+      ? Number(paginationOpts.cursor?.slice(normalizedCursorPrefix.length) ?? 0)
+      : 0;
+    const safeOffset = Number.isFinite(offset) && offset > 0 ? offset : 0;
+    const matchingRows = (
+      await ctx.db
+        .query("incomings")
+        .withIndex("by_user_id_date", (q) => q.eq("userId", userId))
+        .order("desc")
+        .collect()
+    ).filter((row) => normalizeAccountLookup(row.account) === normalizedAccount);
+    const page = matchingRows.slice(safeOffset, safeOffset + numItems);
+    const nextOffset = safeOffset + page.length;
+
+    return {
+      page,
+      isDone: nextOffset >= matchingRows.length,
+      continueCursor:
+        nextOffset >= matchingRows.length
+          ? null
+          : `${normalizedCursorPrefix}${nextOffset}`,
+    };
   },
 });
 
