@@ -1436,7 +1436,7 @@ private struct TrackingFeatureView: View {
                     Button {
                         showTrackingSelection = true
                     } label: {
-                        Image(systemName: "plus.circle.fill")
+                        Image(systemName: "plus")
                     }
                     .accessibilityIdentifier("tracking_manage_toolbar")
                 }
@@ -1476,22 +1476,22 @@ private struct TrackingSelectionSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Picker("Kind", selection: $selectedKind) {
-                        ForEach(TrackingSelectionKind.allCases) { kind in
-                            Text(kind.title).tag(kind)
-                        }
+            VStack(spacing: 0) {
+                Picker("Kind", selection: $selectedKind) {
+                    ForEach(TrackingSelectionKind.allCases) { kind in
+                        Text(kind.title).tag(kind)
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("tracking_selection_kind_picker")
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .accessibilityIdentifier("tracking_selection_kind_picker")
 
-                if selectedRows.isEmpty {
-                    Text(selectedKind == .expense ? "No expense options" : "No incoming options")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Section(selectedKind.title) {
+                List {
+                    if selectedRows.isEmpty {
+                        Text(selectedKind == .expense ? "No expense options" : "No incoming options")
+                            .foregroundStyle(.secondary)
+                    } else {
                         ForEach(selectedRows) { row in
                             TrackingSelectionRowView(
                                 row: row,
@@ -1499,17 +1499,15 @@ private struct TrackingSelectionSheet: View {
                             )
                         }
                     }
-                }
 
-                if let inlineError {
-                    Section("Error") {
+                    if let inlineError {
                         Text(inlineError)
                             .font(.footnote)
                             .foregroundStyle(.red)
                     }
                 }
+                .listStyle(.insetGrouped)
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("Tracking")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1527,7 +1525,7 @@ private struct TrackingSelectionSheet: View {
             }
             .interactiveDismissDisabled(isSaving)
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .onAppear(perform: resetDraft)
         .accessibilityIdentifier("tracking_selection_sheet")
     }
