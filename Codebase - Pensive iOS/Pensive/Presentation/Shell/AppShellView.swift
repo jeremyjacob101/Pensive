@@ -1205,9 +1205,7 @@ private struct TrackingFeatureView: View {
                 }
 
                 ForEach(selectedRows) { row in
-                    TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
-                        toggleExpanded(row.id)
-                    }, onStartMonth: { month in
+                    TrackingTimelineRowCard(row: row, isExpanded: expandedBinding(for: row.id), onStartMonth: { month in
                         viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
                     }, onBuffer: { buffer in
                         viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
@@ -1226,12 +1224,14 @@ private struct TrackingFeatureView: View {
         selectedKind == "expense" ? viewModel.expenseRows : viewModel.incomingRows
     }
 
-    private func toggleExpanded(_ id: String) {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-            if expandedRowIDs.contains(id) {
-                expandedRowIDs.remove(id)
-            } else {
+    private func expandedBinding(for id: String) -> Binding<Bool> {
+        Binding {
+            expandedRowIDs.contains(id)
+        } set: { isExpanded in
+            if isExpanded {
                 expandedRowIDs.insert(id)
+            } else {
+                expandedRowIDs.remove(id)
             }
         }
     }
@@ -1239,78 +1239,64 @@ private struct TrackingFeatureView: View {
 
 private struct TrackingTimelineRowCard: View {
     let row: TrackingTimelineRowViewData
-    let isExpanded: Bool
-    let onToggleExpanded: () -> Void
+    @Binding var isExpanded: Bool
     let onStartMonth: (String) -> Void
     let onBuffer: (Int) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+        DisclosureGroup(isExpanded: $isExpanded) {
+            HStack(spacing: 24) {
+                HStack(spacing: 8) {
+                    Text("Start")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Menu {
+                        ForEach(row.availableMonths, id: \.self) { month in
+                            Button(month) { onStartMonth(month) }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(row.startMonth)
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    }
+                    .accessibilityIdentifier("tracking_start_month_\(row.key)")
+                }
+
+                HStack(spacing: 8) {
+                    Text("Buffer")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Menu {
+                        ForEach(0 ... 24, id: \.self) { value in
+                            Button("\(value)") { onBuffer(value) }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("\(row.trailingBufferMonths)")
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    }
+                    .accessibilityIdentifier("tracking_buffer_\(row.key)")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(row.label)
                     .font(.headline)
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
-                Spacer()
-                Button(action: onToggleExpanded) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.symbolEffect(.replace))
-                        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("tracking_row_expand_\(row.key)")
+                TrackingPipelinePreview(segments: row.segments)
             }
-            TrackingPipelinePreview(segments: row.segments)
-            if isExpanded {
-                HStack(spacing: 24) {
-                    HStack(spacing: 8) {
-                        Text("Start")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Menu {
-                            ForEach(row.availableMonths, id: \.self) { month in
-                                Button(month) { onStartMonth(month) }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(row.startMonth)
-                                Image(systemName: "chevron.down")
-                                    .font(.caption2.weight(.semibold))
-                            }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        }
-                        .accessibilityIdentifier("tracking_start_month_\(row.key)")
-                    }
-
-                    HStack(spacing: 8) {
-                        Text("Buffer")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Menu {
-                            ForEach(0 ... 24, id: \.self) { value in
-                                Button("\(value)") { onBuffer(value) }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text("\(row.trailingBufferMonths)")
-                                Image(systemName: "chevron.down")
-                                    .font(.caption2.weight(.semibold))
-                            }
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.primary)
-                        }
-                        .accessibilityIdentifier("tracking_buffer_\(row.key)")
-                    }
-                }
-                .padding(.top, 18)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
+            .padding(.bottom, 10)
         }
-        .padding(.bottom, isExpanded ? 0 : 8)
-        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: isExpanded)
+        .accessibilityIdentifier("tracking_row_expand_\(row.key)")
     }
 }
 
