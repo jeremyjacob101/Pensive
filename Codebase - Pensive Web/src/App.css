@@ -310,6 +310,11 @@ body {
   margin-bottom: 12px;
 }
 
+.login-form {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  max-width: 1000px;
+}
+
 .entry-form input,
 .entry-form select,
 .entry-form button {
@@ -323,6 +328,13 @@ body {
 
 .entry-form button {
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .login-form {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
 }
 
 table {

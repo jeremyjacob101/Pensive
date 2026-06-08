@@ -51,7 +51,7 @@ export function LoginPage() {
           />
         </div>
         <h1>Pensive</h1>
-        <form className="entry-form" onSubmit={onSubmit}>
+        <form className="entry-form login-form" onSubmit={onSubmit}>
           <input
             name="username"
             type="text"
