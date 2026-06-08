@@ -1181,6 +1181,7 @@ private final class TrackingFeatureViewModel: ObservableObject {
 
 private struct TrackingFeatureView: View {
     @StateObject private var viewModel: TrackingFeatureViewModel
+    @State private var selectedKind = "expense"
     @State private var expandedRowIDs: Set<String> = []
 
     init(api: ConvexAPI) {
@@ -1190,31 +1191,27 @@ private struct TrackingFeatureView: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
-                if !viewModel.expenseRows.isEmpty {
-                    Section("Expenses") {
-                        ForEach(viewModel.expenseRows) { row in
-                            TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
-                                toggleExpanded(row.id)
-                            }, onStartMonth: { month in
-                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
-                            }, onBuffer: { buffer in
-                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
-                            })
-                        }
+                Section {
+                    Picker("Kind", selection: $selectedKind) {
+                        Text("Expenses").tag("expense")
+                        Text("Incomings").tag("incoming")
                     }
+                    .pickerStyle(.segmented)
                 }
-                if !viewModel.incomingRows.isEmpty {
-                    Section("Incomings") {
-                        ForEach(viewModel.incomingRows) { row in
-                            TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
-                                toggleExpanded(row.id)
-                            }, onStartMonth: { month in
-                                viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
-                            }, onBuffer: { buffer in
-                                viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
-                            })
-                        }
-                    }
+
+                if selectedRows.isEmpty {
+                    Text(selectedKind == "expense" ? "No expense tracking" : "No incoming tracking")
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(selectedRows) { row in
+                    TrackingTimelineRowCard(row: row, isExpanded: expandedRowIDs.contains(row.id), onToggleExpanded: {
+                        toggleExpanded(row.id)
+                    }, onStartMonth: { month in
+                        viewModel.setStartMonth(rowID: row.id, source: row.source, key: row.key, month: month)
+                    }, onBuffer: { buffer in
+                        viewModel.setTrailingBufferMonths(rowID: row.id, source: row.source, key: row.key, months: buffer)
+                    })
                 }
             }
             .listStyle(.insetGrouped)
@@ -1223,6 +1220,10 @@ private struct TrackingFeatureView: View {
             .refreshable { await viewModel.refresh() }
         }
         .task { viewModel.onAppear() }
+    }
+
+    private var selectedRows: [TrackingTimelineRowViewData] {
+        selectedKind == "expense" ? viewModel.expenseRows : viewModel.incomingRows
     }
 
     private func toggleExpanded(_ id: String) {
