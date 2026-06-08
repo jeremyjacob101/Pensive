@@ -17,24 +17,29 @@ struct RecurringsFeatureView: View {
 
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
-            List {
+            VStack(spacing: 0) {
                 Picker("Kind", selection: $selectedKind) {
                     Text("Expenses").tag(RecurringKind.expense)
                     Text("Incomings").tag(RecurringKind.incoming)
                 }
                 .pickerStyle(.segmented)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
 
-                if selectedRows.isEmpty {
-                    Text(selectedKind == .expense ? "No expense recurrings" : "No incoming recurrings")
-                        .foregroundStyle(.secondary)
-                }
+                Divider()
 
-                ForEach(selectedRows) { row in
-                    recurringRow(row)
+                List {
+                    if selectedRows.isEmpty {
+                        Text(selectedKind == .expense ? "No expense recurrings" : "No incoming recurrings")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(selectedRows) { row in
+                        recurringRow(row)
+                    }
                 }
+                .refreshable { await viewModel.refresh() }
             }
-            .refreshable { await viewModel.refresh() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showCreate = true } label: { Image(systemName: "plus") }
