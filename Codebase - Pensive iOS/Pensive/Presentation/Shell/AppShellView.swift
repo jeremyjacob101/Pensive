@@ -1576,7 +1576,7 @@ private struct TrackingSelectionRowView: View {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(isSelected ? .accentColor : .secondary)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                     .frame(width: 26)
                 Circle()
                     .fill(optionColor(from: row.color) ?? .gray)
