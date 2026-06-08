@@ -1,6 +1,6 @@
+import { httpAction } from "./_generated/server";
 import { httpRouter } from "convex/server";
 import { api } from "./_generated/api";
-import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 
 const http = httpRouter();
@@ -49,8 +49,7 @@ http.route({
           email: usernameToAuthEmail(username),
           password,
         },
-      }),
-    );
+      }));
 
     if (!result.ok || !result.value?.tokens?.token) {
       return jsonError(
@@ -100,8 +99,7 @@ http.route({
           email: usernameToAuthEmail(username),
           password,
         },
-      }),
-    );
+      }));
 
     if (!result.ok) {
       return jsonError(422, "validation", authErrorMessage(result.error));
@@ -143,8 +141,7 @@ http.route({
     const result = await runAuthAction(() =>
       ctx.runAction(api.auth.signIn, {
         refreshToken,
-      }),
-    );
+      }));
 
     if (!result.ok || !result.value?.tokens?.token) {
       return jsonError(401, "unauthorized", "Session expired.");
@@ -167,201 +164,140 @@ http.route({
 });
 
 routeGet("/api/expenses/month-bounds", (ctx) =>
-  ctx.runQuery(api.expenses.monthBounds, {}),
-);
+  ctx.runQuery(api.expenses.monthBounds, {}));
 routePost("/api/expenses/list-by-account", (ctx, body) =>
-  ctx.runQuery(api.expenses.listByAccount, body),
-);
+  ctx.runQuery(api.expenses.listByAccount, body));
 routePost("/api/expenses/list-by-date-scope", (ctx, body) =>
-  ctx.runQuery(api.expenses.listByDateScope, body),
-);
+  ctx.runQuery(api.expenses.listByDateScope, body));
 routePost("/api/expenses/create", (ctx, body) =>
-  ctx.runMutation(api.expenses.create, body),
-);
+  ctx.runMutation(api.expenses.create, body));
 routePost("/api/expenses/update", (ctx, body) =>
-  ctx.runMutation(api.expenses.update, body),
-);
+  ctx.runMutation(api.expenses.update, body));
 routePost("/api/expenses/remove", (ctx, body) =>
-  ctx.runMutation(api.expenses.remove, body),
-);
+  ctx.runMutation(api.expenses.remove, body));
 routePost("/api/expenses/bulk-create", (ctx, body) =>
-  ctx.runMutation(api.expenses.bulkCreate, body),
-);
+  ctx.runMutation(api.expenses.bulkCreate, body));
 routePost("/api/expenses/bulk-patch-visible", (ctx, body) =>
-  ctx.runMutation(api.expenses.bulkPatchVisible, body),
-);
+  ctx.runMutation(api.expenses.bulkPatchVisible, body));
 routePost("/api/expenses/rename-base-expense", (ctx, body) =>
-  ctx.runMutation(api.expenses.renameBaseExpense, body),
-);
+  ctx.runMutation(api.expenses.renameBaseExpense, body));
 routePost("/api/expenses/remove-base-expense", (ctx, body) =>
-  ctx.runMutation(api.expenses.removeBaseExpense, body),
-);
+  ctx.runMutation(api.expenses.removeBaseExpense, body));
 routePost("/api/expenses/add-partner-expense", (ctx, body) =>
-  ctx.runMutation(api.expenses.addPartnerExpense, body),
-);
+  ctx.runMutation(api.expenses.addPartnerExpense, body));
 routePost("/api/expenses/unlink-expense-from-partners", (ctx, body) =>
-  ctx.runMutation(api.expenses.unlinkExpenseFromPartners, body),
-);
+  ctx.runMutation(api.expenses.unlinkExpenseFromPartners, body));
 
 routeGet("/api/incomings/month-bounds", (ctx) =>
-  ctx.runQuery(api.incomings.monthBounds, {}),
-);
+  ctx.runQuery(api.incomings.monthBounds, {}));
 routePost("/api/incomings/list-by-account", (ctx, body) =>
-  ctx.runQuery(api.incomings.listByAccount, body),
-);
+  ctx.runQuery(api.incomings.listByAccount, body));
 routePost("/api/incomings/list-by-date-scope", (ctx, body) =>
-  ctx.runQuery(api.incomings.listByDateScope, body),
-);
+  ctx.runQuery(api.incomings.listByDateScope, body));
 routePost("/api/incomings/create", (ctx, body) =>
-  ctx.runMutation(api.incomings.create, body),
-);
+  ctx.runMutation(api.incomings.create, body));
 routePost("/api/incomings/update", (ctx, body) =>
-  ctx.runMutation(api.incomings.update, body),
-);
+  ctx.runMutation(api.incomings.update, body));
 routePost("/api/incomings/remove", (ctx, body) =>
-  ctx.runMutation(api.incomings.remove, body),
-);
+  ctx.runMutation(api.incomings.remove, body));
 routePost("/api/incomings/bulk-create", (ctx, body) =>
-  ctx.runMutation(api.incomings.bulkCreate, body),
-);
+  ctx.runMutation(api.incomings.bulkCreate, body));
 routePost("/api/incomings/bulk-patch-visible", (ctx, body) =>
-  ctx.runMutation(api.incomings.bulkPatchVisible, body),
-);
+  ctx.runMutation(api.incomings.bulkPatchVisible, body));
 routePost("/api/incomings/add-partner-incoming", (ctx, body) =>
-  ctx.runMutation(api.incomings.addPartnerIncoming, body),
-);
+  ctx.runMutation(api.incomings.addPartnerIncoming, body));
 routePost("/api/incomings/unlink-incoming-from-partners", (ctx, body) =>
-  ctx.runMutation(api.incomings.unlinkIncomingFromPartners, body),
-);
+  ctx.runMutation(api.incomings.unlinkIncomingFromPartners, body));
 
 routePost("/api/recurrings/list", (ctx, body) =>
-  ctx.runQuery(api.recurrings.list, body),
-);
+  ctx.runQuery(api.recurrings.list, body));
 routePost("/api/recurrings/create", (ctx, body) =>
-  ctx.runMutation(api.recurrings.create, body),
-);
+  ctx.runMutation(api.recurrings.create, body));
 routePost("/api/recurrings/update", (ctx, body) =>
-  ctx.runMutation(api.recurrings.update, body),
-);
+  ctx.runMutation(api.recurrings.update, body));
 routePost("/api/recurrings/remove", (ctx, body) =>
-  ctx.runMutation(api.recurrings.remove, body),
-);
+  ctx.runMutation(api.recurrings.remove, body));
 routePost("/api/recurrings/set-status", (ctx, body) =>
-  ctx.runMutation(api.recurrings.setStatus, body),
-);
+  ctx.runMutation(api.recurrings.setStatus, body));
 routePost("/api/recurrings/materialize-due-expenses", (ctx, body) =>
-  ctx.runMutation(api.recurrings.materializeDueExpenses, body),
-);
+  ctx.runMutation(api.recurrings.materializeDueExpenses, body));
 
 routePost("/api/summaries/range", (ctx, body) =>
-  ctx.runQuery(api.summaries.range, body),
-);
-routeGet("/api/tracking/list", (ctx) =>
-  ctx.runQuery(api.tracking.list, {}),
-);
+  ctx.runQuery(api.summaries.range, body));
+routeGet("/api/tracking/list", (ctx) => ctx.runQuery(api.tracking.list, {}));
 
 routeGet("/api/notepad/get-mine", (ctx) =>
-  ctx.runQuery(api.notepad.getMine, {}),
-);
+  ctx.runQuery(api.notepad.getMine, {}));
 routePost("/api/notepad/add-note", (ctx, body) =>
-  ctx.runMutation(api.notepad.addNote, body),
-);
+  ctx.runMutation(api.notepad.addNote, body));
 routePost("/api/notepad/cleanup-empty-notes", (ctx) =>
-  ctx.runMutation(api.notepad.cleanupEmptyNotes, {}),
-);
+  ctx.runMutation(api.notepad.cleanupEmptyNotes, {}));
 routePost("/api/notepad/rename-note", (ctx, body) =>
-  ctx.runMutation(api.notepad.renameNote, body),
-);
+  ctx.runMutation(api.notepad.renameNote, body));
 routePost("/api/notepad/delete-note", (ctx, body) =>
-  ctx.runMutation(api.notepad.deleteNote, body),
-);
+  ctx.runMutation(api.notepad.deleteNote, body));
 routePost("/api/notepad/save-note-content", (ctx, body) =>
-  ctx.runMutation(api.notepad.saveNoteContent, body),
-);
+  ctx.runMutation(api.notepad.saveNoteContent, body));
 routePost("/api/notepad/add-table", (ctx, body) =>
-  ctx.runMutation(api.notepad.addTable, body),
-);
+  ctx.runMutation(api.notepad.addTable, body));
 routePost("/api/notepad/update-table", (ctx, body) =>
-  ctx.runMutation(api.notepad.updateTable, body),
-);
+  ctx.runMutation(api.notepad.updateTable, body));
 routePost("/api/notepad/rename-table", (ctx, body) =>
-  ctx.runMutation(api.notepad.renameTable, body),
-);
+  ctx.runMutation(api.notepad.renameTable, body));
 routePost("/api/notepad/delete-table", (ctx, body) =>
-  ctx.runMutation(api.notepad.deleteTable, body),
-);
+  ctx.runMutation(api.notepad.deleteTable, body));
 routePost("/api/notepad/save-cell", (ctx, body) =>
-  ctx.runMutation(api.notepad.saveCell, body),
-);
+  ctx.runMutation(api.notepad.saveCell, body));
 routePost("/api/notepad/add-row", (ctx, body) =>
-  ctx.runMutation(api.notepad.addRow, body),
-);
+  ctx.runMutation(api.notepad.addRow, body));
 routePost("/api/notepad/add-column", (ctx, body) =>
-  ctx.runMutation(api.notepad.addColumn, body),
-);
+  ctx.runMutation(api.notepad.addColumn, body));
 routePost("/api/notepad/remove-last-row", (ctx, body) =>
-  ctx.runMutation(api.notepad.removeLastRow, body),
-);
+  ctx.runMutation(api.notepad.removeLastRow, body));
 routePost("/api/notepad/remove-last-column", (ctx, body) =>
-  ctx.runMutation(api.notepad.removeLastColumn, body),
-);
+  ctx.runMutation(api.notepad.removeLastColumn, body));
 
 routeGet("/api/user-options/list", (ctx) =>
-  ctx.runQuery(api.userOptions.list, {}),
-);
+  ctx.runQuery(api.userOptions.list, {}));
 routePost("/api/user-options/add", (ctx, body) =>
-  ctx.runMutation(api.userOptions.add, body),
-);
+  ctx.runMutation(api.userOptions.add, body));
 routePost("/api/user-options/update-color", (ctx, body) =>
-  ctx.runMutation(api.userOptions.updateColor, body),
-);
+  ctx.runMutation(api.userOptions.updateColor, body));
 routePost("/api/user-options/remove", (ctx, body) =>
-  ctx.runMutation(api.userOptions.remove, body),
-);
+  ctx.runMutation(api.userOptions.remove, body));
 routePost("/api/user-options/set-default", (ctx, body) =>
-  ctx.runMutation(api.userOptions.setDefault, body),
-);
+  ctx.runMutation(api.userOptions.setDefault, body));
 routePost("/api/user-options/set-tracking", (ctx, body) =>
-  ctx.runMutation(api.userOptions.setTracking, body),
-);
+  ctx.runMutation(api.userOptions.setTracking, body));
 routePost("/api/user-options/rename", (ctx, body) =>
-  ctx.runMutation(api.userOptions.rename, body),
-);
+  ctx.runMutation(api.userOptions.rename, body));
 routePost("/api/user-options/move-to-subtype", (ctx, body) =>
-  ctx.runMutation(api.userOptions.moveToSubtype, body),
-);
+  ctx.runMutation(api.userOptions.moveToSubtype, body));
 routePost("/api/user-options/promote-subtype", (ctx, body) =>
-  ctx.runMutation(api.userOptions.promoteSubtype, body),
-);
+  ctx.runMutation(api.userOptions.promoteSubtype, body));
 routePost("/api/user-options/move-subtype", (ctx, body) =>
-  ctx.runMutation(api.userOptions.moveSubtype, body),
-);
+  ctx.runMutation(api.userOptions.moveSubtype, body));
 
 routePost("/api/payback-links/list-for-expense", (ctx, body) =>
-  ctx.runQuery(api.paybackLinks.listForExpense, body),
-);
+  ctx.runQuery(api.paybackLinks.listForExpense, body));
 routePost("/api/payback-links/list-for-incoming", (ctx, body) =>
-  ctx.runQuery(api.paybackLinks.listForIncoming, body),
-);
+  ctx.runQuery(api.paybackLinks.listForIncoming, body));
 routeGet("/api/payback-links/list-incoming-candidates", (ctx) =>
-  ctx.runQuery(api.paybackLinks.listIncomingCandidates, {}),
-);
+  ctx.runQuery(api.paybackLinks.listIncomingCandidates, {}));
 routeGet("/api/payback-links/list-expense-candidates", (ctx) =>
-  ctx.runQuery(api.paybackLinks.listExpenseCandidates, {}),
-);
+  ctx.runQuery(api.paybackLinks.listExpenseCandidates, {}));
 routePost("/api/payback-links/create", (ctx, body) =>
-  ctx.runMutation(api.paybackLinks.create, body),
-);
+  ctx.runMutation(api.paybackLinks.create, body));
 routePost("/api/payback-links/update", (ctx, body) =>
-  ctx.runMutation(api.paybackLinks.update, body),
-);
+  ctx.runMutation(api.paybackLinks.update, body));
 routePost("/api/payback-links/remove", (ctx, body) =>
-  ctx.runMutation(api.paybackLinks.remove, body),
-);
+  ctx.runMutation(api.paybackLinks.remove, body));
 
 function routeGet(
   path: string,
-  run: (ctx: Parameters<typeof httpAction>[0] extends never ? never : any) => Promise<unknown>,
+  run: (
+    ctx: Parameters<typeof httpAction>[0] extends never ? never : any,
+  ) => Promise<unknown>,
 ) {
   http.route({
     path,
@@ -376,7 +312,10 @@ function routeGet(
   });
 }
 
-function routePost(path: string, run: (ctx: any, body: any) => Promise<unknown>) {
+function routePost(
+  path: string,
+  run: (ctx: any, body: any) => Promise<unknown>,
+) {
   http.route({
     path,
     method: "POST",

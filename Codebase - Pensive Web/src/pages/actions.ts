@@ -2,8 +2,8 @@ import { getMonthFromIsoDate, parseMonthYears } from "../helpers/dates";
 import type { Dispatch, SetStateAction, SyntheticEvent } from "react";
 import type { WorkspaceMutations } from "../types/workspaceActions";
 import type { EditValues, FormType } from "../types/workspace";
-import type { Doc } from "@pensive/convex-data-model";
 import { randomId16, toAmount } from "../helpers/formatters";
+import type { Doc } from "@pensive/convex-data-model";
 import type { OptionKind } from "../types/schema";
 
 export async function saveOption(

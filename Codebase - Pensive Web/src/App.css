@@ -141,7 +141,7 @@ body {
   font-weight: 700;
 }
 
-.left-menu-icon > svg {
+.left-menu-icon>svg {
   width: 16px;
   height: 16px;
   display: block;
@@ -451,7 +451,7 @@ thead th {
   box-sizing: border-box;
 }
 
-.entries-with-month > .entry-card-list {
+.entries-with-month>.entry-card-list {
   width: 62vw;
   min-width: 700px;
   max-width: none;
@@ -1516,7 +1516,7 @@ thead th {
   grid-template-columns: repeat(2, minmax(160px, 1fr));
 }
 
-.entry-detail-grid.static > div {
+.entry-detail-grid.static>div {
   font-size: 13px;
 }
 
@@ -1556,7 +1556,7 @@ thead th {
   gap: 12px;
 }
 
-.payback-link-row > span {
+.payback-link-row>span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1571,10 +1571,8 @@ thead th {
 
 .payback-link-form {
   display: grid;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(120px, 0.7fr) minmax(
-      120px,
-      1fr
-    ) auto;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(120px, 0.7fr) minmax(120px,
+      1fr) auto;
   gap: 8px;
   align-items: center;
 }
@@ -2113,8 +2111,7 @@ thead th {
 
 .option-parent-group.is-drop-target .option-color-row {
   border-color: color-mix(in srgb, var(--option-color) 70%, var(--border) 30%);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--option-color) 45%, transparent 55%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--option-color) 45%, transparent 55%);
 }
 
 .option-parent-group.is-drop-target .option-color-row-child {
@@ -2229,16 +2226,16 @@ thead th {
 
 .option-color-chip.is-default {
   border-color: color-mix(in srgb, var(--option-color) 88%, #ffffff 12%);
-  box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--option-color) 40%, transparent 60%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--option-color) 40%, transparent 60%);
 }
 
 .option-color-dot {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 11px;
+  height: 11px;
   border-radius: 999px;
   background: var(--option-color);
+  margin-inline: auto;
 }
 
 .option-color-label {
@@ -2308,15 +2305,10 @@ thead th {
 .tracking-page {
   --tracking-segment-width: 46px;
   --tracking-visible-segments: 10;
-  --tracking-pipeline-width: calc(
-    var(--tracking-segment-width) * var(--tracking-visible-segments) + 6px
-  );
+  --tracking-pipeline-width: calc(var(--tracking-segment-width) * var(--tracking-visible-segments) + 6px);
   --tracking-row-title-width: 380px;
   --tracking-buffer-width: 138px;
-  --tracking-row-min-width: calc(
-    var(--tracking-row-title-width) + 12px + var(--tracking-pipeline-width) +
-      12px + var(--tracking-buffer-width) + 24px
-  );
+  --tracking-row-min-width: calc(var(--tracking-row-title-width) + 12px + var(--tracking-pipeline-width) + 12px + var(--tracking-buffer-width) + 24px);
   width: max-content;
   max-width: calc(100vw - 120px);
   display: flex;
@@ -2400,7 +2392,7 @@ thead th {
   min-width: 0;
 }
 
-.tracking-row-label > span:last-child {
+.tracking-row-label>span:last-child {
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -2468,27 +2460,21 @@ thead th {
 }
 
 .tracking-pipeline-segment.is-paid {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #22c55e 88%, #ffffff 12%),
-    color-mix(in srgb, #16a34a 90%, #000000 10%)
-  );
+  background: linear-gradient(180deg,
+      color-mix(in srgb, #22c55e 88%, #ffffff 12%),
+      color-mix(in srgb, #16a34a 90%, #000000 10%));
 }
 
 .tracking-pipeline-segment.is-unpaid {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #f43f5e 86%, #ffffff 14%),
-    color-mix(in srgb, #e11d48 90%, #000000 10%)
-  );
+  background: linear-gradient(180deg,
+      color-mix(in srgb, #f43f5e 86%, #ffffff 14%),
+      color-mix(in srgb, #e11d48 90%, #000000 10%));
 }
 
 .tracking-pipeline-segment.is-buffer {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #94a3b8 58%, #ffffff 42%),
-    color-mix(in srgb, #64748b 72%, #0f172a 28%)
-  );
+  background: linear-gradient(180deg,
+      color-mix(in srgb, #94a3b8 58%, #ffffff 42%),
+      color-mix(in srgb, #64748b 72%, #0f172a 28%));
 }
 
 .tracking-pipeline-segment.is-empty {
@@ -2593,15 +2579,15 @@ thead th {
   font-weight: 700;
 }
 
-.tracking-picker-label > span,
-.tracking-picker-label > small {
+.tracking-picker-label>span,
+.tracking-picker-label>small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tracking-picker-label > small {
+.tracking-picker-label>small {
   font-size: 11px;
   font-weight: 600;
   color: color-mix(in srgb, var(--text) 62%, transparent 38%);

@@ -23,11 +23,7 @@ import type * as summaries from "../summaries.js";
 import type * as tracking from "../tracking.js";
 import type * as userOptions from "../userOptions.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;

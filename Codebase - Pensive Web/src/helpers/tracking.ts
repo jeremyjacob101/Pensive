@@ -1,3 +1,14 @@
+import type { TrackingOptionKind } from "src/types/tracking";
+
+export const TRACKING_VISIBLE_SEGMENTS = 10;
+export const MAX_BUFFER_MONTHS = 12;
+
+export const trackingOptionKey = (
+  kind: TrackingOptionKind,
+  value: string,
+  parentValue?: string,
+) => `${kind}|${value}|${parentValue ?? ""}`;
+
 export function formatMonthShort(value: string) {
   const parsed = new Date(`${value}-01T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
@@ -29,9 +40,6 @@ export function getMonthsBetween(start: string, end: string) {
   }
   return months;
 }
-
-export const TRACKING_VISIBLE_SEGMENTS = 10;
-export const MAX_BUFFER_MONTHS = 12;
 
 export function parseStartByRow(value: string): Record<string, string> {
   try {

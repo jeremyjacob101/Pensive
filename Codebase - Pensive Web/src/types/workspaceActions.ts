@@ -1,6 +1,6 @@
-import type { Id } from "@pensive/convex-data-model";
 import type { EditValues, FormType } from "./workspace";
 import type { Dispatch, SetStateAction } from "react";
+import type { Id } from "@pensive/convex-data-model";
 import type { OptionKind } from "./schema";
 import type { MenuItemKey } from "./ui";
 

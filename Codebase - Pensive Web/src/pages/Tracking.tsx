@@ -1,34 +1,13 @@
-import { formatMonthShort, getMonthsBetween, MAX_BUFFER_MONTHS, monthInTrailingBuffer, parseBufferByRow, parseStartByRow, snapToNewestMonth, TRACKING_VISIBLE_SEGMENTS } from "../helpers/tracking";
+import { formatMonthShort, getMonthsBetween, MAX_BUFFER_MONTHS, monthInTrailingBuffer, parseBufferByRow, parseStartByRow, snapToNewestMonth, TRACKING_VISIBLE_SEGMENTS, trackingOptionKey } from "../helpers/tracking";
+import type { TrackingOptionKind, TrackingOptionRow, TrackingPickerKind } from "../types/tracking";
 import { TRACKING_BUFFER_BY_ROW_KEY, TRACKING_START_BY_ROW_KEY } from "../keys/tracking";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import type { UserOption } from "../types/workspace";
-import { ListChecks } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "@pensive/convex-api";
 import { useMutation, useQuery } from "convex/react";
-
-type TrackingPickerKind = "expense" | "incoming";
-type TrackingOptionKind =
-  | "category"
-  | "subcategory"
-  | "incomeType"
-  | "incomeSubtype";
-type TrackingOptionRow = {
-  id: string;
-  kind: TrackingOptionKind;
-  value: string;
-  parentValue?: string;
-  color: string;
-  isTracking: boolean;
-  indentationLevel: number;
-};
-
-const trackingOptionKey = (
-  kind: TrackingOptionKind,
-  value: string,
-  parentValue?: string,
-) => `${kind}|${value}|${parentValue ?? ""}`;
+import type { CSSProperties } from "react";
+import { ListChecks } from "lucide-react";
+import { api } from "@pensive/convex-api";
 
 export function Tracking() {
   const tracking = useQuery(api.tracking.list);
@@ -230,10 +209,10 @@ export function Tracking() {
     const changes = Object.entries(draftTracking)
       .filter(([id, isTracking]) => originalTracking[id] !== isTracking)
       .map(([id, isTracking]) => ({ row: rowsByID.get(id), isTracking }))
-      .filter(
-        (change): change is { row: TrackingOptionRow; isTracking: boolean } =>
-          Boolean(change.row),
-      );
+      .filter((
+        change,
+      ): change is { row: TrackingOptionRow; isTracking: boolean } =>
+        Boolean(change.row));
 
     try {
       for (const change of changes) {
@@ -674,7 +653,9 @@ export function Tracking() {
                     <span className="option-color-dot" />
                     <span className="tracking-picker-label">
                       <span>{row.value}</span>
-                      {row.parentValue ? <small>{row.parentValue}</small> : null}
+                      {row.parentValue ? (
+                        <small>{row.parentValue}</small>
+                      ) : null}
                     </span>
                   </button>
                 ))
@@ -717,7 +698,10 @@ function buildTrackingOptionRows(
   const childrenByParent = new Map<string, UserOption[]>();
   for (const child of children) {
     const parent = child.parentValue ?? "";
-    childrenByParent.set(parent, [...(childrenByParent.get(parent) ?? []), child]);
+    childrenByParent.set(parent, [
+      ...(childrenByParent.get(parent) ?? []),
+      child,
+    ]);
   }
 
   const displayedChildren = new Set<string>();
@@ -734,12 +718,14 @@ function buildTrackingOptionRows(
   }
 
   const orphans = children
-    .filter((child) => !displayedChildren.has(`${child.value}|${child.parentValue ?? ""}`))
+    .filter(
+      (child) =>
+        !displayedChildren.has(`${child.value}|${child.parentValue ?? ""}`),
+    )
     .sort(compareOptions);
   rows.push(
     ...orphans.map((child) =>
-      toTrackingOptionRow(child, childKind, 0, trackedKeys),
-    ),
+      toTrackingOptionRow(child, childKind, 0, trackedKeys)),
   );
 
   return rows;

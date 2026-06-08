@@ -176,7 +176,9 @@ export const listByAccount = query({
         .withIndex("by_user_id_date", (q) => q.eq("userId", userId))
         .order("desc")
         .collect()
-    ).filter((row) => normalizeAccountLookup(row.account) === normalizedAccount);
+    ).filter(
+      (row) => normalizeAccountLookup(row.account) === normalizedAccount,
+    );
     const page = matchingRows.slice(safeOffset, safeOffset + numItems);
     const nextOffset = safeOffset + page.length;
 

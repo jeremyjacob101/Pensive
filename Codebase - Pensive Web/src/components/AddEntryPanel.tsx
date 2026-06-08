@@ -8,12 +8,12 @@ import { randomId16, toAmount } from "../helpers/formatters";
 import { SearchFieldDropdown } from "./SearchFieldDropdown";
 import type { Id } from "@pensive/convex-data-model";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "@pensive/convex-api";
 import type { MenuItemKey } from "../types/ui";
 import { OptionPicker } from "./OptionPicker";
 import { saveOption } from "../pages/actions";
 import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
+import { api } from "@pensive/convex-api";
 import { createPortal } from "react-dom";
 
 export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, onSearchQueryChange, searchFieldOptions, selectedSearchFields, onSearchFieldsChange, visibleExpenseIds, visibleIncomingIds, visibleExpenseCategories, visibleIncomingTypes, onBulkPatchExpenses, onBulkPatchIncomings, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {

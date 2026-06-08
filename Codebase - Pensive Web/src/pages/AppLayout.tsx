@@ -8,9 +8,9 @@ import type { TopRowSearchState } from "../types/search";
 import { useMutation, useQuery } from "convex/react";
 import type { FormType } from "../types/workspace";
 import { THEME_STORAGE_KEY } from "../keys/theme";
-import { api } from "@pensive/convex-api";
 import { useAuth } from "../context/useAuth";
 import { useEffect, useState } from "react";
+import { api } from "@pensive/convex-api";
 
 export function AppLayout() {
   const [storedThemeDark, setStoredThemeDark] = useLocalStorage(
