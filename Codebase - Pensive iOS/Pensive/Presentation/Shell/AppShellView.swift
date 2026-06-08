@@ -940,6 +940,36 @@ private struct TrackingTimelineRowViewData: Identifiable {
     var segments: [TrackingTimelineSegment]
 }
 
+private enum TrackingSelectionKind: String, CaseIterable, Identifiable {
+    case expense
+    case incoming
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .expense: return "Expenses"
+        case .incoming: return "Incomings"
+        }
+    }
+}
+
+private struct TrackingSelectionOptionRow: Identifiable {
+    let kind: OptionsKind
+    let value: String
+    let color: String
+    let parentValue: String?
+    let indentationLevel: Int
+    let isTracking: Bool
+
+    var id: String { trackingSelectionKey(kind: kind.rawValue, value: value, parentValue: parentValue) }
+}
+
+private struct TrackingSelectionChange {
+    let row: TrackingSelectionOptionRow
+    let isTracking: Bool
+}
+
 enum TrackingTimelineLogic {
     static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
@@ -1014,6 +1044,14 @@ enum TrackingTimelineLogic {
     }
 }
 
+private func trackingSelectionKey(kind: String, value: String, parentValue: String?) -> String {
+    "\(kind)|\(value)|\(normalizedOptionParent(parentValue))"
+}
+
+private func normalizedOptionParent(_ value: String?) -> String {
+    value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+}
+
 struct TrackingTimelineRowPersistenceStore {
     private let defaults: UserDefaults
     private let startPrefix = "tracking.timeline.start"
@@ -1046,6 +1084,8 @@ private final class TrackingFeatureViewModel: ObservableObject {
     @Published private(set) var state: ViewLoadState = .loading
     @Published private(set) var expenseRows: [TrackingTimelineRowViewData] = []
     @Published private(set) var incomingRows: [TrackingTimelineRowViewData] = []
+    @Published private(set) var expenseSelectionRows: [TrackingSelectionOptionRow] = []
+    @Published private(set) var incomingSelectionRows: [TrackingSelectionOptionRow] = []
 
     private let api: ConvexAPI
     private let persistence: TrackingTimelineRowPersistenceStore
@@ -1066,18 +1106,48 @@ private final class TrackingFeatureViewModel: ObservableObject {
         if shouldShowFullScreenError { state = .loading }
         if let tracking = debugFixtureResponseIfEnabled() {
             apply(response: tracking)
+            apply(options: Self.fixtureOptions(), tracking: tracking)
             state = .content
             return
         }
         do {
-            let tracking = try await api.tracking.list()
+            async let trackingRequest = api.tracking.list()
+            async let optionsRequest = api.userOptions.list()
+            let tracking = try await trackingRequest
+            let options = try await optionsRequest
             apply(response: tracking)
+            apply(options: options, tracking: tracking)
             state = .content
         } catch {
             if shouldShowFullScreenError {
                 state = .error(message: "Failed to load tracking")
             }
         }
+    }
+
+    func saveTrackingSelection(original: [String: Bool], draft: [String: Bool]) async throws {
+        let rowByID = Dictionary(uniqueKeysWithValues: (expenseSelectionRows + incomingSelectionRows).map { ($0.id, $0) })
+        let changes = draft.compactMap { id, isTracking -> TrackingSelectionChange? in
+            guard original[id] != isTracking, let row = rowByID[id] else { return nil }
+            return TrackingSelectionChange(row: row, isTracking: isTracking)
+        }
+
+        guard !changes.isEmpty else { return }
+
+        if isDebugFixtureEnabled() {
+            applyFixtureSelectionChanges(changes)
+            return
+        }
+
+        for change in changes {
+            try await api.userOptions.setTracking(.init(
+                kind: change.row.kind.rawValue,
+                value: change.row.value,
+                isTracking: change.isTracking,
+                parentValue: normalizedParent(change.row.parentValue)
+            ))
+        }
+        await refresh()
     }
 
     func setStartMonth(rowID: String, source: String, key: String, month: String) {
@@ -1143,6 +1213,70 @@ private final class TrackingFeatureViewModel: ObservableObject {
         incomingRows = rows.filter { $0.source == "incoming" }
     }
 
+    private func apply(options: UserOptionsListResponse, tracking: TrackingResponse) {
+        let trackedKeys = Set(tracking.rows.map { trackingSelectionKey(kind: $0.kind, value: $0.value, parentValue: $0.parentValue) })
+        expenseSelectionRows = nestedSelectionRows(
+            parents: options.category,
+            parentKind: .category,
+            children: options.subcategory,
+            childKind: .subcategory,
+            trackedKeys: trackedKeys
+        )
+        incomingSelectionRows = nestedSelectionRows(
+            parents: options.incomeType,
+            parentKind: .incomeType,
+            children: options.incomeSubtype,
+            childKind: .incomeSubtype,
+            trackedKeys: trackedKeys
+        )
+    }
+
+    private func nestedSelectionRows(parents: [UserOptionRow], parentKind: OptionsKind, children: [UserOptionRow], childKind: OptionsKind, trackedKeys: Set<String>) -> [TrackingSelectionOptionRow] {
+        let sortedParents = parents.sorted { lhs, rhs in
+            lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+        }
+        let childrenByParent = Dictionary(grouping: children) { row in
+            normalizedOptionParent(row.parentValue)
+        }
+        var displayedChildKeys: Set<String> = []
+        var rows: [TrackingSelectionOptionRow] = []
+
+        for parent in sortedParents {
+            rows.append(selectionRow(from: parent, kind: parentKind, indentationLevel: 0, trackedKeys: trackedKeys))
+            let sortedChildren = (childrenByParent[parent.value] ?? []).sorted { lhs, rhs in
+                lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            for child in sortedChildren {
+                displayedChildKeys.insert(child.selfKey)
+                rows.append(selectionRow(from: child, kind: childKind, indentationLevel: 1, trackedKeys: trackedKeys))
+            }
+        }
+
+        let orphanChildren = children.filter { !displayedChildKeys.contains($0.selfKey) }.sorted { lhs, rhs in
+            if lhs.parentValue == rhs.parentValue {
+                return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            return normalizedOptionParent(lhs.parentValue) < normalizedOptionParent(rhs.parentValue)
+        }
+        rows.append(contentsOf: orphanChildren.map {
+            selectionRow(from: $0, kind: childKind, indentationLevel: 0, trackedKeys: trackedKeys)
+        })
+
+        return rows
+    }
+
+    private func selectionRow(from row: UserOptionRow, kind: OptionsKind, indentationLevel: Int, trackedKeys: Set<String>) -> TrackingSelectionOptionRow {
+        let key = trackingSelectionKey(kind: kind.rawValue, value: row.value, parentValue: row.parentValue)
+        return .init(
+            kind: kind,
+            value: row.value,
+            color: row.color,
+            parentValue: row.parentValue,
+            indentationLevel: indentationLevel,
+            isTracking: row.isTracking || trackedKeys.contains(key)
+        )
+    }
+
     private func mutateRow(id: String, source: String, _ mutate: (inout TrackingTimelineRowViewData) -> Void) {
         if source == "expense" {
             guard let index = expenseRows.firstIndex(where: { $0.id == id }) else { return }
@@ -1159,11 +1293,69 @@ private final class TrackingFeatureViewModel: ObservableObject {
 
     private func debugFixtureResponseIfEnabled() -> TrackingResponse? {
         #if DEBUG
-        guard ProcessInfo.processInfo.environment["UI_TEST_TRACKING_FIXTURE"] == "1" else { return nil }
+        guard isDebugFixtureEnabled() else { return nil }
         return Self.fixtureResponse()
         #else
         return nil
         #endif
+    }
+
+    private func isDebugFixtureEnabled() -> Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["UI_TEST_TRACKING_FIXTURE"] == "1"
+        #else
+        false
+        #endif
+    }
+
+    private func normalizedParent(_ value: String?) -> String? {
+        let trimmed = normalizedOptionParent(value)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func applyFixtureSelectionChanges(_ changes: [TrackingSelectionChange]) {
+        for change in changes {
+            updateFixtureSelectionRow(change.row, isTracking: change.isTracking)
+        }
+        apply(response: fixtureResponseFromSelectionRows())
+    }
+
+    private func updateFixtureSelectionRow(_ target: TrackingSelectionOptionRow, isTracking: Bool) {
+        func update(rows: inout [TrackingSelectionOptionRow]) {
+            guard let index = rows.firstIndex(where: { $0.id == target.id }) else { return }
+            let row = rows[index]
+            rows[index] = .init(
+                kind: row.kind,
+                value: row.value,
+                color: row.color,
+                parentValue: row.parentValue,
+                indentationLevel: row.indentationLevel,
+                isTracking: isTracking
+            )
+        }
+
+        update(rows: &expenseSelectionRows)
+        update(rows: &incomingSelectionRows)
+    }
+
+    private func fixtureResponseFromSelectionRows() -> TrackingResponse {
+        let currentMonth = "2026-05"
+        let rows = (expenseSelectionRows + incomingSelectionRows).filter(\.isTracking).map { row in
+            let source = row.kind == .category || row.kind == .subcategory ? "expense" : "incoming"
+            return TrackingRow(
+                key: row.id.lowercased(),
+                source: source,
+                kind: row.kind.rawValue,
+                value: row.value,
+                parentValue: row.parentValue,
+                color: row.color,
+                label: normalizedOptionParent(row.parentValue).isEmpty ? row.value : "\(normalizedOptionParent(row.parentValue)) / \(row.value)",
+                paidMonths: row.value == "Housing" || row.value == "Salary" ? ["2026-01", "2026-02", "2026-04"] : [],
+                rangeMonths: ["2026-01", "2026-02", "2026-03", "2026-04", currentMonth],
+                statusByMonth: [:]
+            )
+        }
+        return .init(currentMonth: currentMonth, rows: rows)
     }
 
     #if DEBUG
@@ -1171,18 +1363,41 @@ private final class TrackingFeatureViewModel: ObservableObject {
         .init(
             currentMonth: "2026-05",
             rows: [
-                .init(key: "housing", source: "expense", kind: "category", value: "housing", parentValue: nil, color: "#FF5A5F", label: "Housing", paidMonths: ["2026-01", "2026-02", "2026-04"], rangeMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"], statusByMonth: [:]),
-                .init(key: "salary", source: "incoming", kind: "type", value: "salary", parentValue: nil, color: "#00A699", label: "Salary", paidMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], rangeMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"], statusByMonth: [:])
+                .init(key: "category|Housing|", source: "expense", kind: "category", value: "Housing", parentValue: nil, color: "#FF5A5F", label: "Housing", paidMonths: ["2026-01", "2026-02", "2026-04"], rangeMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"], statusByMonth: [:]),
+                .init(key: "incomeType|Salary|", source: "incoming", kind: "incomeType", value: "Salary", parentValue: nil, color: "#00A699", label: "Salary", paidMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"], rangeMonths: ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"], statusByMonth: [:])
             ]
         )
     }
     #endif
+
+    private static func fixtureOptions() -> UserOptionsListResponse {
+        .init(
+            account: [],
+            category: [
+                .init(value: "Housing", color: "#FF5A5F", isDefault: false, isTracking: true, parentValue: nil),
+                .init(value: "Transport", color: "#FC642D", isDefault: false, isTracking: false, parentValue: nil)
+            ],
+            subcategory: [
+                .init(value: "Rent", color: "#FFB400", isDefault: false, isTracking: false, parentValue: "Housing"),
+                .init(value: "Train", color: "#767676", isDefault: false, isTracking: false, parentValue: "Transport")
+            ],
+            incomeType: [
+                .init(value: "Salary", color: "#00A699", isDefault: false, isTracking: true, parentValue: nil),
+                .init(value: "Freelance", color: "#007A87", isDefault: false, isTracking: false, parentValue: nil)
+            ],
+            incomeSubtype: [
+                .init(value: "Base", color: "#7B0051", isDefault: false, isTracking: false, parentValue: "Salary"),
+                .init(value: "Consulting", color: "#8CE071", isDefault: false, isTracking: false, parentValue: "Freelance")
+            ]
+        )
+    }
 }
 
 private struct TrackingFeatureView: View {
     @StateObject private var viewModel: TrackingFeatureViewModel
     @State private var selectedKind = "expense"
     @State private var expandedRowIDs: Set<String> = []
+    @State private var showTrackingSelection = false
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: TrackingFeatureViewModel(api: api))
@@ -1216,6 +1431,19 @@ private struct TrackingFeatureView: View {
             .navigationTitle("Tracking")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showTrackingSelection = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .accessibilityIdentifier("tracking_manage_toolbar")
+                }
+            }
+            .sheet(isPresented: $showTrackingSelection) {
+                TrackingSelectionSheet(viewModel: viewModel)
+            }
         }
         .task { viewModel.onAppear() }
     }
@@ -1234,6 +1462,152 @@ private struct TrackingFeatureView: View {
                 expandedRowIDs.remove(id)
             }
         }
+    }
+}
+
+private struct TrackingSelectionSheet: View {
+    @ObservedObject var viewModel: TrackingFeatureViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedKind: TrackingSelectionKind = .expense
+    @State private var originalSelection: [String: Bool] = [:]
+    @State private var draftSelection: [String: Bool] = [:]
+    @State private var inlineError: String?
+    @State private var isSaving = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Picker("Kind", selection: $selectedKind) {
+                        ForEach(TrackingSelectionKind.allCases) { kind in
+                            Text(kind.title).tag(kind)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("tracking_selection_kind_picker")
+                }
+
+                if selectedRows.isEmpty {
+                    Text(selectedKind == .expense ? "No expense options" : "No incoming options")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Section(selectedKind.title) {
+                        ForEach(selectedRows) { row in
+                            TrackingSelectionRowView(
+                                row: row,
+                                isSelected: binding(for: row)
+                            )
+                        }
+                    }
+                }
+
+                if let inlineError {
+                    Section("Error") {
+                        Text(inlineError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Tracking")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isSaving ? "Saving..." : "Done") {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving)
+                    .accessibilityIdentifier("tracking_selection_done")
+                }
+            }
+            .interactiveDismissDisabled(isSaving)
+        }
+        .presentationDetents([.medium, .large])
+        .onAppear(perform: resetDraft)
+        .accessibilityIdentifier("tracking_selection_sheet")
+    }
+
+    private var selectedRows: [TrackingSelectionOptionRow] {
+        selectedKind == .expense ? viewModel.expenseSelectionRows : viewModel.incomingSelectionRows
+    }
+
+    private func binding(for row: TrackingSelectionOptionRow) -> Binding<Bool> {
+        Binding {
+            draftSelection[row.id, default: row.isTracking]
+        } set: { next in
+            draftSelection[row.id] = next
+            inlineError = nil
+        }
+    }
+
+    private func resetDraft() {
+        let selection = Dictionary(uniqueKeysWithValues: (viewModel.expenseSelectionRows + viewModel.incomingSelectionRows).map { ($0.id, $0.isTracking) })
+        originalSelection = selection
+        draftSelection = selection
+        inlineError = nil
+        isSaving = false
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await viewModel.saveTrackingSelection(original: originalSelection, draft: draftSelection)
+            dismiss()
+        } catch {
+            inlineError = "Failed to update tracking."
+        }
+    }
+}
+
+private struct TrackingSelectionRowView: View {
+    let row: TrackingSelectionOptionRow
+    @Binding var isSelected: Bool
+
+    var body: some View {
+        Button {
+            isSelected.toggle()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? .accentColor : .secondary)
+                    .frame(width: 26)
+                Circle()
+                    .fill(optionColor(from: row.color) ?? .gray)
+                    .frame(width: 12, height: 12)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.value)
+                        .foregroundStyle(.primary)
+                    if let parent = row.parentValue, !parent.isEmpty {
+                        Text(parent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.leading, CGFloat(row.indentationLevel) * 18)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tracking_selection_row_\(row.id)")
+        .accessibilityLabel(row.parentValue.map { "\($0), \(row.value)" } ?? row.value)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+    }
+
+    private func optionColor(from hex: String) -> Color? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
     }
 }
 
