@@ -126,14 +126,31 @@ private final class NotepadFeatureViewModel: ObservableObject {
         }
     }
 
-    func addTable() {
-        Task {
-            do {
-                try await api.notepad.addTable()
-                await refresh()
-            } catch {
-                saveErrorText = "Failed to add table."
-            }
+    func createTable(title: String, cells: [[String]]) async -> Bool {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedCells = NotepadWorkspaceNormalization.normalizeCells(cells)
+        let hasCellContent = normalizedCells.flatMap { $0 }.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !trimmedTitle.isEmpty || hasCellContent else { return false }
+
+        do {
+            try await api.notepad.addTable(.init(
+                title: trimmedTitle.isEmpty ? "Untitled Table" : trimmedTitle,
+                cells: normalizedCells
+            ))
+            await refresh()
+            return true
+        } catch {
+            saveErrorText = "Failed to create table."
+            return false
+        }
+    }
+
+    func addTable() async {
+        do {
+            try await api.notepad.addTable(.init(title: nil, cells: nil))
+            await refresh()
+        } catch {
+            saveErrorText = "Failed to add table."
         }
     }
 
@@ -164,6 +181,40 @@ private final class NotepadFeatureViewModel: ObservableObject {
         }
     }
 
+    func updateNote(id: String, title: String, content: String) async -> Bool {
+        guard let note = notes.first(where: { $0.id == id }) else { return false }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextTitle = trimmedTitle.isEmpty ? note.title : trimmedTitle
+        let shouldRename = nextTitle != note.title
+        let shouldSaveContent = content != note.content
+        guard shouldRename || shouldSaveContent else { return true }
+
+        do {
+            if shouldRename {
+                try await api.notepad.renameNote(.init(noteId: id, title: nextTitle))
+            }
+            if shouldSaveContent {
+                try await api.notepad.saveNoteContent(.init(noteId: id, content: content))
+            }
+            await refresh()
+            return true
+        } catch {
+            saveErrorText = "Failed to update note."
+            return false
+        }
+    }
+
+    func deleteNote(id: String) {
+        Task {
+            do {
+                try await api.notepad.deleteNote(.init(noteId: id))
+                await refresh()
+            } catch {
+                saveErrorText = "Failed to delete note."
+            }
+        }
+    }
+
     func renameTable(id: String, title: String) {
         guard let index = tables.firstIndex(where: { $0.id == id }) else { return }
         tables[index].title = title
@@ -188,6 +239,23 @@ private final class NotepadFeatureViewModel: ObservableObject {
         tables[index].cells = NotepadWorkspaceNormalization.setCell(cells: tables[index].cells, row: row, col: col, value: value)
         debounceSave(key: "cell-\(tableID)-\(row)-\(col)") { [api] in
             try await api.notepad.saveCell(.init(tableId: tableID, rowIndex: row, colIndex: col, value: value))
+        }
+    }
+
+    func updateTable(id: String, title: String, cells: [[String]]) async -> Bool {
+        guard let table = tables.first(where: { $0.id == id }) else { return false }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextTitle = trimmedTitle.isEmpty ? table.title : trimmedTitle
+        let nextCells = NotepadWorkspaceNormalization.normalizeCells(cells)
+        guard nextTitle != table.title || nextCells != table.cells else { return true }
+
+        do {
+            try await api.notepad.updateTable(.init(tableId: id, title: nextTitle, cells: nextCells))
+            await refresh()
+            return true
+        } catch {
+            saveErrorText = "Failed to update table."
+            return false
         }
     }
 
@@ -287,8 +355,15 @@ private struct NotepadFeatureView: View {
     @StateObject private var viewModel: NotepadFeatureViewModel
     @State private var panel: Panel = .notes
     @State private var showingNewNoteSheet = false
+    @State private var showingNewTableSheet = false
     @State private var newNoteTitle = ""
     @State private var newNoteContent = ""
+    @State private var newTableTitle = ""
+    @State private var newTableCells = [[""]]
+    @State private var editingNoteTitle = ""
+    @State private var editingNoteContent = ""
+    @State private var editingTableTitle = ""
+    @State private var editingTableCells = [[""]]
     @State private var editingNoteID: String?
     @State private var editingTableID: String?
 
@@ -303,8 +378,8 @@ private struct NotepadFeatureView: View {
                 saveErrorText: viewModel.saveErrorText,
                 notes: viewModel.notes,
                 tables: viewModel.tables,
-                onNoteTap: { editingNoteID = $0.id },
-                onTableTap: { editingTableID = $0.id }
+                onNoteTap: beginEditingNote,
+                onTableTap: beginEditingTable
             )
             .listStyle(.insetGrouped)
             .navigationTitle("Notepad")
@@ -315,6 +390,9 @@ private struct NotepadFeatureView: View {
             .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $showingNewNoteSheet) {
                 newNoteSheet
+            }
+            .sheet(isPresented: $showingNewTableSheet) {
+                newTableSheet
             }
             .sheet(item: editingNoteBinding) { editorID in
                 noteEditorSheet(editorID)
@@ -329,19 +407,38 @@ private struct NotepadFeatureView: View {
     @ToolbarContentBuilder
     private var addToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button("New Note") {
-                    newNoteTitle = ""
-                    newNoteContent = ""
-                    showingNewNoteSheet = true
-                }
-                .accessibilityIdentifier("notepad_add_note")
-                Button("New Table") { viewModel.addTable() }
-                    .accessibilityIdentifier("notepad_add_table")
+            Button {
+                addCurrentPanelItem()
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityIdentifier("notepad_add_item")
         }
+    }
+
+    private func addCurrentPanelItem() {
+        switch panel {
+        case .notes:
+            newNoteTitle = ""
+            newNoteContent = ""
+            showingNewNoteSheet = true
+        case .tables:
+            newTableTitle = ""
+            newTableCells = [[""]]
+            showingNewTableSheet = true
+        }
+    }
+
+    private func beginEditingNote(_ note: NotepadNoteViewData) {
+        editingNoteTitle = note.title
+        editingNoteContent = note.content
+        editingNoteID = note.id
+    }
+
+    private func beginEditingTable(_ table: NotepadTableViewData) {
+        editingTableTitle = table.title
+        editingTableCells = table.cells
+        editingTableID = table.id
     }
 
     private var editingNoteBinding: Binding<NotepadEditorID?> {
@@ -367,6 +464,11 @@ private struct NotepadFeatureView: View {
     private var canSaveNewNote: Bool {
         !newNoteTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             !newNoteContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canSaveNewTable: Bool {
+        !newTableTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            newTableCells.flatMap { $0 }.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     private var newNoteSheet: some View {
@@ -396,31 +498,100 @@ private struct NotepadFeatureView: View {
         }
     }
 
+    private var newTableSheet: some View {
+        NavigationStack {
+            tableDraftEditor
+                .navigationTitle("New Table")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showingNewTableSheet = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            let title = newTableTitle
+                            let cells = newTableCells
+                            Task {
+                                if await viewModel.createTable(title: title, cells: cells) {
+                                    showingNewTableSheet = false
+                                }
+                            }
+                        }
+                        .disabled(!canSaveNewTable)
+                    }
+                }
+        }
+    }
+
+    private var tableDraftEditor: some View {
+        List {
+            Section {
+                TextField("Table Title", text: $newTableTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("notepad_new_table_title")
+            }
+            Section {
+                NotepadEditableTableGrid(
+                    table: .init(id: "new-table", title: newTableTitle, cells: newTableCells),
+                    onEditCell: { row, col, value in
+                        newTableCells = NotepadWorkspaceNormalization.setCell(cells: newTableCells, row: row, col: col, value: value)
+                    },
+                    onAddRow: {
+                        let colCount = max(1, newTableCells.first?.count ?? 1)
+                        newTableCells.append(Array(repeating: "", count: colCount))
+                    },
+                    onRemoveRow: {
+                        guard newTableCells.count > 1 else { return }
+                        newTableCells.removeLast()
+                    },
+                    onAddColumn: {
+                        newTableCells = newTableCells.map { $0 + [""] }
+                    },
+                    onRemoveColumn: {
+                        guard (newTableCells.first?.count ?? 0) > 1 else { return }
+                        newTableCells = newTableCells.map { Array($0.dropLast()) }
+                    }
+                )
+                .accessibilityIdentifier("notepad_new_table_actions")
+            }
+        }
+    }
+
     @ViewBuilder
     private func noteEditorSheet(_ editorID: NotepadEditorID) -> some View {
         if let note = viewModel.notes.first(where: { $0.id == editorID.rawValue }) {
             NavigationStack {
                 Form {
                     Section("Title") {
-                        TextField("Title", text: Binding(
-                            get: { note.title },
-                            set: { viewModel.renameNote(id: note.id, title: $0) }
-                        ))
+                        TextField("Title", text: $editingNoteTitle)
                         .accessibilityIdentifier("notepad_note_title_\(note.id)")
                     }
                     Section("Content") {
-                        TextEditor(text: Binding(
-                            get: { note.content },
-                            set: { viewModel.saveNoteContent(id: note.id, content: $0) }
-                        ))
+                        TextEditor(text: $editingNoteContent)
                         .frame(minHeight: 260)
                         .accessibilityIdentifier("notepad_note_content_\(note.id)")
+                    }
+                    Section {
+                        Button("Delete Note", role: .destructive) {
+                            viewModel.deleteNote(id: note.id)
+                            editingNoteID = nil
+                        }
                     }
                 }
                 .navigationTitle("Edit Note")
                 .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { editingNoteID = nil }
+                    }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { editingNoteID = nil }
+                        Button("Done") {
+                            let title = editingNoteTitle
+                            let content = editingNoteContent
+                            Task {
+                                if await viewModel.updateNote(id: note.id, title: title, content: content) {
+                                    editingNoteID = nil
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -431,39 +602,63 @@ private struct NotepadFeatureView: View {
     private func tableEditorSheet(_ editorID: NotepadEditorID) -> some View {
         if let table = viewModel.tables.first(where: { $0.id == editorID.rawValue }) {
             NavigationStack {
-                List {
-                    Section {
-                        TextField("Table Title", text: Binding(
-                            get: { table.title },
-                            set: { viewModel.renameTable(id: table.id, title: $0) }
-                        ))
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("notepad_table_title_\(table.id)")
-                    }
-                    Section {
-                        NotepadEditableTableGrid(
-                            table: table,
-                            onEditCell: { row, col, value in
-                                viewModel.editCell(tableID: table.id, row: row, col: col, value: value)
-                            },
-                            onAddRow: { viewModel.addRow(tableID: table.id) },
-                            onRemoveRow: { viewModel.removeLastRow(tableID: table.id) },
-                            onAddColumn: { viewModel.addColumn(tableID: table.id) },
-                            onRemoveColumn: { viewModel.removeLastColumn(tableID: table.id) }
-                        )
-                        .accessibilityIdentifier("notepad_table_actions_\(table.id)")
-                    }
-                    Section {
-                        Button("Delete Table", role: .destructive) {
-                            viewModel.deleteTable(id: table.id)
+                tableEditorForm(for: table)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func tableEditorForm(for table: NotepadTableViewData) -> some View {
+        List {
+            Section {
+                TextField("Table Title", text: $editingTableTitle)
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("notepad_table_title_\(table.id)")
+            }
+            Section {
+                NotepadEditableTableGrid(
+                    table: .init(id: table.id, title: editingTableTitle, cells: editingTableCells),
+                    onEditCell: { row, col, value in
+                        editingTableCells = NotepadWorkspaceNormalization.setCell(cells: editingTableCells, row: row, col: col, value: value)
+                    },
+                    onAddRow: {
+                        let colCount = max(1, editingTableCells.first?.count ?? 1)
+                        editingTableCells.append(Array(repeating: "", count: colCount))
+                    },
+                    onRemoveRow: {
+                        guard editingTableCells.count > 1 else { return }
+                        editingTableCells.removeLast()
+                    },
+                    onAddColumn: {
+                        editingTableCells = editingTableCells.map { $0 + [""] }
+                    },
+                    onRemoveColumn: {
+                        guard (editingTableCells.first?.count ?? 0) > 1 else { return }
+                        editingTableCells = editingTableCells.map { Array($0.dropLast()) }
+                    },
+                )
+                .accessibilityIdentifier("notepad_table_actions_\(table.id)")
+            }
+            Section {
+                Button("Delete Table", role: .destructive) {
+                    viewModel.deleteTable(id: table.id)
+                    editingTableID = nil
+                }
+            }
+        }
+        .navigationTitle("Edit Table")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { editingTableID = nil }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    let title = editingTableTitle
+                    let cells = editingTableCells
+                    Task {
+                        if await viewModel.updateTable(id: table.id, title: title, cells: cells) {
                             editingTableID = nil
                         }
-                    }
-                }
-                .navigationTitle("Edit Table")
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { editingTableID = nil }
                     }
                 }
             }
@@ -1275,6 +1470,19 @@ private final class OptionsViewModel: ObservableObject {
         await loadMoreIncomings(for: row)
     }
 
+    func loadInitialLedgerIfNeeded(for row: OptionsDisplayRow, tab: AccountLedgerTab) async {
+        switch tab {
+        case .expenses:
+            if !hasLoadedExpenses(for: row) {
+                await loadInitialExpenses(for: row)
+            }
+        case .incomings:
+            if !hasLoadedIncomings(for: row) {
+                await loadInitialIncomings(for: row)
+            }
+        }
+    }
+
     func loadMoreExpenses(for row: OptionsDisplayRow) async {
         let key = row.selfKey
         guard !loadingAccountExpenseIDs.contains(key), !accountExpenseIsDone.contains(key) else { return }
@@ -1338,8 +1546,6 @@ private final class OptionsViewModel: ObservableObject {
         switch apiError {
         case .notFound:
             return true
-        case .decoding(let message):
-            return message.localizedCaseInsensitiveContains("successful response")
         default:
             return false
         }
@@ -2101,11 +2307,7 @@ private struct OptionsFeatureView: View {
         }
         .onChange(of: selectedAccountID) { _, _ in
             guard let selectedAccountRow else { return }
-            if selectedAccountLedgerTab == .expenses, !viewModel.hasLoadedExpenses(for: selectedAccountRow) {
-                Task { await viewModel.loadInitialExpenses(for: selectedAccountRow) }
-            } else if selectedAccountLedgerTab == .incomings, !viewModel.hasLoadedIncomings(for: selectedAccountRow) {
-                Task { await viewModel.loadInitialIncomings(for: selectedAccountRow) }
-            }
+            Task { await viewModel.loadInitialLedgerIfNeeded(for: selectedAccountRow, tab: selectedAccountLedgerTab) }
         }
     }
 
@@ -2252,9 +2454,7 @@ private struct OptionsFeatureView: View {
                     selectedAccountID = row.id
                     selectedAccountLedgerTab = .expenses
                 }
-                if !viewModel.hasLoadedExpenses(for: row) {
-                    Task { await viewModel.loadInitialExpenses(for: row) }
-                }
+                Task { await viewModel.loadInitialLedgerIfNeeded(for: row, tab: .expenses) }
             }
     }
 
@@ -2424,11 +2624,10 @@ private struct OptionsFeatureView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: selectedAccountLedgerTab) { _, tab in
-                if tab == .expenses, !viewModel.hasLoadedExpenses(for: row) {
-                    Task { await viewModel.loadInitialExpenses(for: row) }
-                } else if tab == .incomings, !viewModel.hasLoadedIncomings(for: row) {
-                    Task { await viewModel.loadInitialIncomings(for: row) }
-                }
+                Task { await viewModel.loadInitialLedgerIfNeeded(for: row, tab: tab) }
+            }
+            .task(id: "\(row.selfKey)|\(selectedAccountLedgerTab.rawValue)") {
+                await viewModel.loadInitialLedgerIfNeeded(for: row, tab: selectedAccountLedgerTab)
             }
 
             switch selectedAccountLedgerTab {

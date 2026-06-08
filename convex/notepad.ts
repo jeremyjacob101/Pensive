@@ -245,6 +245,26 @@ export const renameNote = mutation({
   },
 });
 
+export const deleteNote = mutation({
+  args: {
+    noteId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const workspace = await getOrCreateWorkspace(ctx, userId);
+    if (workspace.userId !== userId) throw new Error("Workspace not found");
+
+    const notes = normalizeNotes(workspace).filter(
+      (note) => note.id !== args.noteId,
+    );
+
+    await ctx.db.patch(workspace._id, {
+      notes,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const saveNoteContent = mutation({
   args: {
     noteId: v.string(),
@@ -284,20 +304,55 @@ export const saveNoteContent = mutation({
   },
 });
 
-export const addTable = mutation({
-  args: {},
-  handler: async (ctx) => {
+export const updateTable = mutation({
+  args: {
+    tableId: v.string(),
+    title: v.string(),
+    cells: v.array(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const workspace = await getOrCreateWorkspace(ctx, userId);
     if (workspace.userId !== userId) throw new Error("Workspace not found");
 
     const tables = normalizeTables(workspace);
     const notes = normalizeNotes(workspace);
+    const index = findTableIndex(tables, args.tableId);
+    if (index < 0) throw new Error("Table not found");
+
+    tables[index] = {
+      ...tables[index],
+      title: args.title.trim() || tables[index].title,
+      cells: normalizeCells(args.cells),
+    };
+
+    await ctx.db.patch(workspace._id, {
+      tables,
+      notes,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const addTable = mutation({
+  args: {
+    title: v.optional(v.string()),
+    cells: v.optional(v.array(v.array(v.string()))),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const workspace = await getOrCreateWorkspace(ctx, userId);
+    if (workspace.userId !== userId) throw new Error("Workspace not found");
+
+    const tables = normalizeTables(workspace);
+    const notes = normalizeNotes(workspace);
+    const tableId = makeId("table");
+    const cells = args.cells ? normalizeCells(args.cells) : makeDefaultCells();
 
     tables.push({
-      id: makeId("table"),
-      title: `Table ${tables.length + 1}`,
-      cells: makeDefaultCells(),
+      id: tableId,
+      title: args.title?.trim() || `Table ${tables.length + 1}`,
+      cells,
     });
 
     await ctx.db.patch(workspace._id, {

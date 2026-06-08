@@ -272,11 +272,17 @@ routePost("/api/notepad/cleanup-empty-notes", (ctx) =>
 routePost("/api/notepad/rename-note", (ctx, body) =>
   ctx.runMutation(api.notepad.renameNote, body),
 );
+routePost("/api/notepad/delete-note", (ctx, body) =>
+  ctx.runMutation(api.notepad.deleteNote, body),
+);
 routePost("/api/notepad/save-note-content", (ctx, body) =>
   ctx.runMutation(api.notepad.saveNoteContent, body),
 );
-routePost("/api/notepad/add-table", (ctx) =>
-  ctx.runMutation(api.notepad.addTable, {}),
+routePost("/api/notepad/add-table", (ctx, body) =>
+  ctx.runMutation(api.notepad.addTable, body),
+);
+routePost("/api/notepad/update-table", (ctx, body) =>
+  ctx.runMutation(api.notepad.updateTable, body),
 );
 routePost("/api/notepad/rename-table", (ctx, body) =>
   ctx.runMutation(api.notepad.renameTable, body),

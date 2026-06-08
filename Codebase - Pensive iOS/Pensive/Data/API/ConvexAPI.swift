@@ -146,8 +146,10 @@ protocol NotepadAPI {
     func addNote(_ request: AddNoteRequest) async throws
     func cleanupEmptyNotes() async throws
     func renameNote(_ request: RenameNoteRequest) async throws
+    func deleteNote(_ request: DeleteNoteRequest) async throws
     func saveNoteContent(_ request: SaveNoteRequest) async throws
-    func addTable() async throws
+    func addTable(_ request: AddTableRequest) async throws
+    func updateTable(_ request: UpdateTableRequest) async throws
     func renameTable(_ request: RenameTableRequest) async throws
     func deleteTable(_ request: DeleteTableRequest) async throws
     func saveCell(_ request: SaveCellRequest) async throws
@@ -401,8 +403,11 @@ struct NotepadNote: Codable { let id: String; let title: String; let content: St
 struct NotepadTable: Codable { let id: String; let title: String; let cells: [[String]] }
 
 struct AddNoteRequest: Codable { let noteId: String?; let title: String? }
+struct AddTableRequest: Codable { let title: String?; let cells: [[String]]? }
 struct RenameNoteRequest: Codable { let noteId: String; let title: String }
+struct DeleteNoteRequest: Codable { let noteId: String }
 struct SaveNoteRequest: Codable { let noteId: String; let content: String }
+struct UpdateTableRequest: Codable { let tableId: String; let title: String; let cells: [[String]] }
 struct RenameTableRequest: Codable { let tableId: String; let title: String }
 struct DeleteTableRequest: Codable { let tableId: String }
 struct SaveCellRequest: Codable { let tableId: String; let rowIndex: Int; let colIndex: Int; let value: String }
@@ -573,8 +578,10 @@ private final class NotepadClient: NotepadAPI {
     func addNote(_ request: AddNoteRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/add-note"), body: request) }
     func cleanupEmptyNotes() async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/cleanup-empty-notes"), body: EmptyBody()) }
     func renameNote(_ request: RenameNoteRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/rename-note"), body: request) }
+    func deleteNote(_ request: DeleteNoteRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/delete-note"), body: request) }
     func saveNoteContent(_ request: SaveNoteRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/save-note-content"), body: request) }
-    func addTable() async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/add-table"), body: EmptyBody()) }
+    func addTable(_ request: AddTableRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/add-table"), body: request) }
+    func updateTable(_ request: UpdateTableRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/update-table"), body: request) }
     func renameTable(_ request: RenameTableRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/rename-table"), body: request) }
     func deleteTable(_ request: DeleteTableRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/delete-table"), body: request) }
     func saveCell(_ request: SaveCellRequest) async throws { let _: EmptyResponse = try await client.send(Req.mutation("api/notepad/save-cell"), body: request) }
