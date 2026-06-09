@@ -2435,7 +2435,6 @@ private struct OptionsFeatureView: View {
     @State private var moveSubtypeTargetParent = ""
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
-    @Namespace private var accountCardNamespace
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2443,69 +2442,7 @@ private struct OptionsFeatureView: View {
 
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
-            List {
-                Section {
-                    Picker("Options", selection: $viewModel.selectedKind) {
-                        ForEach(OptionsKind.selectableCases) { kind in
-                            Text(kind.displayTitle).tag(kind)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                if viewModel.selectedKind == .account {
-                    Section {
-                        if selectedAccountID == nil {
-                            accountStackOverview()
-                        } else {
-                            accountDetailScroller()
-                        }
-                    }
-                    .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 12, trailing: 12))
-                    .listRowBackground(Color.clear)
-                } else if viewModel.selectedKind.supportsNestedOptions {
-                    ForEach(viewModel.rowGroups) { group in
-                        Section {
-                            VStack(alignment: .leading, spacing: 10) {
-                                optionEditor(for: group.parent)
-                                ForEach(group.children, id: \.selfKey) { child in
-                                    Divider()
-                                    optionEditor(for: child)
-                                        .padding(.leading, 18)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                } else {
-                    Section("Options") {
-                        ForEach(viewModel.rowGroups) { group in
-                            optionEditor(for: group.parent)
-                                .padding(.vertical, 4)
-                        }
-                    }
-                }
-                if viewModel.trackingMismatchCount > 0 {
-                    Section("Tracking Data Warning") {
-                        Text("Detected \(viewModel.trackingMismatchCount) tracking rows not reflected in option flags. Showing effective tracking state.")
-                            .font(.footnote)
-                            .foregroundStyle(.orange)
-                    }
-                }
-
-                if let inlineError = viewModel.inlineError {
-                    Section("Error") {
-                        Text(inlineError).foregroundStyle(.red).font(.footnote)
-                    }
-                }
-                if let successText = viewModel.successText {
-                    Section("Status") {
-                        Text(successText).font(.footnote).foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .listSectionSpacing(viewModel.selectedKind == .account ? .compact : .default)
+            optionsContent()
             .navigationTitle("Options")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.refresh() }
@@ -2670,6 +2607,133 @@ private struct OptionsFeatureView: View {
         }
     }
 
+    @ViewBuilder
+    private func optionsContent() -> some View {
+        ScrollView {
+            LazyVStack(spacing: 14) {
+                optionsKindPicker()
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                if viewModel.selectedKind == .account {
+                    accountOptionsContent()
+                } else {
+                    nonAccountOptionsContent()
+                }
+
+                accountStatusMessages()
+                    .padding(.horizontal, 16)
+            }
+            .padding(.bottom, 24)
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+
+    private func optionsKindPicker() -> some View {
+        Picker("Options", selection: $viewModel.selectedKind) {
+            ForEach(OptionsKind.selectableCases) { kind in
+                Text(kind.displayTitle).tag(kind)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    @ViewBuilder
+    private func nonAccountOptionsContent() -> some View {
+        LazyVStack(spacing: 14) {
+            if viewModel.selectedKind.supportsNestedOptions {
+                ForEach(viewModel.rowGroups) { group in
+                    VStack(alignment: .leading, spacing: 10) {
+                        optionEditor(for: group.parent)
+                        ForEach(group.children, id: \.selfKey) { child in
+                            Divider()
+                            optionEditor(for: child)
+                                .padding(.leading, 18)
+                        }
+                    }
+                    .padding(18)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                    )
+                }
+            } else {
+                ForEach(viewModel.rowGroups) { group in
+                    optionEditor(for: group.parent)
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                        )
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func accountOptionsContent() -> some View {
+        LazyVStack(spacing: 14) {
+            if selectedAccountID == nil {
+                accountStackOverview()
+            } else {
+                accountDetailScroller()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func optionsStatusSections() -> some View {
+        if viewModel.trackingMismatchCount > 0 {
+            Section("Tracking Data Warning") {
+                Text("Detected \(viewModel.trackingMismatchCount) tracking rows not reflected in option flags. Showing effective tracking state.")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+        }
+
+        if let inlineError = viewModel.inlineError {
+            Section("Error") {
+                Text(inlineError).foregroundStyle(.red).font(.footnote)
+            }
+        }
+        if let successText = viewModel.successText {
+            Section("Status") {
+                Text(successText).font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func accountStatusMessages() -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if viewModel.trackingMismatchCount > 0 {
+                Text("Detected \(viewModel.trackingMismatchCount) tracking rows not reflected in option flags. Showing effective tracking state.")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let inlineError = viewModel.inlineError {
+                Text(inlineError)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            if let successText = viewModel.successText {
+                Text(successText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
     private var selectedAccountRow: OptionsDisplayRow? {
         guard let selectedAccountID else { return nil }
         return viewModel.rowGroups.map(\.parent).first { $0.id == selectedAccountID }
@@ -2710,7 +2774,7 @@ private struct OptionsFeatureView: View {
     @ViewBuilder
     private func accountStackOverview() -> some View {
         let rows = viewModel.rowGroups.map(\.parent)
-        let cardHeight: CGFloat = 152
+        let cardHeight: CGFloat = 202
 
         VStack(alignment: .leading, spacing: 14) {
             if rows.isEmpty {
@@ -2721,7 +2785,7 @@ private struct OptionsFeatureView: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 12)
             } else {
-                VStack(spacing: -98) {
+                VStack(spacing: -148) {
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         accountStackCard(for: row, index: index)
                             .frame(height: cardHeight)
@@ -2732,7 +2796,7 @@ private struct OptionsFeatureView: View {
             }
         }
         .padding(.top, 2)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 24)
         .padding(.bottom, 18)
     }
 
@@ -2742,7 +2806,7 @@ private struct OptionsFeatureView: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Button {
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.88)) {
+                    withAnimation(.easeInOut(duration: 0.22)) {
                         selectedAccountID = nil
                         selectedAccountLedgerTab = .expenses
                     }
@@ -2776,10 +2840,8 @@ private struct OptionsFeatureView: View {
             .padding(.horizontal, 4)
 
             TabView(selection: Binding(get: { selectedAccountID ?? "" }, set: { next in
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
-                    selectedAccountID = next
-                    selectedAccountLedgerTab = .expenses
-                }
+                selectedAccountID = next
+                selectedAccountLedgerTab = .expenses
             })) {
                 ForEach(rows) { row in
                     accountHeroCard(for: row, isFocused: selectedAccountID == row.id)
@@ -2798,8 +2860,9 @@ private struct OptionsFeatureView: View {
                 accountLedgerTabs(for: selectedAccount)
             }
         }
+        .animation(.easeInOut(duration: 0.22), value: selectedAccountID == nil)
         .padding(.top, 8)
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 24)
         .padding(.bottom, 18)
     }
 
@@ -2811,14 +2874,12 @@ private struct OptionsFeatureView: View {
                     accountStackTopShadow()
                 }
             }
-            .matchedGeometryEffect(id: row.id, in: accountCardNamespace)
             .contentShape(RoundedRectangle(cornerRadius: 20))
             .onTapGesture {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
+                withAnimation(.easeInOut(duration: 0.24)) {
                     selectedAccountID = row.id
                     selectedAccountLedgerTab = .expenses
                 }
-                Task { await viewModel.loadInitialLedgerIfNeeded(for: row, tab: .expenses) }
             }
     }
 
@@ -2835,7 +2896,6 @@ private struct OptionsFeatureView: View {
     @ViewBuilder
     private func accountHeroCard(for row: OptionsDisplayRow, isFocused: Bool) -> some View {
         accountCardSurface(for: row, isFocused: isFocused, compact: false)
-            .matchedGeometryEffect(id: row.id, in: accountCardNamespace)
             .frame(height: 202)
             .onTapGesture {
                 accountEditorContext = row
@@ -3011,6 +3071,9 @@ private struct OptionsFeatureView: View {
                 accountIncomingFeed(for: row)
             }
         }
+        .transaction { transaction in
+            transaction.animation = nil
+        }
     }
 
     @ViewBuilder
@@ -3022,7 +3085,7 @@ private struct OptionsFeatureView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
 
-            if expenses.isEmpty, viewModel.isLoadingExpenses(for: row) {
+            if !viewModel.hasLoadedExpenses(for: row) || (expenses.isEmpty && viewModel.isLoadingExpenses(for: row)) {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 52)
             } else if let error = viewModel.expenseError(for: row) {
@@ -3084,7 +3147,7 @@ private struct OptionsFeatureView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
 
-            if incomings.isEmpty, viewModel.isLoadingIncomings(for: row) {
+            if !viewModel.hasLoadedIncomings(for: row) || (incomings.isEmpty && viewModel.isLoadingIncomings(for: row)) {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 52)
             } else if let error = viewModel.incomingError(for: row) {
