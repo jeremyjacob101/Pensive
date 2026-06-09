@@ -21,7 +21,7 @@ struct RootView: View {
                     .accessibilityIdentifier("login_view")
 
             case .authenticated(let session):
-                AppShellView(userId: session.userId, api: container.api, onSignOut: authViewModel.signOut)
+                AppShellView(userId: session.userId, api: container.api, onSignOut: authViewModel.signOut, onDeleteAccount: authViewModel.deleteAccount)
 
             case .authError(let error):
                 VStack(spacing: 12) {

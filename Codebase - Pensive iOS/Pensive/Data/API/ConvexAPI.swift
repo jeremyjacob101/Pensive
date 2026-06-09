@@ -98,6 +98,7 @@ protocol AuthAPI {
     func signUp(_ request: SignInRequest) async throws -> SessionResponse
     func refresh(refreshToken: String) async throws -> SessionResponse
     func signOut() async throws
+    func deleteAccount() async throws
     func session() async throws -> SessionResponse
 }
 
@@ -507,6 +508,7 @@ private final class AuthClient: AuthAPI {
     func signUp(_ request: SignInRequest) async throws -> SessionResponse { try await client.send(Req.authMutation("api/auth/sign-up"), body: request) }
     func refresh(refreshToken: String) async throws -> SessionResponse { try await client.send(Req.authMutation("api/auth/refresh"), body: ["refreshToken": refreshToken]) }
     func signOut() async throws { let _: EmptyResponse = try await client.send(Req.authMutation("api/auth/sign-out"), body: EmptyBody()) }
+    func deleteAccount() async throws { let _: EmptyResponse = try await client.send(Req.authMutation("api/auth/delete-account"), body: EmptyBody()) }
     func session() async throws -> SessionResponse { try await client.send(Req.authGet("api/auth/session"), body: Optional<EmptyBody>.none) }
 }
 

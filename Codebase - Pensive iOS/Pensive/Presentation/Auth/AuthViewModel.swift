@@ -81,6 +81,13 @@ final class AuthViewModel: ObservableObject {
         sessionStore.signOut()
     }
 
+    func deleteAccount() {
+        clearCredentials()
+        entryMode = .signIn
+        inlineError = nil
+        sessionStore.deleteAccount()
+    }
+
     func retrySessionCheck() {
         inlineError = nil
         sessionStore.bootstrapSession()

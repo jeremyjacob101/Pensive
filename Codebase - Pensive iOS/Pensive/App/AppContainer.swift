@@ -54,6 +54,10 @@ private final class UITestSessionStore: SessionStoring {
         onStateChange?(state)
     }
 
+    func deleteAccount() {
+        signOut()
+    }
+
     func recoverProtectedSession() async -> Bool { true }
 
     func handleProtectedRequestFailure(_ error: Error) {}

@@ -189,6 +189,8 @@ private final class MockAuthAPI: AuthAPI {
 
     func signOut() async throws {}
 
+    func deleteAccount() async throws {}
+
     func session() async throws -> SessionResponse {
         sessionCallCount += 1
         guard !sessionResponses.isEmpty else {

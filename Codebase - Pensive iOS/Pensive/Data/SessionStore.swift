@@ -9,6 +9,7 @@ protocol SessionStoring: AnyObject {
     func signIn(username: String, password: String)
     func signUp(username: String, password: String)
     func signOut()
+    func deleteAccount()
     func recoverProtectedSession() async -> Bool
     func handleProtectedRequestFailure(_ error: Error)
 }
@@ -160,6 +161,30 @@ final class SessionStore: SessionStoring {
                 self.clearSessionArtifacts()
                 self.authMessage = nil
                 self.transition(to: .unauthenticated)
+            }
+        }
+    }
+
+    func deleteAccount() {
+        stateQueue.sync {
+            authTask?.cancel()
+            cancelRecoveryTaskLocked()
+            transition(to: .authenticating)
+
+            authTask = Task { [weak self] in
+                guard let self else { return }
+                defer { self.stateQueue.sync { self.authTask = nil } }
+
+                do {
+                    try await self.authAPI.deleteAccount()
+                    self.clearSessionArtifacts()
+                    self.authMessage = nil
+                    self.transition(to: .unauthenticated)
+                } catch {
+                    let mapped = self.mapAuthError(error)
+                    self.authMessage = mapped.userMessage
+                    self.transition(to: .authError(mapped))
+                }
             }
         }
     }

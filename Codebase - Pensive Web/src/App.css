@@ -1662,6 +1662,93 @@ thead th {
   margin-bottom: 0;
 }
 
+.account-action-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  padding: 18px;
+}
+
+.account-action-sheet {
+  width: min(420px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 8px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+.account-action-button {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-action-button:hover:not(:disabled) {
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
+}
+
+.account-action-button.destructive,
+.danger-button {
+  color: #dc2626;
+}
+
+.account-action-button.cancel {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+}
+
+.account-action-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.account-warning-card {
+  width: min(420px, 100%);
+}
+
+.account-warning-text {
+  margin: 8px 0 18px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.account-warning-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.secondary-button,
+.danger-button {
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.danger-button {
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
 .split-modal-shell {
   width: min(1200px, 100%);
 }

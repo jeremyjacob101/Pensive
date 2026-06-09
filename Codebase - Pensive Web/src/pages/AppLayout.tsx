@@ -33,6 +33,10 @@ export function AppLayout() {
   const [visibleIncomingTypes, setVisibleIncomingTypes] = useState<string[]>(
     [],
   );
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [deleteAccountWarningOpen, setDeleteAccountWarningOpen] =
+    useState(false);
+  const [accountActionPending, setAccountActionPending] = useState(false);
 
   const createExpense = useMutation(api.expenses.create);
   const bulkCreateExpenses = useMutation(api.expenses.bulkCreate);
@@ -42,6 +46,7 @@ export function AppLayout() {
   const addUserOption = useMutation(api.userOptions.add);
   const bulkPatchVisibleExpenses = useMutation(api.expenses.bulkPatchVisible);
   const bulkPatchVisibleIncomings = useMutation(api.incomings.bulkPatchVisible);
+  const deleteAccount = useMutation(api.account.deleteMine);
 
   const userOptions = useQuery(api.userOptions.list);
 
@@ -87,6 +92,34 @@ export function AppLayout() {
     };
   }, [isDark]);
 
+  const handleSignOut = async () => {
+    setAccountActionPending(true);
+    try {
+      await signOut();
+      navigate("/login", { replace: true });
+    } finally {
+      setAccountActionPending(false);
+      setAccountMenuOpen(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setAccountActionPending(true);
+    try {
+      await deleteAccount({});
+      try {
+        await signOut();
+      } catch {
+        // Deleting the account invalidates auth records; keep the local redirect moving.
+      }
+      navigate("/login", { replace: true });
+    } finally {
+      setAccountActionPending(false);
+      setDeleteAccountWarningOpen(false);
+      setAccountMenuOpen(false);
+    }
+  };
+
   return (
     <div className={isDark ? "theme-dark" : ""}>
       <main className="page">
@@ -96,7 +129,7 @@ export function AppLayout() {
             activeItem={activeItem}
             onSelect={(tab) => navigate(`/${tab}`)}
             onUserClick={() => {
-              void signOut().then(() => navigate("/login", { replace: true }));
+              setAccountMenuOpen(true);
             }}
             isDark={isDark}
             onToggleTheme={() =>
@@ -191,6 +224,93 @@ export function AppLayout() {
           </section>
         </div>
       </main>
+      {accountMenuOpen && (
+        <div
+          className="account-action-overlay"
+          onClick={() => {
+            if (!accountActionPending) setAccountMenuOpen(false);
+          }}
+        >
+          <div
+            className="account-action-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Account actions"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="account-action-button"
+              onClick={() => void handleSignOut()}
+              disabled={accountActionPending}
+            >
+              Sign Out
+            </button>
+            <button
+              type="button"
+              className="account-action-button destructive"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                setDeleteAccountWarningOpen(true);
+              }}
+              disabled={accountActionPending}
+            >
+              Delete Account
+            </button>
+            <button
+              type="button"
+              className="account-action-button cancel"
+              onClick={() => setAccountMenuOpen(false)}
+              disabled={accountActionPending}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      {deleteAccountWarningOpen && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!accountActionPending) setDeleteAccountWarningOpen(false);
+          }}
+        >
+          <div
+            className="modal-card account-warning-card"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            aria-describedby="delete-account-message"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h3 id="delete-account-title">Delete Account</h3>
+            </div>
+            <p id="delete-account-message" className="account-warning-text">
+              This action is irrevocable and all data will be irretrievable. Are
+              you sure?
+            </p>
+            <div className="account-warning-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setDeleteAccountWarningOpen(false)}
+                disabled={accountActionPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                onClick={() => void handleDeleteAccount()}
+                disabled={accountActionPending}
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

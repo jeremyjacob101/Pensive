@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as baseSubIds from "../baseSubIds.js";
 import type * as effectiveAmounts from "../effectiveAmounts.js";
@@ -23,9 +24,14 @@ import type * as summaries from "../summaries.js";
 import type * as tracking from "../tracking.js";
 import type * as userOptions from "../userOptions.js";
 
-import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  account: typeof account;
   auth: typeof auth;
   baseSubIds: typeof baseSubIds;
   effectiveAmounts: typeof effectiveAmounts;

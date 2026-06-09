@@ -127,6 +127,9 @@ http.route({
   }),
 });
 
+routePost("/api/auth/delete-account", (ctx) =>
+  ctx.runMutation(api.account.deleteMine, {}));
+
 http.route({
   path: "/api/auth/refresh",
   method: "POST",
