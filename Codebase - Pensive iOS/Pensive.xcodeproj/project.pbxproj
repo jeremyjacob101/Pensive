@@ -58,7 +58,7 @@
 		0FCE0385815003415646F8C4 /* AuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthState.swift; sourceTree = "<group>"; };
 		1060E8EA814D7616BF2AC146 /* PensiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveApp.swift; sourceTree = "<group>"; };
 		12C8A5DC05FE932702BEE04F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		14B0A5238291F25F063E45FD /* Pensive.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pensive.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		14B0A5238291F25F063E45FD /* Pensive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pensive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		27991D4F555E429982C9C524 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 		2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeature.swift; sourceTree = "<group>"; };
 		3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsView.swift; sourceTree = "<group>"; };
@@ -66,7 +66,7 @@
 		3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		4079923627B6EFA6F2BE16E7 /* AppShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellView.swift; sourceTree = "<group>"; };
 		487A86873988C9719FAF2797 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
-		4AD07860CCEEF4EB4CBEA43A /* PensiveUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PensiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4AD07860CCEEF4EB4CBEA43A /* PensiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PensiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFilterStore.swift; sourceTree = "<group>"; };
 		552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerBreakdownComputingTests.swift; sourceTree = "<group>"; };
 		5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellModels.swift; sourceTree = "<group>"; };
@@ -74,7 +74,7 @@
 		6D911F3785CF260C05649961 /* LedgerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerViews.swift; sourceTree = "<group>"; };
 		726D060B5033637BD6C1931C /* LedgerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModels.swift; sourceTree = "<group>"; };
 		8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexAPI.swift; sourceTree = "<group>"; };
-		B6338EF50F2E870528AF809B /* PensiveTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PensiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6338EF50F2E870528AF809B /* PensiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PensiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B82D63F0A8E92A7956EE6586 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		BE3B07D29DB589CE0EA3BC0A /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
 		D02316F31B0A05A53566C05A /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
@@ -503,6 +503,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = UZ7YLA6V9D;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -566,6 +567,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = UZ7YLA6V9D;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -757,6 +759,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = UZ7YLA6V9D;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
