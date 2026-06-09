@@ -2806,6 +2806,11 @@ private struct OptionsFeatureView: View {
     @ViewBuilder
     private func accountStackCard(for row: OptionsDisplayRow, index: Int) -> some View {
         accountCardSurface(for: row, isFocused: index == 0, compact: true)
+            .background(alignment: .top) {
+                if index > 0 {
+                    accountStackTopShadow()
+                }
+            }
             .matchedGeometryEffect(id: row.id, in: accountCardNamespace)
             .contentShape(RoundedRectangle(cornerRadius: 20))
             .onTapGesture {
@@ -2815,6 +2820,16 @@ private struct OptionsFeatureView: View {
                 }
                 Task { await viewModel.loadInitialLedgerIfNeeded(for: row, tab: .expenses) }
             }
+    }
+
+    private func accountStackTopShadow() -> some View {
+        RoundedRectangle(cornerRadius: 20)
+            .fill(Color.black.opacity(0.24))
+            .frame(height: 30)
+            .padding(.horizontal, 8)
+            .blur(radius: 10)
+            .offset(y: -8)
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
