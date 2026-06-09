@@ -8,14 +8,13 @@ struct AppContainer {
     static func bootstrap(bundle: Bundle = .main) -> AppContainer {
         let env = AppEnvironment.load(from: bundle)
         #if DEBUG
-        print("AppEnvironment[\(env.appEnvName)] base=\(env.convexBaseURL) http=\(env.convexHTTPActionBaseURL)")
-        #endif
         if let userId = ProcessInfo.processInfo.environment["UI_TEST_AUTHENTICATED_USER_ID"], !userId.isEmpty {
             let tokenStore = AuthTokenStore()
             let configuredAPI = AppContainer.makeAPI(environment: env, tokenStore: tokenStore)
             let api = configuredAPI.api
             return AppContainer(environment: env, sessionStore: UITestSessionStore(userId: userId), api: api)
         }
+        #endif
         let tokenStore = AuthTokenStore()
         let configuredAPI = AppContainer.makeAPI(environment: env, tokenStore: tokenStore)
         let api = configuredAPI.api
