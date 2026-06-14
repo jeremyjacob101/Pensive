@@ -2435,6 +2435,7 @@ private struct OptionsFeatureView: View {
     @State private var moveSubtypeTargetParent = ""
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
+    @State private var expandedOptionRowIDs: Set<String> = []
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2600,6 +2601,7 @@ private struct OptionsFeatureView: View {
             accountEditorContext = nil
             selectedAccountID = nil
             selectedAccountLedgerTab = .expenses
+            expandedOptionRowIDs = []
         }
         .onChange(of: selectedAccountID) { _, _ in
             guard let selectedAccountRow else { return }
@@ -2648,28 +2650,26 @@ private struct OptionsFeatureView: View {
         LazyVStack(spacing: 14) {
             if viewModel.selectedKind.supportsNestedOptions {
                 ForEach(viewModel.rowGroups) { group in
-                    VStack(alignment: .leading, spacing: 10) {
-                        optionEditor(for: group.parent)
+                    VStack(spacing: 0) {
+                        optionCompactRow(for: group.parent)
                         ForEach(group.children, id: \.selfKey) { child in
                             Divider()
-                            optionEditor(for: child)
-                                .padding(.leading, 18)
+                                .padding(.leading, 42)
+                            optionCompactRow(for: child)
                         }
                     }
-                    .padding(18)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(Color(uiColor: .secondarySystemGroupedBackground))
                     )
                 }
             } else {
                 ForEach(viewModel.rowGroups) { group in
-                    optionEditor(for: group.parent)
-                        .padding(18)
+                    optionCompactRow(for: group.parent)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
                         )
                 }
@@ -3259,56 +3259,147 @@ private struct OptionsFeatureView: View {
         .padding(.horizontal, 4)
     }
 
-    @ViewBuilder
-    private func optionEditor(for row: OptionsDisplayRow) -> some View {
-        let rowKey = row.selfKey
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(row.value)
-                    .font(row.indentationLevel == 0 ? .headline : .body)
-                Spacer()
-                Circle().fill(color(from: row.color) ?? .gray).frame(width: 14, height: 14)
-            }
-            if let parent = row.parentValue, !parent.isEmpty {
-                Text("Parent: \(parent)").font(.footnote).foregroundStyle(.secondary)
-            }
-            HStack {
-                Toggle("Default", isOn: Binding(get: { row.isDefault }, set: { next in
-                    Task { await viewModel.setDefault(kind: row.kind, value: row.value, isDefault: next, parentValue: row.parentValue) }
-                }))
+    private func optionCompactRow(for row: OptionsDisplayRow) -> some View {
+        let isExpanded = expandedOptionRowIDs.contains(row.id)
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Button {
+                    Task { await viewModel.setDefault(kind: row.kind, value: row.value, isDefault: !row.isDefault, parentValue: row.parentValue) }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(color(from: row.color) ?? .gray)
+                            .frame(width: row.isDefault ? 18 : 14, height: row.isDefault ? 18 : 14)
+                        Circle()
+                            .stroke((color(from: row.color) ?? .gray).opacity(row.isDefault ? 0.35 : 0), lineWidth: 7)
+                            .frame(width: 24, height: 24)
+                    }
+                    .frame(width: 32, height: 32)
+                    .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(row.isDefault ? "Unset default \(row.value)" : "Set default \(row.value)")
+                .accessibilityValue(row.isDefault ? "Default" : "Not default")
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.value)
+                        .font(row.indentationLevel == 0 ? .headline : .body.weight(.medium))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    if row.indentationLevel == 0, row.parentValue?.isEmpty == false, let parent = row.parentValue {
+                        Text(parent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 8)
+
                 if viewModel.supportsTracking(kind: row.kind) {
-                    Toggle("Tracking", isOn: Binding(get: { row.isTracking }, set: { next in
-                        Task { await viewModel.setTracking(kind: row.kind, value: row.value, isTracking: next, parentValue: row.parentValue) }
-                    }))
+                    Button {
+                        Task { await viewModel.setTracking(kind: row.kind, value: row.value, isTracking: !row.isTracking, parentValue: row.parentValue) }
+                    } label: {
+                        Image("lucide-finance-tracking")
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 18, height: 18)
+                            .foregroundStyle(row.isTracking ? Color.accentColor : Color.secondary)
+                            .frame(width: 34, height: 34)
+                            .background(
+                                Circle()
+                                    .fill(row.isTracking ? Color.accentColor.opacity(0.13) : Color(uiColor: .tertiarySystemGroupedBackground))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(row.isTracking ? "Disable tracking for \(row.value)" : "Enable tracking for \(row.value)")
+                    .accessibilityValue(row.isTracking ? "Tracking enabled" : "Tracking disabled")
                 }
-            }
-            .font(.footnote)
 
-            TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
-            Button("Apply Rename") {
-                Task {
-                    await viewModel.rename(
-                        kind: row.kind,
-                        value: row.value,
-                        nextValue: renameByRow[rowKey, default: row.value],
-                        parentValue: row.parentValue
-                    )
+                Button {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        toggleOptionRow(row.id)
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 32)
+                        .contentTransition(.symbolEffect(.replace))
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse \(row.value) editor" : "Expand \(row.value) editor")
             }
-            .buttonStyle(.bordered)
+            .padding(.leading, CGFloat(row.indentationLevel) * 18)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .contentShape(Rectangle())
 
-            TextField("Hex Color #RRGGBB", text: Binding(get: { colorByRow[rowKey, default: row.color] }, set: { colorByRow[rowKey] = $0 }))
-            Button("Update Color") {
-                Task {
-                    await viewModel.updateColor(
-                        kind: row.kind,
-                        value: row.value,
-                        color: colorByRow[rowKey, default: row.color],
-                        parentValue: row.parentValue
-                    )
-                }
+            if isExpanded {
+                optionEditorDropdown(for: row)
+                    .padding(.leading, CGFloat(row.indentationLevel) * 18 + 44)
+                    .padding(.trailing, 12)
+                    .padding(.bottom, 14)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .buttonStyle(.bordered)
+        }
+        .animation(.easeInOut(duration: 0.22), value: isExpanded)
+    }
+
+    private func toggleOptionRow(_ rowID: String) {
+        if expandedOptionRowIDs.contains(rowID) {
+            expandedOptionRowIDs.remove(rowID)
+        } else {
+            expandedOptionRowIDs.insert(rowID)
+        }
+    }
+
+    @ViewBuilder
+    private func optionEditorDropdown(for row: OptionsDisplayRow) -> some View {
+        let rowKey = row.selfKey
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    Task {
+                        await viewModel.rename(
+                            kind: row.kind,
+                            value: row.value,
+                            nextValue: renameByRow[rowKey, default: row.value],
+                            parentValue: row.parentValue
+                        )
+                    }
+                } label: {
+                    Label("Apply Rename", systemImage: "pencil")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ColorPicker(
+                    "Color",
+                    selection: colorSelectionBinding(for: row),
+                    supportsOpacity: false
+                )
+
+                Button {
+                    Task {
+                        await viewModel.updateColor(
+                            kind: row.kind,
+                            value: row.value,
+                            color: colorByRow[rowKey, default: row.color],
+                            parentValue: row.parentValue
+                        )
+                    }
+                } label: {
+                    Label("Update Color", systemImage: "paintpalette")
+                }
+                .buttonStyle(.bordered)
+            }
 
             if row.kind == .category || row.kind == .incomeType {
                 Button("Move to subtype") {
@@ -3319,17 +3410,13 @@ private struct OptionsFeatureView: View {
             }
 
             if row.kind == .subcategory || row.kind == .incomeSubtype {
-                HStack {
-                    Button("Move subtype under parent") {
-                        moveSubtypeContext = row
-                        moveSubtypeTargetParent = ""
+                ViewThatFits {
+                    HStack {
+                        subtypeMoveButtons(for: row)
                     }
-                    .buttonStyle(.bordered)
-
-                    Button("Promote subtype to parent") {
-                        promoteSubtypeContext = row
+                    VStack(alignment: .leading, spacing: 8) {
+                        subtypeMoveButtons(for: row)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
 
@@ -3338,6 +3425,21 @@ private struct OptionsFeatureView: View {
             }
             .buttonStyle(.bordered)
         }
+        .font(.footnote)
+    }
+
+    @ViewBuilder
+    private func subtypeMoveButtons(for row: OptionsDisplayRow) -> some View {
+        Button("Move subtype under parent") {
+            moveSubtypeContext = row
+            moveSubtypeTargetParent = ""
+        }
+        .buttonStyle(.bordered)
+
+        Button("Promote subtype to parent") {
+            promoteSubtypeContext = row
+        }
+        .buttonStyle(.bordered)
     }
 
     private func color(from hex: String) -> Color? {
