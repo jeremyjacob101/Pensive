@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct NotepadNoteViewData: Identifiable {
     let id: String
@@ -2281,6 +2282,94 @@ private struct OptionsDisplayGroup: Identifiable {
     var id: String { parent.id }
 }
 
+private struct OptionDragPayload: Equatable {
+    let kind: OptionsKind
+    let value: String
+    let parentValue: String?
+
+    var sourceID: String { "\(kind.rawValue)|\(value)|\(parentValue ?? "")" }
+
+    var isChild: Bool {
+        kind == .subcategory || kind == .incomeSubtype
+    }
+}
+
+private struct OptionDropDelegate: DropDelegate {
+    let target: OptionsDisplayRow
+    @Binding var draggedOption: OptionDragPayload?
+    @Binding var dropTargetRowID: String?
+    let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
+    let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        guard let draggedOption else { return false }
+        return canDrop(draggedOption, target)
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let draggedOption, canDrop(draggedOption, target) else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            dropTargetRowID = target.id
+        }
+    }
+
+    func dropExited(info: DropInfo) {
+        guard dropTargetRowID == target.id else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            dropTargetRowID = nil
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                dropTargetRowID = nil
+                draggedOption = nil
+            }
+        }
+        guard let draggedOption, canDrop(draggedOption, target) else { return false }
+        commitDrop(draggedOption, target)
+        return true
+    }
+}
+
+private struct OptionPromoteDropDelegate: DropDelegate {
+    @Binding var draggedOption: OptionDragPayload?
+    @Binding var isTargeted: Bool
+    let canPromote: (OptionDragPayload) -> Bool
+    let commitPromote: (OptionDragPayload) -> Void
+
+    func validateDrop(info: DropInfo) -> Bool {
+        guard let draggedOption else { return false }
+        return canPromote(draggedOption)
+    }
+
+    func dropEntered(info: DropInfo) {
+        guard let draggedOption, canPromote(draggedOption) else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            isTargeted = true
+        }
+    }
+
+    func dropExited(info: DropInfo) {
+        withAnimation(.easeInOut(duration: 0.16)) {
+            isTargeted = false
+        }
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                isTargeted = false
+                draggedOption = nil
+            }
+        }
+        guard let draggedOption, canPromote(draggedOption) else { return false }
+        commitPromote(draggedOption)
+        return true
+    }
+}
+
 private enum AccountLedgerTab: String, CaseIterable, Identifiable {
     case expenses
     case incomings
@@ -2313,8 +2402,6 @@ private struct OptionCreateDraft {
 private struct OptionEditDraft {
     var value: String
     var color: String
-    var demoteTargetParent = ""
-    var moveTargetParent = ""
 
     init(row: OptionsDisplayRow) {
         value = row.value
@@ -2352,16 +2439,14 @@ private struct OptionCreateSheet: View {
                         }
                     }
 
-                    if addKind == .account {
-                        ColorPicker(
-                            "Color",
-                            selection: Binding(
-                                get: { optionCreateColor(from: draft.color) ?? .pink },
-                                set: { draft.color = optionCreateHex(from: $0) ?? draft.color }
-                            ),
-                            supportsOpacity: false
-                        )
-                    }
+                    ColorPicker(
+                        "Color",
+                        selection: Binding(
+                            get: { optionCreateColor(from: draft.color) ?? .pink },
+                            set: { draft.color = optionCreateHex(from: $0) ?? draft.color }
+                        ),
+                        supportsOpacity: false
+                    )
                 }
             }
             .navigationTitle(title)
@@ -2377,7 +2462,7 @@ private struct OptionCreateSheet: View {
                                 kind: addKind,
                                 value: draft.value,
                                 parentValue: draft.parentValue,
-                                color: addKind == .account ? draft.color : nil
+                                color: draft.color
                             )
                             dismiss()
                         }
@@ -2463,8 +2548,6 @@ private struct OptionEditSheet: View {
                     )
                 }
 
-                optionMoveSection()
-
                 Section {
                     Button("Delete", role: .destructive) {
                         showDeleteConfirmation = true
@@ -2500,56 +2583,6 @@ private struct OptionEditSheet: View {
         }
     }
 
-    @ViewBuilder
-    private func optionMoveSection() -> some View {
-        if row.kind == .category || row.kind == .incomeType {
-            Section {
-                Picker(demoteTargetTitle, selection: $draft.demoteTargetParent) {
-                    Text("Select Parent").tag("")
-                    ForEach(viewModel.moveToSubtypeTargets(kind: row.kind, excluding: row.value), id: \.self) { value in
-                        Text(value).tag(value)
-                    }
-                }
-
-                Button(demoteTitle) {
-                    Task {
-                        await viewModel.moveToSubtype(kind: row.kind, sourceValue: row.value, targetValue: draft.demoteTargetParent)
-                        dismiss()
-                    }
-                }
-                .disabled(draft.demoteTargetParent.isEmpty)
-            }
-        }
-
-        if row.kind == .subcategory || row.kind == .incomeSubtype {
-            Section {
-                Picker("Parent", selection: $draft.moveTargetParent) {
-                    Text("Select Parent").tag("")
-                    ForEach(viewModel.parentChoicesExcluding(kind: row.kind, parentValue: row.parentValue), id: \.self) { value in
-                        Text(value).tag(value)
-                    }
-                }
-
-                Button("Move Under Parent") {
-                    guard let sourceParent = row.parentValue else { return }
-                    Task {
-                        await viewModel.moveSubtype(kind: row.kind, value: row.value, sourceParentValue: sourceParent, targetParentValue: draft.moveTargetParent)
-                        dismiss()
-                    }
-                }
-                .disabled(draft.moveTargetParent.isEmpty || row.parentValue == nil)
-
-                Button(promoteTitle) {
-                    guard let sourceParent = row.parentValue else { return }
-                    Task {
-                        await viewModel.promoteSubtype(kind: row.kind, value: row.value, parentValue: sourceParent)
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
-
     private var title: String {
         switch row.kind {
         case .account: return "Edit Account"
@@ -2558,18 +2591,6 @@ private struct OptionEditSheet: View {
         case .incomeType: return "Edit Income Type"
         case .incomeSubtype: return "Edit Income Subtype"
         }
-    }
-
-    private var demoteTitle: String {
-        row.kind == .category ? "Demote to Subcategory" : "Demote to Income Subtype"
-    }
-
-    private var demoteTargetTitle: String {
-        row.kind == .category ? "Category Parent" : "Income Type Parent"
-    }
-
-    private var promoteTitle: String {
-        row.kind == .subcategory ? "Promote to Category" : "Promote to Income Type"
     }
 
     private var hasChanges: Bool {
@@ -2634,6 +2655,9 @@ private struct OptionsFeatureView: View {
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
     @State private var optionEditorContext: OptionsDisplayRow?
+    @State private var draggedOption: OptionDragPayload?
+    @State private var dropTargetRowID: String?
+    @State private var isPromoteDropTargeted = false
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2724,6 +2748,7 @@ private struct OptionsFeatureView: View {
             showCreateOption = false
             accountEditorContext = nil
             optionEditorContext = nil
+            resetOptionDrag()
             selectedAccountID = nil
             selectedAccountLedgerTab = .expenses
         }
@@ -2773,6 +2798,10 @@ private struct OptionsFeatureView: View {
     private func nonAccountOptionsContent() -> some View {
         LazyVStack(spacing: 14) {
             if viewModel.selectedKind.supportsNestedOptions {
+                if shouldShowPromoteDropZone {
+                    optionPromoteDropZone()
+                }
+
                 ForEach(viewModel.rowGroups) { group in
                     VStack(spacing: 0) {
                         optionCompactRow(for: group.parent)
@@ -2800,6 +2829,50 @@ private struct OptionsFeatureView: View {
             }
         }
         .padding(.horizontal, 24)
+    }
+
+    private var shouldShowPromoteDropZone: Bool {
+        guard let draggedOption, draggedOption.isChild else { return false }
+        return (viewModel.selectedKind == .category && draggedOption.kind == .subcategory)
+            || (viewModel.selectedKind == .incomeType && draggedOption.kind == .incomeSubtype)
+    }
+
+    private func optionPromoteDropZone() -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.up.to.line")
+                .font(.subheadline.weight(.semibold))
+            Text(promoteDropZoneTitle)
+                .font(.subheadline.weight(.semibold))
+        }
+        .foregroundStyle(isPromoteDropTargeted ? Color.accentColor : Color.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(isPromoteDropTargeted ? Color.accentColor.opacity(0.14) : Color(uiColor: .secondarySystemGroupedBackground))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    isPromoteDropTargeted ? Color.accentColor.opacity(0.65) : Color.secondary.opacity(0.28),
+                    style: StrokeStyle(lineWidth: 1.2, dash: [6, 5])
+                )
+        }
+        .scaleEffect(isPromoteDropTargeted ? 1.015 : 1)
+        .animation(.easeInOut(duration: 0.16), value: isPromoteDropTargeted)
+        .onDrop(
+            of: [UTType.text],
+            delegate: OptionPromoteDropDelegate(
+                draggedOption: $draggedOption,
+                isTargeted: $isPromoteDropTargeted,
+                canPromote: canPromoteOption,
+                commitPromote: performPromoteDrop
+            )
+        )
+    }
+
+    private var promoteDropZoneTitle: String {
+        viewModel.selectedKind == .category ? "Drop here to promote to Category" : "Drop here to promote to Income Type"
     }
 
     private func accountOptionsContent() -> some View {
@@ -3383,7 +3456,66 @@ private struct OptionsFeatureView: View {
         .padding(.horizontal, 4)
     }
 
+    private func resetOptionDrag() {
+        draggedOption = nil
+        dropTargetRowID = nil
+        isPromoteDropTargeted = false
+    }
+
+    private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
+        switch (payload.kind, target.kind) {
+        case (.category, .category):
+            return payload.value != target.value
+        case (.subcategory, .category):
+            return payload.parentValue != nil && payload.parentValue != target.value
+        case (.incomeType, .incomeType):
+            return payload.value != target.value
+        case (.incomeSubtype, .incomeType):
+            return payload.parentValue != nil && payload.parentValue != target.value
+        default:
+            return false
+        }
+    }
+
+    private func performOptionDrop(_ payload: OptionDragPayload, on target: OptionsDisplayRow) {
+        Task {
+            switch (payload.kind, target.kind) {
+            case (.category, .category):
+                await viewModel.moveToSubtype(kind: payload.kind, sourceValue: payload.value, targetValue: target.value)
+            case (.subcategory, .category):
+                if let sourceParent = payload.parentValue {
+                    await viewModel.moveSubtype(kind: payload.kind, value: payload.value, sourceParentValue: sourceParent, targetParentValue: target.value)
+                }
+            case (.incomeType, .incomeType):
+                await viewModel.moveToSubtype(kind: payload.kind, sourceValue: payload.value, targetValue: target.value)
+            case (.incomeSubtype, .incomeType):
+                if let sourceParent = payload.parentValue {
+                    await viewModel.moveSubtype(kind: payload.kind, value: payload.value, sourceParentValue: sourceParent, targetParentValue: target.value)
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    private func canPromoteOption(_ payload: OptionDragPayload) -> Bool {
+        guard payload.parentValue != nil else { return false }
+        return (viewModel.selectedKind == .category && payload.kind == .subcategory)
+            || (viewModel.selectedKind == .incomeType && payload.kind == .incomeSubtype)
+    }
+
+    private func performPromoteDrop(_ payload: OptionDragPayload) {
+        guard let sourceParent = payload.parentValue else { return }
+        Task {
+            await viewModel.promoteSubtype(kind: payload.kind, value: payload.value, parentValue: sourceParent)
+        }
+    }
+
     private func optionCompactRow(for row: OptionsDisplayRow) -> some View {
+        let payload = OptionDragPayload(kind: row.kind, value: row.value, parentValue: row.parentValue)
+        let isDragged = draggedOption?.sourceID == row.id
+        let isDropTarget = dropTargetRowID == row.id
+
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Button {
@@ -3457,6 +3589,32 @@ private struct OptionsFeatureView: View {
             .padding(.horizontal, 12)
             .contentShape(Rectangle())
         }
+        .background {
+            if isDropTarget {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.12))
+            }
+        }
+        .opacity(isDragged ? 0.58 : 1)
+        .scaleEffect(isDragged ? 0.985 : 1)
+        .animation(.easeInOut(duration: 0.16), value: isDragged)
+        .animation(.easeInOut(duration: 0.16), value: isDropTarget)
+        .onDrag {
+            withAnimation(.easeInOut(duration: 0.16)) {
+                draggedOption = payload
+            }
+            return NSItemProvider(object: payload.sourceID as NSString)
+        }
+        .onDrop(
+            of: [UTType.text],
+            delegate: OptionDropDelegate(
+                target: row,
+                draggedOption: $draggedOption,
+                dropTargetRowID: $dropTargetRowID,
+                canDrop: { payload, target in canDropOption(payload, on: target) },
+                commitDrop: { payload, target in performOptionDrop(payload, on: target) }
+            )
+        )
     }
 
     private func color(from hex: String) -> Color? {
