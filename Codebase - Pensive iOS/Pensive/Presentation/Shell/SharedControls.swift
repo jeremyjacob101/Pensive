@@ -480,6 +480,8 @@ extension DateScope {
 struct DateRangePickerButton: View {
     @Binding var startDate: Date
     @Binding var endDate: Date
+    var oldestMonth: MonthYear? = nil
+    var newestMonth: MonthYear? = nil
 
     @State private var isPresented = false
 
@@ -490,7 +492,12 @@ struct DateRangePickerButton: View {
             Label("Date Range", systemImage: "calendar")
         }
         .sheet(isPresented: $isPresented) {
-            DateRangePickerSheet(startDate: $startDate, endDate: $endDate)
+            DateRangePickerSheet(
+                startDate: $startDate,
+                endDate: $endDate,
+                oldestMonth: oldestMonth,
+                newestMonth: newestMonth
+            )
         }
     }
 }
@@ -500,21 +507,150 @@ struct DateRangePickerSheet: View {
 
     @Binding var startDate: Date
     @Binding var endDate: Date
+    var oldestMonth: MonthYear?
+    var newestMonth: MonthYear?
+
+    @State private var mode: DateRangePickerMode
+    @State private var draftStartDate: Date
+    @State private var draftEndDate: Date
+    @State private var draftStartMonth: MonthYear
+    @State private var draftEndMonth: MonthYear
+
+    init(
+        startDate: Binding<Date>,
+        endDate: Binding<Date>,
+        oldestMonth: MonthYear? = nil,
+        newestMonth: MonthYear? = nil
+    ) {
+        _startDate = startDate
+        _endDate = endDate
+        self.oldestMonth = oldestMonth
+        self.newestMonth = newestMonth
+
+        let initialScope = DateScope(
+            startDate: startDate.wrappedValue,
+            endDate: endDate.wrappedValue,
+            includeMonthYearOverlapOutsideDate: false
+        )
+        let currentMonth = DateRangePickerSheet.month(containing: Date())
+        let initialMonths = LedgerScopeLogic.targetMonths(
+            startDate: startDate.wrappedValue,
+            endDate: endDate.wrappedValue
+        )
+        let initialStartMonth = initialScope.isWholeMonthRange ? (initialMonths.first ?? currentMonth) : currentMonth
+        let initialEndMonth = initialScope.isWholeMonthRange ? (initialMonths.last ?? initialStartMonth) : initialStartMonth
+
+        _mode = State(initialValue: .months)
+        _draftStartDate = State(initialValue: startDate.wrappedValue)
+        _draftEndDate = State(initialValue: endDate.wrappedValue)
+        _draftStartMonth = State(initialValue: initialStartMonth)
+        _draftEndMonth = State(initialValue: initialEndMonth)
+    }
 
     var body: some View {
         NavigationStack {
             Form {
-                DatePicker("Start", selection: $startDate, displayedComponents: .date)
-                DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
+                Picker("Range Mode", selection: $mode) {
+                    Text("Months").tag(DateRangePickerMode.months)
+                    Text("Custom").tag(DateRangePickerMode.custom)
+                }
+                .pickerStyle(.segmented)
+
+                if mode == .months {
+                    Picker("Start Month", selection: $draftStartMonth) {
+                        ForEach(monthOptions, id: \.self) { month in
+                            Text(DateScope.monthLabel(month)).tag(month)
+                        }
+                    }
+                    .onChange(of: draftStartMonth) { _, newValue in
+                        if draftEndMonth < newValue {
+                            draftEndMonth = newValue
+                        }
+                    }
+
+                    Picker("End Month", selection: $draftEndMonth) {
+                        ForEach(monthOptions.filter { $0 >= draftStartMonth }, id: \.self) { month in
+                            Text(DateScope.monthLabel(month)).tag(month)
+                        }
+                    }
+                } else {
+                    DatePicker("Start", selection: $draftStartDate, displayedComponents: .date)
+                    DatePicker("End", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)
+                }
             }
             .navigationTitle("Date Range")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button("Apply") {
+                        apply()
+                        dismiss()
+                    }
                 }
             }
         }
     }
+
+    private var monthOptions: [MonthYear] {
+        let fallback = DateRangePickerSheet.month(containing: Date())
+        let lower = oldestMonth ?? min(draftStartMonth, fallback)
+        let upper = max(newestMonth ?? fallback, fallback)
+        guard lower <= upper else { return [fallback] }
+        return DateRangePickerSheet.months(from: lower, through: upper)
+    }
+
+    private func apply() {
+        switch mode {
+        case .months:
+            guard let startBounds = LedgerScopeLogic.monthBounds(for: draftStartMonth),
+                  let endBounds = LedgerScopeLogic.monthBounds(for: draftEndMonth) else { return }
+            startDate = startBounds.start
+            endDate = endBounds.end
+        case .custom:
+            startDate = draftStartDate
+            endDate = draftEndDate
+        }
+    }
+
+    private static func month(containing date: Date) -> MonthYear {
+        let calendar = LedgerScopeLogic.calendar
+        let start = calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
+        let raw = monthStorageFormatter.string(from: start)
+        return MonthYear(raw) ?? MonthYear("1970-01")!
+    }
+
+    private static func months(from lower: MonthYear, through upper: MonthYear) -> [MonthYear] {
+        guard let lowerDate = monthStorageFormatter.date(from: lower.rawValue),
+              let upperDate = monthStorageFormatter.date(from: upper.rawValue) else {
+            return [lower]
+        }
+        var result: [MonthYear] = []
+        var cursor = lowerDate
+        while cursor <= upperDate {
+            if let month = MonthYear(monthStorageFormatter.string(from: cursor)) {
+                result.append(month)
+            }
+            guard let next = LedgerScopeLogic.calendar.date(byAdding: .month, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        return result
+    }
+
+    private static let monthStorageFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = LedgerScopeLogic.calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
+}
+
+private enum DateRangePickerMode: Hashable {
+    case months
+    case custom
 }
 
 enum ViewLoadState {

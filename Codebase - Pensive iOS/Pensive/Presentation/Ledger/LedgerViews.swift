@@ -153,7 +153,9 @@ private struct LedgerScreen: View {
         .sheet(isPresented: $showDateRange) {
             DateRangePickerSheet(
                 startDate: $viewModel.scope.startDate,
-                endDate: $viewModel.scope.endDate
+                endDate: $viewModel.scope.endDate,
+                oldestMonth: viewModel.oldestMonth,
+                newestMonth: viewModel.newestMonth
             )
         }
         .sheet(isPresented: $showCreate) {
