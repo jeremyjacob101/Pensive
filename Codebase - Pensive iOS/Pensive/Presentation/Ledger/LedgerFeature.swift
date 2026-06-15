@@ -17,6 +17,17 @@ struct LedgerItemViewData: Identifiable {
     let warningText: String?
     let details: [String]
     let isGrouped: Bool
+
+    var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }
+}
+
+struct LedgerFilterOptionRow: Identifiable {
+    let value: String
+    let color: String?
+    let parentValue: String?
+    let indentationLevel: Int
+
+    var id: String { [parentValue ?? "", value, "\(indentationLevel)"].joined(separator: "|") }
 }
 
 struct ExpenseEditorDraft {
@@ -345,17 +356,24 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     var filterChoices: [String] {
+        Array(Set(accountFilterChoices + categoryFilterRows.map(\.value))).sorted()
+    }
+
+    var accountFilterChoices: [String] {
         switch kind {
         case .expense:
-            let values = expenses.flatMap { row in
-                [row.account, row.category].filter { !$0.isEmpty }
-            }
-            return Array(Set(values)).sorted()
+            return Array(Set(expenses.map(\.account).filter { !$0.isEmpty })).sorted()
         case .incoming:
-            let values = incomings.flatMap { row in
-                [row.account, row.incomeType].filter { !$0.isEmpty }
-            }
-            return Array(Set(values)).sorted()
+            return Array(Set(incomings.map(\.account).filter { !$0.isEmpty })).sorted()
+        }
+    }
+
+    var categoryFilterRows: [LedgerFilterOptionRow] {
+        switch kind {
+        case .expense:
+            return nestedFilterRows(parents: optionsByKind["category"] ?? [], children: optionsByKind["subcategory"] ?? [])
+        case .incoming:
+            return nestedFilterRows(parents: optionsByKind["incomeType"] ?? [], children: optionsByKind["incomeSubtype"] ?? [])
         }
     }
 
@@ -612,6 +630,43 @@ final class LedgerFeatureViewModel: ObservableObject {
         state = .content
     }
 
+    private func nestedFilterRows(parents: [UserOptionRow], children: [UserOptionRow]) -> [LedgerFilterOptionRow] {
+        let sortedParents = parents.sorted { lhs, rhs in
+            lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+        }
+        let childrenByParent = Dictionary(grouping: children) { row in
+            row.parentValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }
+        var displayedChildKeys: Set<String> = []
+        var rows: [LedgerFilterOptionRow] = []
+
+        for parent in sortedParents {
+            rows.append(.init(value: parent.value, color: parent.color, parentValue: nil, indentationLevel: 0))
+            let sortedChildren = (childrenByParent[parent.value] ?? []).sorted { lhs, rhs in
+                lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+            }
+            for child in sortedChildren {
+                displayedChildKeys.insert("\(child.parentValue ?? "")|\(child.value)")
+                rows.append(.init(value: child.value, color: child.color, parentValue: child.parentValue, indentationLevel: 1))
+            }
+        }
+
+        let orphanChildren = children
+            .filter { !displayedChildKeys.contains("\($0.parentValue ?? "")|\($0.value)") }
+            .sorted { lhs, rhs in
+                if lhs.parentValue == rhs.parentValue {
+                    return lhs.value.localizedCaseInsensitiveCompare(rhs.value) == .orderedAscending
+                }
+                return (lhs.parentValue ?? "") < (rhs.parentValue ?? "")
+            }
+        rows.append(contentsOf: orphanChildren.map {
+            LedgerFilterOptionRow(value: $0.value, color: $0.color, parentValue: $0.parentValue, indentationLevel: 0)
+        })
+
+        return rows
+    }
+
+
     private func updateScope(to month: MonthYear) {
         guard let bounds = LedgerScopeLogic.monthBounds(for: month, calendar: calendar) else { return }
         setScope(DateScope(
@@ -762,7 +817,7 @@ enum LedgerFiltering {
     static func filterExpenses(_ rows: [Expense], selected: Set<String>, searchText: String) -> [Expense] {
         let normalized = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return rows.filter { row in
-            let filterHit = selected.isEmpty || selected.contains(row.account) || selected.contains(row.category)
+            let filterHit = selected.isEmpty || selected.contains(row.account) || selected.contains(row.category) || selected.contains(row.subcategory ?? "")
             guard filterHit else { return false }
             guard !normalized.isEmpty else { return true }
             let blob = [row.name, row.account, row.category, row.subcategory ?? "", row.paidTo, row.notes ?? "", row.comments ?? "", row.monthYears.map(\.rawValue).joined(separator: " ")].joined(separator: " ").lowercased()
@@ -773,7 +828,7 @@ enum LedgerFiltering {
     static func filterIncomings(_ rows: [Incoming], selected: Set<String>, searchText: String) -> [Incoming] {
         let normalized = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return rows.filter { row in
-            let filterHit = selected.isEmpty || selected.contains(row.account) || selected.contains(row.incomeType)
+            let filterHit = selected.isEmpty || selected.contains(row.account) || selected.contains(row.incomeType) || selected.contains(row.incomeSubtype ?? "")
             guard filterHit else { return false }
             guard !normalized.isEmpty else { return true }
             let blob = [row.name, row.paidBy, row.account, row.incomeType, row.incomeSubtype ?? "", row.notes ?? "", row.comments ?? "", row.monthYears.map(\.rawValue).joined(separator: " ")].joined(separator: " ").lowercased()

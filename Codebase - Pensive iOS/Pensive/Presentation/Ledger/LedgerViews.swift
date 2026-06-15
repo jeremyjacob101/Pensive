@@ -55,8 +55,8 @@ private struct LedgerScreen: View {
                         scope: viewModel.scope,
                         onCalendar: { showDateRange = true },
                         onShiftMonth: shiftScopeByMonth,
-                        onJumpToOldest: viewModel.oldestMonth == nil ? nil : { viewModel.jumpToOldestMonth() },
-                        onJumpToNewest: viewModel.newestMonth == nil ? nil : { viewModel.jumpToNewestMonth() },
+                        onJumpToOldest: viewModel.oldestMonth == nil ? nil : jumpToOldestMonth,
+                        onJumpToNewest: viewModel.newestMonth == nil ? nil : jumpToNewestMonth,
                         onFilter: { showFilters = true },
                         isLoading: viewModel.isScopeLoading
                     )
@@ -82,7 +82,7 @@ private struct LedgerScreen: View {
                         DisclosureGroup(
                             isExpanded: $showAppliedThisMonthPaidDifferent,
                             content: {
-                                ForEach(appliedThisMonthPaidDifferentRows) { row in
+                                ForEach(appliedThisMonthPaidDifferentRows, id: \.listIdentity) { row in
                                     ledgerRow(row)
                                 }
                             },
@@ -103,7 +103,7 @@ private struct LedgerScreen: View {
                         DisclosureGroup(
                             isExpanded: $showPaidThisMonthAppliedDifferent,
                             content: {
-                                ForEach(paidThisMonthAppliedDifferentRows) { row in
+                                ForEach(paidThisMonthAppliedDifferentRows, id: \.listIdentity) { row in
                                     ledgerRow(row)
                                 }
                             },
@@ -119,7 +119,7 @@ private struct LedgerScreen: View {
                     }
                 }
 
-                ForEach(regularRows) { row in
+                ForEach(regularRows, id: \.listIdentity) { row in
                     ledgerRow(row)
                 }
 
@@ -144,11 +144,7 @@ private struct LedgerScreen: View {
             SearchSheet(text: $viewModel.searchText) { viewModel.applySearch($0) }
         }
         .sheet(isPresented: $showFilters) {
-            MultiSelectFilterSheet(
-                title: "Filters",
-                choices: viewModel.filterChoices,
-                selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) })
-            )
+            LedgerFilterSheet(viewModel: viewModel)
         }
         .sheet(isPresented: $showDateRange) {
             DateRangePickerSheet(
@@ -210,7 +206,21 @@ private struct LedgerScreen: View {
     }
 
     private func shiftScopeByMonth(_ value: Int) {
+        showAppliedThisMonthPaidDifferent = false
+        showPaidThisMonthAppliedDifferent = false
         viewModel.setScope(viewModel.scope.shiftedByMonths(value))
+    }
+
+    private func jumpToOldestMonth() {
+        showAppliedThisMonthPaidDifferent = false
+        showPaidThisMonthAppliedDifferent = false
+        viewModel.jumpToOldestMonth()
+    }
+
+    private func jumpToNewestMonth() {
+        showAppliedThisMonthPaidDifferent = false
+        showPaidThisMonthAppliedDifferent = false
+        viewModel.jumpToNewestMonth()
     }
 
     @ViewBuilder
@@ -264,6 +274,164 @@ private struct LedgerScreen: View {
             Button("Edit") { editingID = RowID(id: row.id) }.tint(.blue)
             Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
+    }
+}
+
+private enum LedgerFilterTab: String, CaseIterable, Identifiable {
+    case account = "Account"
+    case category = "Category"
+
+    var id: String { rawValue }
+}
+
+private struct LedgerFilterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: LedgerFeatureViewModel
+
+    @State private var selectedTab: LedgerFilterTab = .account
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Picker("Filter", selection: $selectedTab) {
+                    ForEach(LedgerFilterTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if selectedTab == .account {
+                    Section {
+                        ForEach(viewModel.accountFilterChoices, id: \.self) { account in
+                            LedgerAccountFilterRow(
+                                value: account,
+                                isSelected: isSelectedBinding(for: account)
+                            )
+                        }
+                    }
+                } else {
+                    Section {
+                        HStack {
+                            Button("Select All") {
+                                updateCategorySelection(selectAll: true)
+                            }
+                            Spacer()
+                            Button("Deselect All") {
+                                updateCategorySelection(selectAll: false)
+                            }
+                        }
+
+                        ForEach(viewModel.categoryFilterRows) { row in
+                            LedgerCategoryFilterRow(
+                                row: row,
+                                isSelected: isSelectedBinding(for: row.value)
+                            )
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filters")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Clear") { viewModel.updateFilters(Set<String>()) }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func isSelectedBinding(for value: String) -> Binding<Bool> {
+        Binding {
+            viewModel.selectedFilters.contains(value)
+        } set: { isSelected in
+            var next = viewModel.selectedFilters
+            if isSelected {
+                next.insert(value)
+            } else {
+                next.remove(value)
+            }
+            viewModel.updateFilters(next)
+        }
+    }
+
+    private func updateCategorySelection(selectAll: Bool) {
+        var next = viewModel.selectedFilters
+        let values = Set(viewModel.categoryFilterRows.map(\.value))
+        if selectAll {
+            next.formUnion(values)
+        } else {
+            next.subtract(values)
+        }
+        viewModel.updateFilters(next)
+    }
+}
+
+private struct LedgerAccountFilterRow: View {
+    let value: String
+    @Binding var isSelected: Bool
+
+    var body: some View {
+        Button {
+            isSelected.toggle()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .frame(width: 26)
+                Text(value)
+                    .foregroundStyle(.primary)
+                Spacer()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct LedgerCategoryFilterRow: View {
+    let row: LedgerFilterOptionRow
+    @Binding var isSelected: Bool
+
+    var body: some View {
+        Button {
+            isSelected.toggle()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .frame(width: 26)
+                Circle()
+                    .fill(optionColor(from: row.color) ?? .gray)
+                    .frame(width: 12, height: 12)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(row.value)
+                        .foregroundStyle(.primary)
+                    if let parent = row.parentValue, !parent.isEmpty {
+                        Text(parent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.leading, CGFloat(row.indentationLevel) * 18)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func optionColor(from hex: String?) -> Color? {
+        guard let hex else { return nil }
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
     }
 }
 

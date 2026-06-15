@@ -98,8 +98,16 @@ struct LedgerToolbarControls: ToolbarContent {
     }
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
             if onAdd != nil {
+                if let onSearch {
+                    Button(action: onSearch) {
+                        Image(systemName: "magnifyingglass")
+                    }
+                    .accessibilityLabel("Search")
+                    .accessibilityIdentifier("ledger_search_toolbar")
+                }
+
                 toolbarMenu
             } else {
                 HStack {
@@ -155,13 +163,6 @@ struct LedgerToolbarControls: ToolbarContent {
                     Label("Dates", systemImage: "calendar")
                 }
                 .accessibilityIdentifier("ledger_calendar_toolbar")
-            }
-
-            if let onSearch {
-                Button(action: onSearch) {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .accessibilityIdentifier("ledger_search_toolbar")
             }
         } label: {
             Image(systemName: "plus")
@@ -306,6 +307,7 @@ struct DateScopeNavigatorRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Date Range")
             .accessibilityIdentifier("ledger_scope_calendar")
+            .disabled(isLoading)
 
             if let onJumpToOldest {
                 Button(action: onJumpToOldest) {
@@ -316,6 +318,7 @@ struct DateScopeNavigatorRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Jump to oldest month")
                 .accessibilityIdentifier("ledger_scope_jump_oldest")
+                .disabled(isLoading)
             }
 
             Button {
@@ -328,6 +331,7 @@ struct DateScopeNavigatorRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Previous month")
             .accessibilityIdentifier("ledger_scope_previous")
+            .disabled(isLoading)
 
             ZStack {
                 Text(scope.displayLabel)
@@ -355,6 +359,7 @@ struct DateScopeNavigatorRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Next month")
             .accessibilityIdentifier("ledger_scope_next")
+            .disabled(isLoading)
 
             if let onJumpToNewest {
                 Button(action: onJumpToNewest) {
@@ -365,6 +370,7 @@ struct DateScopeNavigatorRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Jump to newest month")
                 .accessibilityIdentifier("ledger_scope_jump_newest")
+                .disabled(isLoading)
             }
 
             if let onFilter {
@@ -376,6 +382,7 @@ struct DateScopeNavigatorRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Filters")
                 .accessibilityIdentifier("ledger_scope_filter")
+                .disabled(isLoading)
             }
         }
         .padding(.horizontal, 12)
