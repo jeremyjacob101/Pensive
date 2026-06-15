@@ -509,6 +509,7 @@ struct DateRangePickerSheet: View {
     @Binding var endDate: Date
     var oldestMonth: MonthYear?
     var newestMonth: MonthYear?
+    var onApplyRange: ((Date, Date) -> Void)?
 
     @State private var mode: DateRangePickerMode
     @State private var draftStartDate: Date
@@ -520,12 +521,14 @@ struct DateRangePickerSheet: View {
         startDate: Binding<Date>,
         endDate: Binding<Date>,
         oldestMonth: MonthYear? = nil,
-        newestMonth: MonthYear? = nil
+        newestMonth: MonthYear? = nil,
+        onApplyRange: ((Date, Date) -> Void)? = nil
     ) {
         _startDate = startDate
         _endDate = endDate
         self.oldestMonth = oldestMonth
         self.newestMonth = newestMonth
+        self.onApplyRange = onApplyRange
 
         let initialScope = DateScope(
             startDate: startDate.wrappedValue,
@@ -574,8 +577,29 @@ struct DateRangePickerSheet: View {
                         }
                     }
                 } else {
-                    DatePicker("Start", selection: $draftStartDate, displayedComponents: .date)
-                    DatePicker("End", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)
+                    HStack {
+                        Text("Start")
+                        Spacer()
+                        ZStack(alignment: .trailing) {
+                            DatePicker("", selection: $draftStartDate, displayedComponents: .date)
+                                .labelsHidden()
+                                .opacity(0.02)
+                            Text(Self.customDateLabel(draftStartDate))
+                                .allowsHitTesting(false)
+                        }
+                    }
+
+                    HStack {
+                        Text("End")
+                        Spacer()
+                        ZStack(alignment: .trailing) {
+                            DatePicker("", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)
+                                .labelsHidden()
+                                .opacity(0.02)
+                            Text(Self.customDateLabel(draftEndDate))
+                                .allowsHitTesting(false)
+                        }
+                    }
                 }
             }
             .navigationTitle("Date Range")
@@ -602,15 +626,24 @@ struct DateRangePickerSheet: View {
     }
 
     private func apply() {
+        let nextStart: Date
+        let nextEnd: Date
         switch mode {
         case .months:
             guard let startBounds = LedgerScopeLogic.monthBounds(for: draftStartMonth),
                   let endBounds = LedgerScopeLogic.monthBounds(for: draftEndMonth) else { return }
-            startDate = startBounds.start
-            endDate = endBounds.end
+            nextStart = startBounds.start
+            nextEnd = endBounds.end
         case .custom:
-            startDate = draftStartDate
-            endDate = draftEndDate
+            nextStart = draftStartDate
+            nextEnd = draftEndDate
+        }
+
+        if let onApplyRange {
+            onApplyRange(nextStart, nextEnd)
+        } else {
+            startDate = nextStart
+            endDate = nextEnd
         }
     }
 
@@ -636,6 +669,16 @@ struct DateRangePickerSheet: View {
             cursor = next
         }
         return result
+    }
+
+    private static func customDateLabel(_ date: Date) -> String {
+        date.formatted(
+            Date.FormatStyle()
+                .day()
+                .month(.wide)
+                .year()
+                .locale(Locale(identifier: "en_GB"))
+        )
     }
 
     private static let monthStorageFormatter: DateFormatter = {

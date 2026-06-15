@@ -62,6 +62,7 @@ private struct LedgerScreen: View {
                     )
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                     LedgerBreakdownCard(viewModel: viewModel)
                         .opacity(viewModel.isScopeLoading ? 0.58 : 1)
@@ -132,7 +133,6 @@ private struct LedgerScreen: View {
             }
             .refreshable { await viewModel.refresh() }
         }
-        .onChange(of: viewModel.scope) { _, _ in handleScopeChange() }
         .toolbar {
             LedgerToolbarControls(
                 onSearch: { showSearch = true },
@@ -155,7 +155,14 @@ private struct LedgerScreen: View {
                 startDate: $viewModel.scope.startDate,
                 endDate: $viewModel.scope.endDate,
                 oldestMonth: viewModel.oldestMonth,
-                newestMonth: viewModel.newestMonth
+                newestMonth: viewModel.newestMonth,
+                onApplyRange: { startDate, endDate in
+                viewModel.setScope(DateScope(
+                    startDate: startDate,
+                    endDate: endDate,
+                    includeMonthYearOverlapOutsideDate: false
+                ))
+                }
             )
         }
         .sheet(isPresented: $showCreate) {
@@ -203,16 +210,7 @@ private struct LedgerScreen: View {
     }
 
     private func shiftScopeByMonth(_ value: Int) {
-        viewModel.scope = viewModel.scope.shiftedByMonths(value)
-    }
-
-    private func handleScopeChange() {
-        let shouldIncludeOverlap = viewModel.scope.isWholeMonthRange
-        if viewModel.scope.includeMonthYearOverlapOutsideDate != shouldIncludeOverlap {
-            viewModel.scope.includeMonthYearOverlapOutsideDate = shouldIncludeOverlap
-            return
-        }
-        viewModel.updateScope()
+        viewModel.setScope(viewModel.scope.shiftedByMonths(value))
     }
 
     @ViewBuilder

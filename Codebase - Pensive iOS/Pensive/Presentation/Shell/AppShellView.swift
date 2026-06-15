@@ -3993,6 +3993,7 @@ private struct BreakdownFeatureView: View {
                             onFilter: { showFilters = true },
                             isLoading: viewModel.isScopeLoading
                         )
+                        .listRowSeparator(.hidden)
                     }
                     .opacity(viewModel.isScopeLoading ? 0.66 : 1)
                     .overlay {

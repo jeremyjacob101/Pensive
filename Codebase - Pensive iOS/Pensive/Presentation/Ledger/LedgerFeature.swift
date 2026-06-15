@@ -167,6 +167,8 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private var expenses: [Expense] = []
     private var incomings: [Incoming] = []
+    private var scopeRefreshTask: Task<Void, Never>?
+    private var activeRefreshID = UUID()
 
     enum BreakdownMode: String, CaseIterable {
         case category
@@ -204,6 +206,8 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     func refresh() async {
+        let refreshID = UUID()
+        activeRefreshID = refreshID
         let hadRenderableState: Bool
         switch state {
         case .content, .empty:
@@ -216,13 +220,21 @@ final class LedgerFeatureViewModel: ObservableObject {
         } else {
             isScopeLoading = true
         }
-        defer { isScopeLoading = false }
+        defer {
+            if activeRefreshID == refreshID {
+                isScopeLoading = false
+            }
+        }
         do {
             switch kind {
             case .expense:
-                expenses = try await api.expenses.listByDateScope(scope.request(calendar: calendar)).map(Expense.init)
+                let loadedExpenses = try await api.expenses.listByDateScope(scope.request(calendar: calendar)).map(Expense.init)
+                guard !Task.isCancelled, activeRefreshID == refreshID else { return }
+                expenses = loadedExpenses
             case .incoming:
-                incomings = try await api.incomings.listByDateScope(scope.request(calendar: calendar)).map(Incoming.init)
+                let loadedIncomings = try await api.incomings.listByDateScope(scope.request(calendar: calendar)).map(Incoming.init)
+                guard !Task.isCancelled, activeRefreshID == refreshID else { return }
+                incomings = loadedIncomings
             }
             applyFiltersAndSearch()
         } catch {
@@ -280,7 +292,20 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     func updateScope() {
-        Task { await refresh() }
+        setScope(scope)
+    }
+
+    func setScope(_ nextScope: DateScope) {
+        let next = normalizedScope(nextScope)
+        let didChange = next != scope
+        scope = next
+
+        scopeRefreshTask?.cancel()
+        scopeRefreshTask = Task { await refresh() }
+
+        if !didChange, !isScopeLoading {
+            isScopeLoading = true
+        }
     }
 
     func updateFilters(_ values: Set<String>) {
@@ -589,10 +614,25 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private func updateScope(to month: MonthYear) {
         guard let bounds = LedgerScopeLogic.monthBounds(for: month, calendar: calendar) else { return }
-        scope = DateScope(
+        setScope(DateScope(
             startDate: bounds.start,
             endDate: bounds.end,
             includeMonthYearOverlapOutsideDate: true
+        ))
+    }
+
+    private func normalizedScope(_ scope: DateScope) -> DateScope {
+        let start = min(scope.startDate, scope.endDate)
+        let end = max(scope.startDate, scope.endDate)
+        let candidate = DateScope(
+            startDate: start,
+            endDate: end,
+            includeMonthYearOverlapOutsideDate: scope.includeMonthYearOverlapOutsideDate
+        )
+        return DateScope(
+            startDate: start,
+            endDate: end,
+            includeMonthYearOverlapOutsideDate: candidate.isWholeMonthRange
         )
     }
 
