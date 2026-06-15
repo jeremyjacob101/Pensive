@@ -298,8 +298,8 @@ struct DateScopeNavigatorRow: View {
         HStack(spacing: 6) {
             Button(action: onCalendar) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 34, height: 34)
+                    .font(.system(size: 22, weight: .semibold))
+                    .frame(width: 46, height: 42)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -311,8 +311,8 @@ struct DateScopeNavigatorRow: View {
                 onShiftMonth(-1)
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 30, height: 34)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 34, height: 42)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Previous month")
@@ -339,8 +339,8 @@ struct DateScopeNavigatorRow: View {
                 onShiftMonth(1)
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 30, height: 34)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 34, height: 42)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Next month")
@@ -350,8 +350,8 @@ struct DateScopeNavigatorRow: View {
             if let onFilter {
                 Button(action: onFilter) {
                     Image(systemName: "line.3.horizontal.decrease.circle")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(width: 34, height: 34)
+                        .font(.system(size: 22, weight: .semibold))
+                        .frame(width: 46, height: 42)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Filters")
@@ -360,7 +360,7 @@ struct DateScopeNavigatorRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(uiColor: .secondarySystemGroupedBackground))
@@ -566,6 +566,16 @@ struct DateRangePickerSheet: View {
                                 .labelsHidden()
                                 .opacity(0.02)
                             Text(Self.customDateLabel(draftStartDate))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color(uiColor: .tertiarySystemFill))
+                                )
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+                                )
                                 .allowsHitTesting(false)
                         }
                     }
@@ -578,6 +588,16 @@ struct DateRangePickerSheet: View {
                                 .labelsHidden()
                                 .opacity(0.02)
                             Text(Self.customDateLabel(draftEndDate))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color(uiColor: .tertiarySystemFill))
+                                )
+                                .overlay(
+                                    Capsule(style: .continuous)
+                                        .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+                                )
                                 .allowsHitTesting(false)
                         }
                     }

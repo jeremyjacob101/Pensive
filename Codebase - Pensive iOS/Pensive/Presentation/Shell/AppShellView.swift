@@ -2390,6 +2390,27 @@ private struct OptionPromoteDropDelegate: DropDelegate {
     }
 }
 
+private struct OptionResetDropDelegate: DropDelegate {
+    @Binding var draggedOption: OptionDragPayload?
+    @Binding var dropTargetRowID: String?
+    @Binding var isPromoteDropTargeted: Bool
+    @Binding var dragGeneration: Int
+
+    func validateDrop(info: DropInfo) -> Bool {
+        draggedOption != nil
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        withAnimation(.easeInOut(duration: 0.16)) {
+            draggedOption = nil
+            dropTargetRowID = nil
+            isPromoteDropTargeted = false
+            dragGeneration += 1
+        }
+        return true
+    }
+}
+
 private enum AccountLedgerTab: String, CaseIterable, Identifiable {
     case expenses
     case incomings
@@ -2862,10 +2883,20 @@ private struct OptionsFeatureView: View {
             }
         }
         .padding(.horizontal, 24)
+        .onDrop(
+            of: [UTType.text],
+            delegate: OptionResetDropDelegate(
+                draggedOption: $draggedOption,
+                dropTargetRowID: $dropTargetRowID,
+                isPromoteDropTargeted: $isPromoteDropTargeted,
+                dragGeneration: $optionDragGeneration
+            )
+        )
     }
 
     private var shouldShowPromoteDropZone: Bool {
         guard let draggedOption, draggedOption.isChild else { return false }
+        guard dropTargetRowID == nil || isPromoteDropTargeted else { return false }
         return (viewModel.selectedKind == .category && draggedOption.kind == .subcategory)
             || (viewModel.selectedKind == .incomeType && draggedOption.kind == .incomeSubtype)
     }
