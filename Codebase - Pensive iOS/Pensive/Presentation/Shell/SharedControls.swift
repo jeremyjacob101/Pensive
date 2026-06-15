@@ -50,6 +50,87 @@ struct DebouncedSearchField: View {
     }
 }
 
+struct SearchSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var text: String
+    let onDebouncedChange: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    DebouncedSearchField(text: $text, onDebouncedChange: onDebouncedChange)
+                }
+            }
+            .navigationTitle("Search")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        onDebouncedChange(text)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct LedgerToolbarControls: ToolbarContent {
+    let onSearch: (() -> Void)?
+    let onFilter: (() -> Void)?
+    let onCalendar: (() -> Void)?
+    let onAdd: (() -> Void)?
+
+    init(
+        onSearch: (() -> Void)? = nil,
+        onFilter: (() -> Void)? = nil,
+        onCalendar: (() -> Void)? = nil,
+        onAdd: (() -> Void)? = nil
+    ) {
+        self.onSearch = onSearch
+        self.onFilter = onFilter
+        self.onCalendar = onCalendar
+        self.onAdd = onAdd
+    }
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if let onSearch {
+                Button(action: onSearch) {
+                    Image(systemName: "magnifyingglass")
+                }
+                .accessibilityLabel("Search")
+                .accessibilityIdentifier("ledger_search_toolbar")
+            }
+
+            if let onFilter {
+                Button(action: onFilter) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                }
+                .accessibilityLabel("Filters")
+                .accessibilityIdentifier("ledger_filter_toolbar")
+            }
+
+            if let onCalendar {
+                Button(action: onCalendar) {
+                    Image(systemName: "calendar")
+                }
+                .accessibilityLabel("Date Range")
+                .accessibilityIdentifier("ledger_calendar_toolbar")
+            }
+
+            if let onAdd {
+                Button(action: onAdd) {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("Add")
+                .accessibilityIdentifier("ledger_add_toolbar")
+            }
+        }
+    }
+}
+
 struct MultiSelectFilterButton: View {
     let title: String
     let choices: [String]
@@ -65,41 +146,53 @@ struct MultiSelectFilterButton: View {
                 .labelStyle(.titleAndIcon)
         }
         .sheet(isPresented: $isPresented) {
-            NavigationStack {
-                List {
-                    ForEach(choices, id: \.self) { option in
-                        Button {
-                            if selected.contains(option) {
-                                selected.remove(option)
-                            } else {
-                                selected.insert(option)
-                            }
-                        } label: {
-                            HStack {
-                                Text(option)
-                                Spacer()
-                                if selected.contains(option) {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                }
-                .navigationTitle(title)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Clear") { selected.removeAll() }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { isPresented = false }
-                    }
-                }
-            }
+            MultiSelectFilterSheet(title: title, choices: choices, selected: $selected)
         }
     }
 
     private var selectedLabel: String {
         selected.isEmpty ? title : "\(title) (\(selected.count))"
+    }
+}
+
+struct MultiSelectFilterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let title: String
+    let choices: [String]
+    @Binding var selected: Set<String>
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(choices, id: \.self) { option in
+                    Button {
+                        if selected.contains(option) {
+                            selected.remove(option)
+                        } else {
+                            selected.insert(option)
+                        }
+                    } label: {
+                        HStack {
+                            Text(option)
+                            Spacer()
+                            if selected.contains(option) {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Clear") { selected.removeAll() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
     }
 }
 
@@ -139,8 +232,15 @@ struct MonthNavigator: View {
 struct DateRangePickerButton: View {
     @Binding var startDate: Date
     @Binding var endDate: Date
+    var includeMonthOverlap: Binding<Bool>?
 
     @State private var isPresented = false
+
+    init(startDate: Binding<Date>, endDate: Binding<Date>, includeMonthOverlap: Binding<Bool>? = nil) {
+        _startDate = startDate
+        _endDate = endDate
+        self.includeMonthOverlap = includeMonthOverlap
+    }
 
     var body: some View {
         Button {
@@ -149,16 +249,32 @@ struct DateRangePickerButton: View {
             Label("Date Range", systemImage: "calendar")
         }
         .sheet(isPresented: $isPresented) {
-            NavigationStack {
-                Form {
-                    DatePicker("Start", selection: $startDate, displayedComponents: .date)
-                    DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
+            DateRangePickerSheet(startDate: $startDate, endDate: $endDate, includeMonthOverlap: includeMonthOverlap)
+        }
+    }
+}
+
+struct DateRangePickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var startDate: Date
+    @Binding var endDate: Date
+    var includeMonthOverlap: Binding<Bool>?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker("Start", selection: $startDate, displayedComponents: .date)
+                DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
+
+                if let includeMonthOverlap {
+                    Toggle("Include month overlap", isOn: includeMonthOverlap)
                 }
-                .navigationTitle("Date Range")
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Done") { isPresented = false }
-                    }
+            }
+            .navigationTitle("Date Range")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }

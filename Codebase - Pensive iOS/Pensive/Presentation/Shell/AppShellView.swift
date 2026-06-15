@@ -3938,6 +3938,7 @@ private final class BreakdownViewModel: ObservableObject {
 
 private struct BreakdownFeatureView: View {
     @StateObject private var viewModel: BreakdownViewModel
+    @State private var showDateRange = false
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: BreakdownViewModel(api: api))
@@ -3954,16 +3955,6 @@ private struct BreakdownFeatureView: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.load() } }) {
             List {
-                Section {
-                    DebouncedSearchField(text: $viewModel.searchText) { _ in }
-                    MultiSelectFilterButton(title: "Filters", choices: [], selected: $viewModel.selectedFilters)
-                    MonthNavigator(month: $viewModel.month)
-                        .onChange(of: viewModel.month) { _, _ in viewModel.syncMonthToRange() }
-                    DateRangePickerButton(startDate: $viewModel.startDate, endDate: $viewModel.endDate)
-                        .onChange(of: viewModel.startDate) { _, _ in Task { await viewModel.load() } }
-                        .onChange(of: viewModel.endDate) { _, _ in Task { await viewModel.load() } }
-                }
-
                 if let summary = viewModel.summary {
                     Section {
                         BreakdownMetricCard(title: "TOTAL INCOMINGS", total: money(summary.totals.effectiveIncomings), perMonth: monthly(value: summary.totals.effectiveIncomings, count: summary.monthlyBuckets.count), tint: .green)
@@ -3994,6 +3985,14 @@ private struct BreakdownFeatureView: View {
             .navigationTitle("Breakdown")
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await viewModel.load() }
+        }
+        .onChange(of: viewModel.startDate) { _, _ in Task { await viewModel.load() } }
+        .onChange(of: viewModel.endDate) { _, _ in Task { await viewModel.load() } }
+        .toolbar {
+            LedgerToolbarControls(onCalendar: { showDateRange = true })
+        }
+        .sheet(isPresented: $showDateRange) {
+            DateRangePickerSheet(startDate: $viewModel.startDate, endDate: $viewModel.endDate)
         }
         .task { viewModel.onAppear() }
     }

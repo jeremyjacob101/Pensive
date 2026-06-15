@@ -38,6 +38,9 @@ private struct LedgerScreen: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
     @State private var showCreate = false
+    @State private var showSearch = false
+    @State private var showFilters = false
+    @State private var showDateRange = false
     @State private var editingID: RowID?
     @State private var deleteID: String?
     @State private var selectedPartnerAnchorID: RowID?
@@ -47,21 +50,6 @@ private struct LedgerScreen: View {
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
-                Section {
-                    DebouncedSearchField(text: $viewModel.searchText) { viewModel.applySearch($0) }
-                    Button {
-                        showCreate = true
-                    } label: {
-                        Label(viewModel.kind == .expense ? "Add Expense" : "Add Incoming", systemImage: "plus.circle.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier(viewModel.kind == .expense ? "add_expense_button" : "add_incoming_button")
-                    MultiSelectFilterButton(title: "Filters", choices: viewModel.filterChoices, selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) }))
-                    DateRangePickerButton(startDate: $viewModel.scope.startDate, endDate: $viewModel.scope.endDate)
-                    Toggle("Include month overlap", isOn: $viewModel.scope.includeMonthYearOverlapOutsideDate)
-                        .onChange(of: viewModel.scope) { _, _ in viewModel.updateScope() }
-                }
-
                 Section {
                     LedgerBreakdownCard(viewModel: viewModel)
                         .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
@@ -124,11 +112,31 @@ private struct LedgerScreen: View {
             }
             .refreshable { await viewModel.refresh() }
         }
+        .onChange(of: viewModel.scope) { _, _ in viewModel.updateScope() }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { showCreate = true } label: { Image(systemName: "plus") }
-                    .accessibilityIdentifier("ledger_add_toolbar")
-            }
+            LedgerToolbarControls(
+                onSearch: { showSearch = true },
+                onFilter: { showFilters = true },
+                onCalendar: { showDateRange = true },
+                onAdd: { showCreate = true }
+            )
+        }
+        .sheet(isPresented: $showSearch) {
+            SearchSheet(text: $viewModel.searchText) { viewModel.applySearch($0) }
+        }
+        .sheet(isPresented: $showFilters) {
+            MultiSelectFilterSheet(
+                title: "Filters",
+                choices: viewModel.filterChoices,
+                selected: Binding(get: { viewModel.selectedFilters }, set: { viewModel.updateFilters($0) })
+            )
+        }
+        .sheet(isPresented: $showDateRange) {
+            DateRangePickerSheet(
+                startDate: $viewModel.scope.startDate,
+                endDate: $viewModel.scope.endDate,
+                includeMonthOverlap: $viewModel.scope.includeMonthYearOverlapOutsideDate
+            )
         }
         .sheet(isPresented: $showCreate) {
             if viewModel.kind == .expense {
