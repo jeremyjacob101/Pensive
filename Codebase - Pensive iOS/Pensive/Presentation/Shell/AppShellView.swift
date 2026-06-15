@@ -2301,12 +2301,14 @@ private struct OptionDropDelegate: DropDelegate {
     @Binding var dragGeneration: Int
     let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
     let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
+    let refreshDrag: () -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
         draggedOption != nil
     }
 
     func dropEntered(info: DropInfo) {
+        refreshDrag()
         withAnimation(.easeInOut(duration: 0.16)) {
             if let draggedOption, canDrop(draggedOption, target) {
                 dropTargetRowID = target.id
@@ -2314,6 +2316,11 @@ private struct OptionDropDelegate: DropDelegate {
                 dropTargetRowID = nil
             }
         }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        refreshDrag()
+        return DropProposal(operation: .move)
     }
 
     func dropExited(info: DropInfo) {
@@ -2343,6 +2350,7 @@ private struct OptionPromoteDropDelegate: DropDelegate {
     @Binding var dragGeneration: Int
     let canPromote: (OptionDragPayload) -> Bool
     let commitPromote: (OptionDragPayload) -> Void
+    let refreshDrag: () -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
         guard let draggedOption else { return false }
@@ -2351,9 +2359,15 @@ private struct OptionPromoteDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         guard let draggedOption, canPromote(draggedOption) else { return }
+        refreshDrag()
         withAnimation(.easeInOut(duration: 0.16)) {
             isTargeted = true
         }
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        refreshDrag()
+        return DropProposal(operation: .move)
     }
 
     func dropExited(info: DropInfo) {
@@ -2886,7 +2900,8 @@ private struct OptionsFeatureView: View {
                 isTargeted: $isPromoteDropTargeted,
                 dragGeneration: $optionDragGeneration,
                 canPromote: canPromoteOption,
-                commitPromote: performPromoteDrop
+                commitPromote: performPromoteDrop,
+                refreshDrag: keepOptionDragAlive
             )
         )
     }
@@ -3487,11 +3502,16 @@ private struct OptionsFeatureView: View {
 
     private func beginOptionDrag(_ payload: OptionDragPayload) {
         optionDragGeneration += 1
-        let generation = optionDragGeneration
         draggedOption = payload
         dropTargetRowID = nil
         isPromoteDropTargeted = false
-        scheduleOptionDragCleanup(generation: generation, delay: 4.0)
+        keepOptionDragAlive()
+    }
+
+    private func keepOptionDragAlive() {
+        guard draggedOption != nil else { return }
+        optionDragGeneration += 1
+        scheduleOptionDragCleanup(generation: optionDragGeneration, delay: 0.85)
     }
 
     private func scheduleOptionDragCleanup(generation: Int, delay: TimeInterval) {
@@ -3658,7 +3678,8 @@ private struct OptionsFeatureView: View {
                 dropTargetRowID: $dropTargetRowID,
                 dragGeneration: $optionDragGeneration,
                 canDrop: { payload, target in canDropOption(payload, on: target) },
-                commitDrop: { payload, target in performOptionDrop(payload, on: target) }
+                commitDrop: { payload, target in performOptionDrop(payload, on: target) },
+                refreshDrag: keepOptionDragAlive
             )
         )
     }
