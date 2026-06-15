@@ -2298,6 +2298,7 @@ private struct OptionDropDelegate: DropDelegate {
     let target: OptionsDisplayRow
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
+    @Binding var dragGeneration: Int
     let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
     let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
 
@@ -2327,6 +2328,7 @@ private struct OptionDropDelegate: DropDelegate {
             withAnimation(.easeInOut(duration: 0.16)) {
                 dropTargetRowID = nil
                 draggedOption = nil
+                dragGeneration += 1
             }
         }
         guard let draggedOption, canDrop(draggedOption, target) else { return false }
@@ -2338,6 +2340,7 @@ private struct OptionDropDelegate: DropDelegate {
 private struct OptionPromoteDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
     @Binding var isTargeted: Bool
+    @Binding var dragGeneration: Int
     let canPromote: (OptionDragPayload) -> Bool
     let commitPromote: (OptionDragPayload) -> Void
 
@@ -2364,6 +2367,7 @@ private struct OptionPromoteDropDelegate: DropDelegate {
             withAnimation(.easeInOut(duration: 0.16)) {
                 isTargeted = false
                 draggedOption = nil
+                dragGeneration += 1
             }
         }
         guard let draggedOption, canPromote(draggedOption) else { return false }
@@ -2672,6 +2676,7 @@ private struct OptionsFeatureView: View {
     @State private var draggedOption: OptionDragPayload?
     @State private var dropTargetRowID: String?
     @State private var isPromoteDropTargeted = false
+    @State private var optionDragGeneration = 0
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2879,6 +2884,7 @@ private struct OptionsFeatureView: View {
             delegate: OptionPromoteDropDelegate(
                 draggedOption: $draggedOption,
                 isTargeted: $isPromoteDropTargeted,
+                dragGeneration: $optionDragGeneration,
                 canPromote: canPromoteOption,
                 commitPromote: performPromoteDrop
             )
@@ -3061,6 +3067,7 @@ private struct OptionsFeatureView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .id("account-pages-\(selectedAccountID ?? "")")
             .frame(height: 202)
 
             accountPageDots(rows: rows)
@@ -3069,6 +3076,7 @@ private struct OptionsFeatureView: View {
 
             if let selectedAccount = selectedAccountRow {
                 accountLedgerTabs(for: selectedAccount)
+                    .id("account-ledger-\(selectedAccount.id)")
             }
         }
         .animation(.easeInOut(duration: 0.22), value: selectedAccountID == nil)
@@ -3471,9 +3479,28 @@ private struct OptionsFeatureView: View {
     }
 
     private func resetOptionDrag() {
+        optionDragGeneration += 1
         draggedOption = nil
         dropTargetRowID = nil
         isPromoteDropTargeted = false
+    }
+
+    private func beginOptionDrag(_ payload: OptionDragPayload) {
+        optionDragGeneration += 1
+        let generation = optionDragGeneration
+        draggedOption = payload
+        dropTargetRowID = nil
+        isPromoteDropTargeted = false
+        scheduleOptionDragCleanup(generation: generation, delay: 4.0)
+    }
+
+    private func scheduleOptionDragCleanup(generation: Int, delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard optionDragGeneration == generation else { return }
+            withAnimation(.easeInOut(duration: 0.16)) {
+                resetOptionDrag()
+            }
+        }
     }
 
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
@@ -3619,7 +3646,7 @@ private struct OptionsFeatureView: View {
         }
         .onDrag {
             withAnimation(.easeInOut(duration: 0.16)) {
-                draggedOption = payload
+                beginOptionDrag(payload)
             }
             return NSItemProvider(object: payload.sourceID as NSString)
         }
@@ -3629,6 +3656,7 @@ private struct OptionsFeatureView: View {
                 target: resolvedDropTarget,
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
+                dragGeneration: $optionDragGeneration,
                 canDrop: { payload, target in canDropOption(payload, on: target) },
                 commitDrop: { payload, target in performOptionDrop(payload, on: target) }
             )
