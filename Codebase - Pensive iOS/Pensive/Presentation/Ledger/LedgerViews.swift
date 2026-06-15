@@ -55,8 +55,6 @@ private struct LedgerScreen: View {
                         scope: viewModel.scope,
                         onCalendar: { showDateRange = true },
                         onShiftMonth: shiftScopeByMonth,
-                        onJumpToOldest: viewModel.oldestMonth == nil ? nil : jumpToOldestMonth,
-                        onJumpToNewest: viewModel.newestMonth == nil ? nil : jumpToNewestMonth,
                         onFilter: { showFilters = true },
                         isLoading: viewModel.isScopeLoading
                     )
@@ -209,18 +207,6 @@ private struct LedgerScreen: View {
         showAppliedThisMonthPaidDifferent = false
         showPaidThisMonthAppliedDifferent = false
         viewModel.setScope(viewModel.scope.shiftedByMonths(value))
-    }
-
-    private func jumpToOldestMonth() {
-        showAppliedThisMonthPaidDifferent = false
-        showPaidThisMonthAppliedDifferent = false
-        viewModel.jumpToOldestMonth()
-    }
-
-    private func jumpToNewestMonth() {
-        showAppliedThisMonthPaidDifferent = false
-        showPaidThisMonthAppliedDifferent = false
-        viewModel.jumpToNewestMonth()
     }
 
     @ViewBuilder

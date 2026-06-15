@@ -291,8 +291,6 @@ struct DateScopeNavigatorRow: View {
     let scope: DateScope
     let onCalendar: () -> Void
     let onShiftMonth: (Int) -> Void
-    var onJumpToOldest: (() -> Void)?
-    var onJumpToNewest: (() -> Void)?
     var onFilter: (() -> Void)?
     var isLoading: Bool = false
 
@@ -308,18 +306,6 @@ struct DateScopeNavigatorRow: View {
             .accessibilityLabel("Date Range")
             .accessibilityIdentifier("ledger_scope_calendar")
             .disabled(isLoading)
-
-            if let onJumpToOldest {
-                Button(action: onJumpToOldest) {
-                    Image(systemName: "chevron.left.2")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 26, height: 34)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Jump to oldest month")
-                .accessibilityIdentifier("ledger_scope_jump_oldest")
-                .disabled(isLoading)
-            }
 
             Button {
                 onShiftMonth(-1)
@@ -360,18 +346,6 @@ struct DateScopeNavigatorRow: View {
             .accessibilityLabel("Next month")
             .accessibilityIdentifier("ledger_scope_next")
             .disabled(isLoading)
-
-            if let onJumpToNewest {
-                Button(action: onJumpToNewest) {
-                    Image(systemName: "chevron.right.2")
-                        .font(.system(size: 14, weight: .semibold))
-                        .frame(width: 26, height: 34)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Jump to newest month")
-                .accessibilityIdentifier("ledger_scope_jump_newest")
-                .disabled(isLoading)
-            }
 
             if let onFilter {
                 Button(action: onFilter) {
