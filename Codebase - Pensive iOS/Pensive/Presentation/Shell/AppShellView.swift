@@ -2299,6 +2299,8 @@ private struct OptionDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
     @Binding var isPromoteDropTargeted: Bool
+    @Binding var activeOptionDragSourceID: String?
+    @Binding var optionRowTapSuppressedUntil: Date
     let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
     let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
 
@@ -2333,6 +2335,8 @@ private struct OptionDropDelegate: DropDelegate {
                 dropTargetRowID = nil
                 isPromoteDropTargeted = false
                 draggedOption = nil
+                activeOptionDragSourceID = nil
+                optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
             }
         }
         guard let draggedOption, canDrop(draggedOption, target) else { return false }
@@ -2345,6 +2349,8 @@ private struct OptionPromoteDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
     @Binding var isTargeted: Bool
+    @Binding var activeOptionDragSourceID: String?
+    @Binding var optionRowTapSuppressedUntil: Date
     let canPromote: (OptionDragPayload) -> Bool
     let commitPromote: (OptionDragPayload) -> Void
 
@@ -2376,6 +2382,8 @@ private struct OptionPromoteDropDelegate: DropDelegate {
                 dropTargetRowID = nil
                 isTargeted = false
                 draggedOption = nil
+                activeOptionDragSourceID = nil
+                optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
             }
         }
         guard let draggedOption, canPromote(draggedOption) else { return false }
@@ -2388,6 +2396,8 @@ private struct OptionResetDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
     @Binding var isPromoteDropTargeted: Bool
+    @Binding var activeOptionDragSourceID: String?
+    @Binding var optionRowTapSuppressedUntil: Date
 
     func validateDrop(info: DropInfo) -> Bool {
         draggedOption != nil
@@ -2398,6 +2408,8 @@ private struct OptionResetDropDelegate: DropDelegate {
             draggedOption = nil
             dropTargetRowID = nil
             isPromoteDropTargeted = false
+            activeOptionDragSourceID = nil
+            optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
         }
         return true
     }
@@ -2442,6 +2454,47 @@ private struct OptionEditDraft {
     }
 }
 
+private enum OptionSheetToolbarActionStyle {
+    case neutral
+    case primary
+}
+
+private struct OptionSheetToolbarActionLabel: View {
+    let title: String
+    let style: OptionSheetToolbarActionStyle
+    var isEnabled = true
+
+    var body: some View {
+        Text(title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 7)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(backgroundColor)
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(borderColor, lineWidth: 0.8)
+            }
+    }
+
+    private var foregroundColor: Color {
+        guard isEnabled else { return .secondary }
+        return style == .primary ? .white : .primary
+    }
+
+    private var backgroundColor: Color {
+        guard isEnabled else { return Color(uiColor: .tertiarySystemGroupedBackground) }
+        return style == .primary ? .accentColor : Color(uiColor: .tertiarySystemGroupedBackground)
+    }
+
+    private var borderColor: Color {
+        style == .primary && isEnabled ? .clear : Color.secondary.opacity(0.16)
+    }
+}
+
 private struct OptionCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: OptionsViewModel
@@ -2451,17 +2504,6 @@ private struct OptionCreateSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Label {
-                        Text("Drag and drop to recategorize")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } icon: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
                 Section {
                     TextField("Name", text: $draft.value)
                         .textInputAutocapitalization(.words)
@@ -2497,10 +2539,15 @@ private struct OptionCreateSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        OptionSheetToolbarActionLabel(title: "Cancel", style: .neutral)
+                    }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Create") {
+                    Button {
                         Task {
                             await viewModel.add(
                                 kind: addKind,
@@ -2510,7 +2557,10 @@ private struct OptionCreateSheet: View {
                             )
                             dismiss()
                         }
+                    } label: {
+                        OptionSheetToolbarActionLabel(title: "Create", style: .primary, isEnabled: !isCreateDisabled)
                     }
+                    .buttonStyle(.plain)
                     .disabled(isCreateDisabled)
                 }
             }
@@ -2578,6 +2628,17 @@ private struct OptionEditSheet: View {
         NavigationStack {
             Form {
                 Section {
+                    Label {
+                        Text("Drag and drop to recategorize")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section {
                     TextField("Name", text: $draft.value)
                         .textInputAutocapitalization(.words)
                         .submitLabel(.done)
@@ -2600,7 +2661,7 @@ private struct OptionEditSheet: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .presentationDetents([.height(320), .medium])
+            .presentationDetents([.height(360), .medium])
             .presentationDragIndicator(.visible)
             .confirmationDialog("Delete option?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
@@ -2613,15 +2674,23 @@ private struct OptionEditSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button {
+                        dismiss()
+                    } label: {
+                        OptionSheetToolbarActionLabel(title: "Cancel", style: .neutral)
+                    }
+                    .buttonStyle(.plain)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button {
                         Task {
                             await saveChanges()
                             dismiss()
                         }
+                    } label: {
+                        OptionSheetToolbarActionLabel(title: "Save", style: .primary, isEnabled: hasChanges)
                     }
+                    .buttonStyle(.plain)
                     .disabled(!hasChanges)
                 }
             }
@@ -2704,6 +2773,9 @@ private struct OptionsFeatureView: View {
     @State private var draggedOption: OptionDragPayload?
     @State private var dropTargetRowID: String?
     @State private var isPromoteDropTargeted = false
+    @State private var activeOptionDragSourceID: String?
+    @State private var optionDragLifecycleGeneration = 0
+    @State private var optionRowTapSuppressedUntil = Date.distantPast
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2881,7 +2953,9 @@ private struct OptionsFeatureView: View {
             delegate: OptionResetDropDelegate(
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
-                isPromoteDropTargeted: $isPromoteDropTargeted
+                isPromoteDropTargeted: $isPromoteDropTargeted,
+                activeOptionDragSourceID: $activeOptionDragSourceID,
+                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil
             )
         )
     }
@@ -2921,6 +2995,8 @@ private struct OptionsFeatureView: View {
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
                 isTargeted: $isPromoteDropTargeted,
+                activeOptionDragSourceID: $activeOptionDragSourceID,
+                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil,
                 canPromote: canPromoteOption,
                 commitPromote: performPromoteDrop
             )
@@ -3525,12 +3601,67 @@ private struct OptionsFeatureView: View {
         draggedOption = nil
         dropTargetRowID = nil
         isPromoteDropTargeted = false
+        activeOptionDragSourceID = nil
     }
 
     private func beginOptionDrag(_ payload: OptionDragPayload) {
+        optionDragLifecycleGeneration += 1
+        activeOptionDragSourceID = payload.sourceID
+        suppressOptionRowTap()
         draggedOption = payload
         dropTargetRowID = nil
         isPromoteDropTargeted = false
+    }
+
+    private func markOptionDragPressStarted(_ payload: OptionDragPayload) {
+        if activeOptionDragSourceID != payload.sourceID {
+            optionDragLifecycleGeneration += 1
+        }
+        activeOptionDragSourceID = payload.sourceID
+        suppressOptionRowTap()
+    }
+
+    private func scheduleOptionDragReleaseCleanup(for payload: OptionDragPayload) {
+        guard activeOptionDragSourceID == payload.sourceID || draggedOption?.sourceID == payload.sourceID else { return }
+        suppressOptionRowTap()
+        let sourceID = payload.sourceID
+        let generation = optionDragLifecycleGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
+            guard optionDragLifecycleGeneration == generation else { return }
+            guard activeOptionDragSourceID == sourceID || draggedOption?.sourceID == sourceID else { return }
+            withAnimation(.easeInOut(duration: 0.16)) {
+                resetOptionDrag()
+            }
+        }
+    }
+
+    private func suppressOptionRowTap(for interval: TimeInterval = 0.55) {
+        optionRowTapSuppressedUntil = Date().addingTimeInterval(interval)
+    }
+
+    private func openOptionEditorFromRowTap(_ row: OptionsDisplayRow) {
+        if Date() < optionRowTapSuppressedUntil || draggedOption != nil || activeOptionDragSourceID != nil {
+            resetOptionDrag()
+            suppressOptionRowTap(for: 0.25)
+            return
+        }
+        optionEditorContext = row
+    }
+
+    private func optionDragLifecycleGesture(for payload: OptionDragPayload) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.22, maximumDistance: 10_000)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .onChanged { value in
+                switch value {
+                case .first(true), .second(true, _):
+                    markOptionDragPressStarted(payload)
+                default:
+                    break
+                }
+            }
+            .onEnded { _ in
+                scheduleOptionDragReleaseCleanup(for: payload)
+            }
     }
 
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
@@ -3674,8 +3805,9 @@ private struct OptionsFeatureView: View {
         .animation(.easeInOut(duration: 0.16), value: isDragged)
         .animation(.easeInOut(duration: 0.16), value: isDropTarget)
         .onTapGesture {
-            optionEditorContext = row
+            openOptionEditorFromRowTap(row)
         }
+        .simultaneousGesture(optionDragLifecycleGesture(for: payload))
         .onDrag {
             withAnimation(.easeInOut(duration: 0.16)) {
                 beginOptionDrag(payload)
@@ -3689,6 +3821,8 @@ private struct OptionsFeatureView: View {
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
                 isPromoteDropTargeted: $isPromoteDropTargeted,
+                activeOptionDragSourceID: $activeOptionDragSourceID,
+                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil,
                 canDrop: { payload, target in canDropOption(payload, on: target) },
                 commitDrop: { payload, target in performOptionDrop(payload, on: target) }
             )

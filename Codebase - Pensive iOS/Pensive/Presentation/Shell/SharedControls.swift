@@ -541,9 +541,17 @@ struct DateRangePickerSheet: View {
                 .pickerStyle(.segmented)
 
                 if mode == .months {
-                    Picker("Start Month", selection: $draftStartMonth) {
-                        ForEach(monthOptions, id: \.self) { month in
-                            Text(DateScope.monthLabel(month)).tag(month)
+                    HStack {
+                        Text("Start Month")
+                        Spacer()
+                        Menu {
+                            Picker("Start Month", selection: $draftStartMonth) {
+                                ForEach(monthOptions, id: \.self) { month in
+                                    Text(DateScope.monthLabel(month)).tag(month)
+                                }
+                            }
+                        } label: {
+                            DateRangeValuePill(text: DateScope.monthLabel(draftStartMonth))
                         }
                     }
                     .onChange(of: draftStartMonth) { _, newValue in
@@ -552,9 +560,17 @@ struct DateRangePickerSheet: View {
                         }
                     }
 
-                    Picker("End Month", selection: $draftEndMonth) {
-                        ForEach(monthOptions.filter { $0 >= draftStartMonth }, id: \.self) { month in
-                            Text(DateScope.monthLabel(month)).tag(month)
+                    HStack {
+                        Text("End Month")
+                        Spacer()
+                        Menu {
+                            Picker("End Month", selection: $draftEndMonth) {
+                                ForEach(monthOptions.filter { $0 >= draftStartMonth }, id: \.self) { month in
+                                    Text(DateScope.monthLabel(month)).tag(month)
+                                }
+                            }
+                        } label: {
+                            DateRangeValuePill(text: DateScope.monthLabel(draftEndMonth))
                         }
                     }
                 } else {
@@ -565,17 +581,7 @@ struct DateRangePickerSheet: View {
                             DatePicker("", selection: $draftStartDate, displayedComponents: .date)
                                 .labelsHidden()
                                 .opacity(0.02)
-                            Text(Self.customDateLabel(draftStartDate))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color(uiColor: .tertiarySystemFill))
-                                )
-                                .overlay(
-                                    Capsule(style: .continuous)
-                                        .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
-                                )
+                            DateRangeValuePill(text: Self.customDateLabel(draftStartDate))
                                 .allowsHitTesting(false)
                         }
                     }
@@ -587,17 +593,7 @@ struct DateRangePickerSheet: View {
                             DatePicker("", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)
                                 .labelsHidden()
                                 .opacity(0.02)
-                            Text(Self.customDateLabel(draftEndDate))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color(uiColor: .tertiarySystemFill))
-                                )
-                                .overlay(
-                                    Capsule(style: .continuous)
-                                        .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
-                                )
+                            DateRangeValuePill(text: Self.customDateLabel(draftEndDate))
                                 .allowsHitTesting(false)
                         }
                     }
@@ -695,6 +691,25 @@ struct DateRangePickerSheet: View {
 private enum DateRangePickerMode: Hashable {
     case months
     case custom
+}
+
+private struct DateRangeValuePill: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color(uiColor: .tertiarySystemFill))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+            )
+    }
 }
 
 enum ViewLoadState {
