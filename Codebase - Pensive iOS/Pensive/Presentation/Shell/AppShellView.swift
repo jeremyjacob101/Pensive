@@ -3913,6 +3913,7 @@ private final class BreakdownViewModel: ObservableObject {
     @Published var startDate = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @Published var endDate = Date()
     @Published var summary: SummaryRangeResponse?
+    @Published private(set) var isScopeLoading = false
 
     private let api: ConvexAPI
     private let calendar = LedgerScopeLogic.calendar
@@ -3942,7 +3943,12 @@ private final class BreakdownViewModel: ObservableObject {
 
     func load() async {
         let shouldShowFullScreenError = !state.hasLoadedContent
-        if shouldShowFullScreenError { state = .loading }
+        if shouldShowFullScreenError {
+            state = .loading
+        } else {
+            isScopeLoading = true
+        }
+        defer { isScopeLoading = false }
         do {
             summary = try await api.summaries.range(.init(startDate: LedgerScopeLogic.isoDate(startDate), endDate: LedgerScopeLogic.isoDate(endDate)))
             state = .content
@@ -3957,6 +3963,8 @@ private final class BreakdownViewModel: ObservableObject {
 private struct BreakdownFeatureView: View {
     @StateObject private var viewModel: BreakdownViewModel
     @State private var showDateRange = false
+    @State private var showSearch = false
+    @State private var showFilters = false
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: BreakdownViewModel(api: api))
@@ -3978,7 +3986,22 @@ private struct BreakdownFeatureView: View {
                         BreakdownMetricCard(title: "TOTAL INCOMINGS", total: money(summary.totals.effectiveIncomings), perMonth: monthly(value: summary.totals.effectiveIncomings, count: summary.monthlyBuckets.count), tint: .green)
                         BreakdownMetricCard(title: "TOTAL EXPENSES", total: money(summary.totals.effectiveExpenses), perMonth: monthly(value: summary.totals.effectiveExpenses, count: summary.monthlyBuckets.count), tint: .red)
                         BreakdownMetricCard(title: "TOTAL SAVINGS", total: money(summary.totals.effectiveNet), perMonth: monthly(value: summary.totals.effectiveNet, count: summary.monthlyBuckets.count), tint: .blue)
+                        DateScopeNavigatorRow(
+                            scope: breakdownScope,
+                            onCalendar: { showDateRange = true },
+                            onShiftMonth: shiftScopeByMonth,
+                            onFilter: { showFilters = true },
+                            isLoading: viewModel.isScopeLoading
+                        )
                     }
+                    .opacity(viewModel.isScopeLoading ? 0.66 : 1)
+                    .overlay {
+                        if viewModel.isScopeLoading {
+                            ProgressView()
+                                .controlSize(.large)
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.18), value: viewModel.isScopeLoading)
                 }
 
                 if let summary = viewModel.summary {
@@ -4007,7 +4030,15 @@ private struct BreakdownFeatureView: View {
         .onChange(of: viewModel.startDate) { _, _ in Task { await viewModel.load() } }
         .onChange(of: viewModel.endDate) { _, _ in Task { await viewModel.load() } }
         .toolbar {
-            LedgerToolbarControls(onCalendar: { showDateRange = true })
+            LedgerToolbarControls(
+                onSearch: { showSearch = true }
+            )
+        }
+        .sheet(isPresented: $showSearch) {
+            SearchSheet(text: $viewModel.searchText) { viewModel.searchText = $0 }
+        }
+        .sheet(isPresented: $showFilters) {
+            MultiSelectFilterSheet(title: "Filters", choices: [], selected: $viewModel.selectedFilters)
         }
         .sheet(isPresented: $showDateRange) {
             DateRangePickerSheet(startDate: $viewModel.startDate, endDate: $viewModel.endDate)
@@ -4022,6 +4053,20 @@ private struct BreakdownFeatureView: View {
     private func monthly(value: Double, count: Int) -> String {
         guard count > 0 else { return money(value) }
         return money(value / Double(count))
+    }
+
+    private var breakdownScope: DateScope {
+        DateScope(
+            startDate: viewModel.startDate,
+            endDate: viewModel.endDate,
+            includeMonthYearOverlapOutsideDate: false
+        )
+    }
+
+    private func shiftScopeByMonth(_ value: Int) {
+        let shifted = breakdownScope.shiftedByMonths(value)
+        viewModel.startDate = shifted.startDate
+        viewModel.endDate = shifted.endDate
     }
 }
 

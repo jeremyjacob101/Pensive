@@ -51,7 +51,27 @@ private struct LedgerScreen: View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
             List {
                 Section {
+                    DateScopeNavigatorRow(
+                        scope: viewModel.scope,
+                        onCalendar: { showDateRange = true },
+                        onShiftMonth: shiftScopeByMonth,
+                        onJumpToOldest: viewModel.oldestMonth == nil ? nil : { viewModel.jumpToOldestMonth() },
+                        onJumpToNewest: viewModel.newestMonth == nil ? nil : { viewModel.jumpToNewestMonth() },
+                        onFilter: { showFilters = true },
+                        isLoading: viewModel.isScopeLoading
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
+
                     LedgerBreakdownCard(viewModel: viewModel)
+                        .opacity(viewModel.isScopeLoading ? 0.58 : 1)
+                        .overlay {
+                            if viewModel.isScopeLoading {
+                                ProgressView()
+                                    .controlSize(.large)
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.18), value: viewModel.isScopeLoading)
                         .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                         .listRowBackground(Color.clear)
                 }
@@ -112,13 +132,12 @@ private struct LedgerScreen: View {
             }
             .refreshable { await viewModel.refresh() }
         }
-        .onChange(of: viewModel.scope) { _, _ in viewModel.updateScope() }
+        .onChange(of: viewModel.scope) { _, _ in handleScopeChange() }
         .toolbar {
             LedgerToolbarControls(
                 onSearch: { showSearch = true },
-                onFilter: { showFilters = true },
-                onCalendar: { showDateRange = true },
-                onAdd: { showCreate = true }
+                onAdd: { showCreate = true },
+                addTitle: viewModel.kind == .expense ? "Add Expense" : "Add Incoming"
             )
         }
         .sheet(isPresented: $showSearch) {
@@ -134,8 +153,7 @@ private struct LedgerScreen: View {
         .sheet(isPresented: $showDateRange) {
             DateRangePickerSheet(
                 startDate: $viewModel.scope.startDate,
-                endDate: $viewModel.scope.endDate,
-                includeMonthOverlap: $viewModel.scope.includeMonthYearOverlapOutsideDate
+                endDate: $viewModel.scope.endDate
             )
         }
         .sheet(isPresented: $showCreate) {
@@ -180,6 +198,19 @@ private struct LedgerScreen: View {
 
     private var regularRows: [LedgerItemViewData] {
         viewModel.rows.filter { $0.scopeStatus == .full }
+    }
+
+    private func shiftScopeByMonth(_ value: Int) {
+        viewModel.scope = viewModel.scope.shiftedByMonths(value)
+    }
+
+    private func handleScopeChange() {
+        let shouldIncludeOverlap = viewModel.scope.isWholeMonthRange
+        if viewModel.scope.includeMonthYearOverlapOutsideDate != shouldIncludeOverlap {
+            viewModel.scope.includeMonthYearOverlapOutsideDate = shouldIncludeOverlap
+            return
+        }
+        viewModel.updateScope()
     }
 
     @ViewBuilder

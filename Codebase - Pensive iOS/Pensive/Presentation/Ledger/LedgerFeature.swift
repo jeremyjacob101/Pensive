@@ -150,9 +150,12 @@ final class LedgerFeatureViewModel: ObservableObject {
     @Published var selectedFilters: Set<String> = []
     @Published var scope: DateScope
     @Published var isSaving = false
+    @Published private(set) var isScopeLoading = false
     @Published var alertText: String?
     @Published private(set) var optionsByKind: [String: [UserOptionRow]] = [:]
     @Published var breakdownMode: BreakdownMode = .category
+    @Published private(set) var oldestMonth: MonthYear?
+    @Published private(set) var newestMonth: MonthYear?
 
     let kind: LedgerKind
     let api: ConvexAPI
@@ -194,6 +197,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         if rows.isEmpty {
             Task {
                 await refresh()
+                await loadMonthBounds()
                 await loadOptions()
             }
         }
@@ -209,7 +213,10 @@ final class LedgerFeatureViewModel: ObservableObject {
         }
         if !hadRenderableState {
             state = .loading
+        } else {
+            isScopeLoading = true
         }
+        defer { isScopeLoading = false }
         do {
             switch kind {
             case .expense:
@@ -223,6 +230,22 @@ final class LedgerFeatureViewModel: ObservableObject {
                 return
             }
             state = .error(message: message(for: error))
+        }
+    }
+
+    func loadMonthBounds() async {
+        do {
+            let bounds: MonthBoundsResponse
+            switch kind {
+            case .expense:
+                bounds = try await api.expenses.monthBounds()
+            case .incoming:
+                bounds = try await api.incomings.monthBounds()
+            }
+            oldestMonth = bounds.oldestMonth.flatMap(MonthYear.init)
+            newestMonth = bounds.newestMonth.flatMap(MonthYear.init)
+        } catch {
+            alertText = message(for: error)
         }
     }
 
@@ -273,6 +296,16 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     func updateBreakdownMode(_ mode: BreakdownMode) {
         breakdownMode = mode
+    }
+
+    func jumpToOldestMonth() {
+        guard let oldestMonth else { return }
+        updateScope(to: oldestMonth)
+    }
+
+    func jumpToNewestMonth() {
+        guard let newestMonth else { return }
+        updateScope(to: newestMonth)
     }
 
     var breakdownSummary: LedgerBreakdownSummary {
@@ -552,6 +585,15 @@ final class LedgerFeatureViewModel: ObservableObject {
             rows = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText).map(incomingRow)
         }
         state = .content
+    }
+
+    private func updateScope(to month: MonthYear) {
+        guard let bounds = LedgerScopeLogic.monthBounds(for: month, calendar: calendar) else { return }
+        scope = DateScope(
+            startDate: bounds.start,
+            endDate: bounds.end,
+            includeMonthYearOverlapOutsideDate: true
+        )
     }
 
     private func expenseRow(_ item: Expense) -> LedgerItemViewData {

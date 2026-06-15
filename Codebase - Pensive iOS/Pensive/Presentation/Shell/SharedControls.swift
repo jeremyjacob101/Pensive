@@ -81,53 +81,110 @@ struct LedgerToolbarControls: ToolbarContent {
     let onFilter: (() -> Void)?
     let onCalendar: (() -> Void)?
     let onAdd: (() -> Void)?
+    let addTitle: String
 
     init(
         onSearch: (() -> Void)? = nil,
         onFilter: (() -> Void)? = nil,
         onCalendar: (() -> Void)? = nil,
-        onAdd: (() -> Void)? = nil
+        onAdd: (() -> Void)? = nil,
+        addTitle: String = "Add"
     ) {
         self.onSearch = onSearch
         self.onFilter = onFilter
         self.onCalendar = onCalendar
         self.onAdd = onAdd
+        self.addTitle = addTitle
     }
 
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if let onSearch {
-                Button(action: onSearch) {
-                    Image(systemName: "magnifyingglass")
+        ToolbarItem(placement: .topBarTrailing) {
+            if onAdd != nil {
+                toolbarMenu
+            } else {
+                HStack {
+                    if let onSearch {
+                        compactToolbarButton(
+                            systemImage: "magnifyingglass",
+                            label: "Search",
+                            identifier: "ledger_search_toolbar",
+                            action: onSearch
+                        )
+                    }
+
+                    if let onFilter {
+                        compactToolbarButton(
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            label: "Filters",
+                            identifier: "ledger_filter_toolbar",
+                            action: onFilter
+                        )
+                    }
+
+                    if let onCalendar {
+                        compactToolbarButton(
+                            systemImage: "calendar",
+                            label: "Date Range",
+                            identifier: "ledger_calendar_toolbar",
+                            action: onCalendar
+                        )
+                    }
                 }
-                .accessibilityLabel("Search")
-                .accessibilityIdentifier("ledger_search_toolbar")
+            }
+        }
+    }
+
+    private var toolbarMenu: some View {
+        Menu {
+            if let onAdd {
+                Button(action: onAdd) {
+                    Label(addTitle, systemImage: "plus")
+                }
+                .accessibilityIdentifier("ledger_add_toolbar")
             }
 
             if let onFilter {
                 Button(action: onFilter) {
-                    Image(systemName: "line.3.horizontal.decrease.circle")
+                    Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                 }
-                .accessibilityLabel("Filters")
                 .accessibilityIdentifier("ledger_filter_toolbar")
             }
 
             if let onCalendar {
                 Button(action: onCalendar) {
-                    Image(systemName: "calendar")
+                    Label("Dates", systemImage: "calendar")
                 }
-                .accessibilityLabel("Date Range")
                 .accessibilityIdentifier("ledger_calendar_toolbar")
             }
 
-            if let onAdd {
-                Button(action: onAdd) {
-                    Image(systemName: "plus")
+            if let onSearch {
+                Button(action: onSearch) {
+                    Label("Search", systemImage: "magnifyingglass")
                 }
-                .accessibilityLabel("Add")
-                .accessibilityIdentifier("ledger_add_toolbar")
+                .accessibilityIdentifier("ledger_search_toolbar")
             }
+        } label: {
+            Image(systemName: "plus")
         }
+        .accessibilityLabel("Ledger Actions")
+        .accessibilityIdentifier("ledger_actions_toolbar")
+    }
+
+    private func compactToolbarButton(
+        systemImage: String,
+        label: String,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .regular))
+                .frame(width: 31, height: 48)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
     }
 }
 
@@ -229,18 +286,202 @@ struct MonthNavigator: View {
     }
 }
 
+struct DateScopeNavigatorRow: View {
+    let scope: DateScope
+    let onCalendar: () -> Void
+    let onShiftMonth: (Int) -> Void
+    var onJumpToOldest: (() -> Void)?
+    var onJumpToNewest: (() -> Void)?
+    var onFilter: (() -> Void)?
+    var isLoading: Bool = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: onCalendar) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Date Range")
+            .accessibilityIdentifier("ledger_scope_calendar")
+
+            if let onJumpToOldest {
+                Button(action: onJumpToOldest) {
+                    Image(systemName: "chevron.left.2")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 26, height: 34)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Jump to oldest month")
+                .accessibilityIdentifier("ledger_scope_jump_oldest")
+            }
+
+            Button {
+                onShiftMonth(-1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 30, height: 34)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Previous month")
+            .accessibilityIdentifier("ledger_scope_previous")
+
+            ZStack {
+                Text(scope.displayLabel)
+                    .font(.headline.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .opacity(isLoading ? 0.42 : 1)
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .animation(.easeInOut(duration: 0.18), value: isLoading)
+            .accessibilityIdentifier("ledger_scope_label")
+
+            Button {
+                onShiftMonth(1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 30, height: 34)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Next month")
+            .accessibilityIdentifier("ledger_scope_next")
+
+            if let onJumpToNewest {
+                Button(action: onJumpToNewest) {
+                    Image(systemName: "chevron.right.2")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 26, height: 34)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Jump to newest month")
+                .accessibilityIdentifier("ledger_scope_jump_newest")
+            }
+
+            if let onFilter {
+                Button(action: onFilter) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Filters")
+                .accessibilityIdentifier("ledger_scope_filter")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+        )
+    }
+}
+
+extension DateScope {
+    var displayLabel: String {
+        if isWholeMonthRange {
+            let months = LedgerScopeLogic.targetMonths(startDate: startDate, endDate: endDate)
+            if let first = months.first, let last = months.last {
+                let firstLabel = DateScope.monthLabel(first)
+                let lastLabel = DateScope.monthLabel(last)
+                return first == last ? firstLabel : "\(firstLabel) - \(lastLabel)"
+            }
+        }
+
+        let startLabel = DateScope.dayLabel(startDate)
+        let endLabel = DateScope.dayLabel(endDate)
+        return LedgerScopeLogic.isoDate(startDate) == LedgerScopeLogic.isoDate(endDate)
+            ? startLabel
+            : "\(startLabel) - \(endLabel)"
+    }
+
+    var isWholeMonthRange: Bool {
+        let calendar = LedgerScopeLogic.calendar
+        guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: startDate)),
+              let endMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: endDate)),
+              let endOfMonth = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: endMonthStart) else {
+            return false
+        }
+        return calendar.isDate(startDate, inSameDayAs: startOfMonth) && calendar.isDate(endDate, inSameDayAs: endOfMonth)
+    }
+
+    func shiftedByMonths(_ value: Int) -> DateScope {
+        let calendar = LedgerScopeLogic.calendar
+        if isWholeMonthRange,
+           let shiftedStartMonth = calendar.date(byAdding: .month, value: value, to: startDate),
+           let endMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: endDate)),
+           let shiftedEndMonthStart = calendar.date(byAdding: .month, value: value, to: endMonthStart),
+           let shiftedEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: shiftedEndMonthStart) {
+            return DateScope(
+                startDate: shiftedStartMonth,
+                endDate: shiftedEnd,
+                includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate
+            )
+        }
+
+        let shiftedStart = calendar.date(byAdding: .month, value: value, to: startDate) ?? startDate
+        let shiftedEnd = calendar.date(byAdding: .month, value: value, to: endDate) ?? endDate
+        return DateScope(
+            startDate: shiftedStart,
+            endDate: shiftedEnd,
+            includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate
+        )
+    }
+
+    static func monthLabel(_ month: MonthYear) -> String {
+        guard let date = monthDateFormatter.date(from: month.rawValue) else {
+            return month.rawValue
+        }
+        return monthDisplayFormatter.string(from: date)
+    }
+
+    static func dayLabel(_ date: Date) -> String {
+        dayDisplayFormatter.string(from: date)
+    }
+
+    private static let monthDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = LedgerScopeLogic.calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM"
+        return formatter
+    }()
+
+    private static let monthDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = LedgerScopeLogic.calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "MMM ''yy"
+        return formatter
+    }()
+
+    private static let dayDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = LedgerScopeLogic.calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "MMM d ''yy"
+        return formatter
+    }()
+}
+
 struct DateRangePickerButton: View {
     @Binding var startDate: Date
     @Binding var endDate: Date
-    var includeMonthOverlap: Binding<Bool>?
 
     @State private var isPresented = false
-
-    init(startDate: Binding<Date>, endDate: Binding<Date>, includeMonthOverlap: Binding<Bool>? = nil) {
-        _startDate = startDate
-        _endDate = endDate
-        self.includeMonthOverlap = includeMonthOverlap
-    }
 
     var body: some View {
         Button {
@@ -249,7 +490,7 @@ struct DateRangePickerButton: View {
             Label("Date Range", systemImage: "calendar")
         }
         .sheet(isPresented: $isPresented) {
-            DateRangePickerSheet(startDate: $startDate, endDate: $endDate, includeMonthOverlap: includeMonthOverlap)
+            DateRangePickerSheet(startDate: $startDate, endDate: $endDate)
         }
     }
 }
@@ -259,17 +500,12 @@ struct DateRangePickerSheet: View {
 
     @Binding var startDate: Date
     @Binding var endDate: Date
-    var includeMonthOverlap: Binding<Bool>?
 
     var body: some View {
         NavigationStack {
             Form {
                 DatePicker("Start", selection: $startDate, displayedComponents: .date)
                 DatePicker("End", selection: $endDate, in: startDate..., displayedComponents: .date)
-
-                if let includeMonthOverlap {
-                    Toggle("Include month overlap", isOn: includeMonthOverlap)
-                }
             }
             .navigationTitle("Date Range")
             .toolbar {
