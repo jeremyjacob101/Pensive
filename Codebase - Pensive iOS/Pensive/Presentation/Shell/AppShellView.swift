@@ -3082,7 +3082,6 @@ private struct OptionsFeatureView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .id("account-pages-\(selectedAccountID ?? "")")
             .frame(height: 202)
 
             accountPageDots(rows: rows)
@@ -3526,13 +3525,13 @@ private struct OptionsFeatureView: View {
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
         switch (payload.kind, target.kind) {
         case (.category, .category):
-            return payload.value != target.value
+            return true
         case (.subcategory, .category):
-            return payload.parentValue != nil && payload.parentValue != target.value
+            return payload.parentValue != nil
         case (.incomeType, .incomeType):
-            return payload.value != target.value
+            return true
         case (.incomeSubtype, .incomeType):
-            return payload.parentValue != nil && payload.parentValue != target.value
+            return payload.parentValue != nil
         default:
             return false
         }
@@ -3542,15 +3541,17 @@ private struct OptionsFeatureView: View {
         Task {
             switch (payload.kind, target.kind) {
             case (.category, .category):
+                guard payload.value != target.value else { return }
                 await viewModel.moveToSubtype(kind: payload.kind, sourceValue: payload.value, targetValue: target.value)
             case (.subcategory, .category):
-                if let sourceParent = payload.parentValue {
+                if let sourceParent = payload.parentValue, sourceParent != target.value {
                     await viewModel.moveSubtype(kind: payload.kind, value: payload.value, sourceParentValue: sourceParent, targetParentValue: target.value)
                 }
             case (.incomeType, .incomeType):
+                guard payload.value != target.value else { return }
                 await viewModel.moveToSubtype(kind: payload.kind, sourceValue: payload.value, targetValue: target.value)
             case (.incomeSubtype, .incomeType):
-                if let sourceParent = payload.parentValue {
+                if let sourceParent = payload.parentValue, sourceParent != target.value {
                     await viewModel.moveSubtype(kind: payload.kind, value: payload.value, sourceParentValue: sourceParent, targetParentValue: target.value)
                 }
             default:

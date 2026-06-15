@@ -462,6 +462,13 @@ private struct LedgerBreakdownCard: View {
 
     var body: some View {
         let summary = viewModel.breakdownSummary
+        let chartSlices = summary.slices.filter { $0.amount.isFinite && $0.amount > 0 }
+        let chartTotal = chartSlices.reduce(0) { $0 + $1.amount }
+        let chartIdentity = [
+            viewModel.scope.displayLabel,
+            viewModel.breakdownMode.rawValue,
+            chartSlices.map { "\($0.key):\($0.amount)" }.joined(separator: "|")
+        ].joined(separator: "-")
         VStack(alignment: .leading, spacing: 16) {
             Picker("Breakdown Mode", selection: Binding(get: { viewModel.breakdownMode }, set: { viewModel.updateBreakdownMode($0) })) {
                 Text("Category").tag(LedgerFeatureViewModel.BreakdownMode.category)
@@ -469,18 +476,22 @@ private struct LedgerBreakdownCard: View {
             }
             .pickerStyle(.segmented)
 
-            if summary.slices.isEmpty {
+            if chartSlices.isEmpty || !chartTotal.isFinite || chartTotal <= 0 {
                 Text("No rows available for this scope.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                Chart(summary.slices) { slice in
+                Chart(chartSlices) { slice in
                     SectorMark(
                         angle: .value("Amount", slice.amount),
                         innerRadius: .ratio(0.58),
                         outerRadius: .inset(0)
                     )
                     .foregroundStyle(color(for: slice))
+                }
+                .id(chartIdentity)
+                .transaction { transaction in
+                    transaction.animation = nil
                 }
                 .frame(height: 240)
                 .chartBackground { _ in
@@ -493,7 +504,7 @@ private struct LedgerBreakdownCard: View {
                 Divider()
 
                 VStack(spacing: 8) {
-                    ForEach(Array(summary.slices.enumerated()), id: \.element.id) { index, slice in
+                    ForEach(Array(chartSlices.enumerated()), id: \.element.id) { index, slice in
                         HStack {
                             Circle().fill(color(for: slice, fallbackIndex: index)).frame(width: 10, height: 10)
                             Text(slice.label)

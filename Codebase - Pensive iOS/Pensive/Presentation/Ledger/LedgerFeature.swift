@@ -113,12 +113,16 @@ enum LedgerBreakdownComputing {
             }
         }
         let slices = grouped
-            .filter { $0.value > 0 }
+            .filter { $0.value.isFinite && $0.value > 0 }
             .map { key, amount in
                 LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
             }
             .sorted { $0.amount > $1.amount }
-        return LedgerBreakdownSummary(totalRaw: totalRaw, totalEffective: totalEffective, slices: slices)
+        return LedgerBreakdownSummary(
+            totalRaw: totalRaw.isFinite ? totalRaw : 0,
+            totalEffective: totalEffective.isFinite ? totalEffective : 0,
+            slices: slices
+        )
     }
 
     static func incomings(rows: [Incoming], mode: LedgerFeatureViewModel.BreakdownMode, scope: DateScope, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
@@ -144,12 +148,16 @@ enum LedgerBreakdownComputing {
             }
         }
         let slices = grouped
-            .filter { $0.value > 0 }
+            .filter { $0.value.isFinite && $0.value > 0 }
             .map { key, amount in
                 LedgerBreakdownSlice(key: key, label: key, amount: amount, colorToken: colorTokenForKey(key, mode))
             }
             .sorted { $0.amount > $1.amount }
-        return LedgerBreakdownSummary(totalRaw: totalRaw, totalEffective: totalEffective, slices: slices)
+        return LedgerBreakdownSummary(
+            totalRaw: totalRaw.isFinite ? totalRaw : 0,
+            totalEffective: totalEffective.isFinite ? totalEffective : 0,
+            slices: slices
+        )
     }
 }
 

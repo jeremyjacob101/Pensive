@@ -141,6 +141,7 @@ enum LedgerScopeLogic {
         scope: DateScope,
         calendar: Calendar = calendar
     ) -> Double {
+        guard amount.isFinite else { return 0 }
         let target = Set(targetMonths(startDate: scope.startDate, endDate: scope.endDate, calendar: calendar))
         let rowMonths = normalizedRowMonths(date: date, monthYears: monthYears, calendar: calendar)
         let monthCount = max(1, rowMonths.count)
