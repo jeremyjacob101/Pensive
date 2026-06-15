@@ -91,7 +91,10 @@ enum LedgerBreakdownComputing {
             case .category:
                 return expense.category.isEmpty ? "Uncategorized" : expense.category
             case .subcategory:
-                return expense.subcategory?.isEmpty == false ? expense.subcategory! : "Unspecified Subcategory"
+                if let subcategory = expense.subcategory, !subcategory.isEmpty {
+                    return subcategory
+                }
+                return expense.category.isEmpty ? "Uncategorized" : expense.category
             }
         }.mapValues { groupedRows in
             groupedRows.reduce(0) { partial, row in
@@ -119,7 +122,10 @@ enum LedgerBreakdownComputing {
             case .category:
                 return incoming.incomeType.isEmpty ? "Uncategorized" : incoming.incomeType
             case .subcategory:
-                return incoming.incomeSubtype?.isEmpty == false ? incoming.incomeSubtype! : "Unspecified Subtype"
+                if let subtype = incoming.incomeSubtype, !subtype.isEmpty {
+                    return subtype
+                }
+                return incoming.incomeType.isEmpty ? "Uncategorized" : incoming.incomeType
             }
         }.mapValues { groupedRows in
             groupedRows.reduce(0) { partial, row in
@@ -656,6 +662,7 @@ final class LedgerFeatureViewModel: ObservableObject {
                 return optionsByKind["category"]?.first(where: { $0.value == key })?.color
             case .subcategory:
                 return optionsByKind["subcategory"]?.first(where: { $0.value == key })?.color
+                    ?? optionsByKind["category"]?.first(where: { $0.value == key })?.color
             }
         case .incoming:
             switch mode {
@@ -663,6 +670,7 @@ final class LedgerFeatureViewModel: ObservableObject {
                 return optionsByKind["incomeType"]?.first(where: { $0.value == key })?.color
             case .subcategory:
                 return optionsByKind["incomeSubtype"]?.first(where: { $0.value == key })?.color
+                    ?? optionsByKind["incomeType"]?.first(where: { $0.value == key })?.color
             }
         }
     }

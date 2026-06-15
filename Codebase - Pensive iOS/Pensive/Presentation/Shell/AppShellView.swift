@@ -2310,6 +2310,18 @@ private struct OptionCreateDraft {
     var color = "#EC4899"
 }
 
+private struct OptionEditDraft {
+    var value: String
+    var color: String
+    var demoteTargetParent = ""
+    var moveTargetParent = ""
+
+    init(row: OptionsDisplayRow) {
+        value = row.value
+        color = row.color
+    }
+}
+
 private struct OptionCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: OptionsViewModel
@@ -2420,6 +2432,197 @@ private struct OptionCreateSheet: View {
     }
 }
 
+private struct OptionEditSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: OptionsViewModel
+    let row: OptionsDisplayRow
+    @State private var draft: OptionEditDraft
+    @State private var showDeleteConfirmation = false
+
+    init(viewModel: OptionsViewModel, row: OptionsDisplayRow) {
+        self.viewModel = viewModel
+        self.row = row
+        _draft = State(initialValue: OptionEditDraft(row: row))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Name", text: $draft.value)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+
+                    ColorPicker(
+                        "Color",
+                        selection: Binding(
+                            get: { optionEditColor(from: draft.color) ?? .pink },
+                            set: { draft.color = optionEditHex(from: $0) ?? draft.color }
+                        ),
+                        supportsOpacity: false
+                    )
+                }
+
+                optionMoveSection()
+
+                Section {
+                    Button("Delete", role: .destructive) {
+                        showDeleteConfirmation = true
+                    }
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .presentationDetents([.medium, .large])
+            .confirmationDialog("Delete option?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
+                    Task {
+                        await viewModel.remove(kind: row.kind, value: row.value, parentValue: row.parentValue)
+                        dismiss()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        Task {
+                            await saveChanges()
+                            dismiss()
+                        }
+                    }
+                    .disabled(!hasChanges)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func optionMoveSection() -> some View {
+        if row.kind == .category || row.kind == .incomeType {
+            Section {
+                Picker(demoteTargetTitle, selection: $draft.demoteTargetParent) {
+                    Text("Select Parent").tag("")
+                    ForEach(viewModel.moveToSubtypeTargets(kind: row.kind, excluding: row.value), id: \.self) { value in
+                        Text(value).tag(value)
+                    }
+                }
+
+                Button(demoteTitle) {
+                    Task {
+                        await viewModel.moveToSubtype(kind: row.kind, sourceValue: row.value, targetValue: draft.demoteTargetParent)
+                        dismiss()
+                    }
+                }
+                .disabled(draft.demoteTargetParent.isEmpty)
+            }
+        }
+
+        if row.kind == .subcategory || row.kind == .incomeSubtype {
+            Section {
+                Picker("Parent", selection: $draft.moveTargetParent) {
+                    Text("Select Parent").tag("")
+                    ForEach(viewModel.parentChoicesExcluding(kind: row.kind, parentValue: row.parentValue), id: \.self) { value in
+                        Text(value).tag(value)
+                    }
+                }
+
+                Button("Move Under Parent") {
+                    guard let sourceParent = row.parentValue else { return }
+                    Task {
+                        await viewModel.moveSubtype(kind: row.kind, value: row.value, sourceParentValue: sourceParent, targetParentValue: draft.moveTargetParent)
+                        dismiss()
+                    }
+                }
+                .disabled(draft.moveTargetParent.isEmpty || row.parentValue == nil)
+
+                Button(promoteTitle) {
+                    guard let sourceParent = row.parentValue else { return }
+                    Task {
+                        await viewModel.promoteSubtype(kind: row.kind, value: row.value, parentValue: sourceParent)
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var title: String {
+        switch row.kind {
+        case .account: return "Edit Account"
+        case .category: return "Edit Category"
+        case .subcategory: return "Edit Subcategory"
+        case .incomeType: return "Edit Income Type"
+        case .incomeSubtype: return "Edit Income Subtype"
+        }
+    }
+
+    private var demoteTitle: String {
+        row.kind == .category ? "Demote to Subcategory" : "Demote to Income Subtype"
+    }
+
+    private var demoteTargetTitle: String {
+        row.kind == .category ? "Category Parent" : "Income Type Parent"
+    }
+
+    private var promoteTitle: String {
+        row.kind == .subcategory ? "Promote to Category" : "Promote to Income Type"
+    }
+
+    private var hasChanges: Bool {
+        let nextName = draft.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextColor = normalizedHex(draft.color)
+        return !nextName.isEmpty && (nextName != row.value || (nextColor != nil && nextColor != normalizedHex(row.color)))
+    }
+
+    private func saveChanges() async {
+        let nextName = draft.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextColor = normalizedHex(draft.color) ?? row.color
+        let nameChanged = !nextName.isEmpty && nextName != row.value
+        let colorChanged = normalizedHex(nextColor) != normalizedHex(row.color)
+
+        if nameChanged {
+            await viewModel.rename(kind: row.kind, value: row.value, nextValue: nextName, parentValue: row.parentValue)
+        }
+
+        if colorChanged {
+            await viewModel.updateColor(kind: row.kind, value: nameChanged ? nextName : row.value, color: nextColor, parentValue: row.parentValue)
+        }
+    }
+
+    private func optionEditColor(from hex: String) -> Color? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
+    }
+
+    private func optionEditHex(from color: Color) -> String? {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        guard UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return nil }
+        return String(
+            format: "#%02X%02X%02X",
+            Int(red * 255),
+            Int(green * 255),
+            Int(blue * 255)
+        )
+    }
+
+    private func normalizedHex(_ hex: String) -> String? {
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().replacingOccurrences(of: "#", with: "")
+        guard clean.range(of: #"^[0-9A-F]{6}$"#, options: .regularExpression) != nil else { return nil }
+        return "#\(clean)"
+    }
+}
+
 private struct OptionsFeatureView: View {
     @StateObject private var viewModel: OptionsViewModel
     @State private var createDraft = OptionCreateDraft()
@@ -2427,15 +2630,10 @@ private struct OptionsFeatureView: View {
     @State private var renameByRow: [String: String] = [:]
     @State private var colorByRow: [String: String] = [:]
     @State private var rowPendingDelete: OptionsDisplayRow?
-    @State private var moveToSubtypeContext: OptionsDisplayRow?
-    @State private var moveSubtypeContext: OptionsDisplayRow?
-    @State private var promoteSubtypeContext: OptionsDisplayRow?
     @State private var accountEditorContext: OptionsDisplayRow?
-    @State private var moveTarget = ""
-    @State private var moveSubtypeTargetParent = ""
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
-    @State private var expandedOptionRowIDs: Set<String> = []
+    @State private var optionEditorContext: OptionsDisplayRow?
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2471,89 +2669,15 @@ private struct OptionsFeatureView: View {
                 }
                 Button("Cancel", role: .cancel) { rowPendingDelete = nil }
             }
-            .sheet(item: $moveToSubtypeContext) { row in
-                NavigationStack {
-                    Form {
-                        Picker("Target parent", selection: $moveTarget) {
-                            Text("Select Parent").tag("")
-                            ForEach(viewModel.moveToSubtypeTargets(kind: row.kind, excluding: row.value), id: \.self) { value in
-                                Text(value).tag(value)
-                            }
-                        }
-                    }
-                    .navigationTitle("Move To Subtype")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cancel") { moveToSubtypeContext = nil }
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Move") {
-                                Task {
-                                    await viewModel.moveToSubtype(kind: row.kind, sourceValue: row.value, targetValue: moveTarget)
-                                    moveToSubtypeContext = nil
-                                }
-                            }
-                            .disabled(moveTarget.isEmpty)
-                        }
-                    }
-                }
-            }
-            .sheet(item: $moveSubtypeContext) { row in
-                NavigationStack {
-                    Form {
-                        Picker("Target parent", selection: $moveSubtypeTargetParent) {
-                            Text("Select Parent").tag("")
-                            ForEach(viewModel.parentChoicesExcluding(kind: row.kind, parentValue: row.parentValue), id: \.self) { value in
-                                Text(value).tag(value)
-                            }
-                        }
-                    }
-                    .navigationTitle("Move Subtype")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cancel") { moveSubtypeContext = nil }
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Move") {
-                                guard let sourceParent = row.parentValue else { return }
-                                Task {
-                                    await viewModel.moveSubtype(kind: row.kind, value: row.value, sourceParentValue: sourceParent, targetParentValue: moveSubtypeTargetParent)
-                                    moveSubtypeContext = nil
-                                }
-                            }
-                            .disabled(moveSubtypeTargetParent.isEmpty || row.parentValue == nil)
-                        }
-                    }
-                }
-            }
-            .sheet(item: $promoteSubtypeContext) { row in
-                NavigationStack {
-                    Form {
-                        Text("Promote '\(row.value)' from subtype to parent?")
-                    }
-                    .navigationTitle("Promote Subtype")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Cancel") { promoteSubtypeContext = nil }
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Promote") {
-                                guard let sourceParent = row.parentValue else { return }
-                                Task {
-                                    await viewModel.promoteSubtype(kind: row.kind, value: row.value, parentValue: sourceParent)
-                                    promoteSubtypeContext = nil
-                                }
-                            }
-                        }
-                    }
-                }
-            }
             .sheet(isPresented: $showCreateOption) {
                 OptionCreateSheet(
                     viewModel: viewModel,
                     selectedKind: viewModel.selectedKind,
                     draft: $createDraft
                 )
+            }
+            .sheet(item: $optionEditorContext) { row in
+                OptionEditSheet(viewModel: viewModel, row: row)
             }
             .sheet(item: $accountEditorContext) { row in
                 NavigationStack {
@@ -2599,9 +2723,9 @@ private struct OptionsFeatureView: View {
             createDraft = OptionCreateDraft()
             showCreateOption = false
             accountEditorContext = nil
+            optionEditorContext = nil
             selectedAccountID = nil
             selectedAccountLedgerTab = .expenses
-            expandedOptionRowIDs = []
         }
         .onChange(of: selectedAccountID) { _, _ in
             guard let selectedAccountRow else { return }
@@ -3260,7 +3384,6 @@ private struct OptionsFeatureView: View {
     }
 
     private func optionCompactRow(for row: OptionsDisplayRow) -> some View {
-        let isExpanded = expandedOptionRowIDs.contains(row.id)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Button {
@@ -3319,127 +3442,21 @@ private struct OptionsFeatureView: View {
                 }
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.22)) {
-                        toggleOptionRow(row.id)
-                    }
+                    optionEditorContext = row
                 } label: {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 32, height: 32)
-                        .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(isExpanded ? "Collapse \(row.value) editor" : "Expand \(row.value) editor")
+                .accessibilityLabel("Edit \(row.value)")
             }
             .padding(.leading, CGFloat(row.indentationLevel) * 18)
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
             .contentShape(Rectangle())
-
-            if isExpanded {
-                optionEditorDropdown(for: row)
-                    .padding(.leading, CGFloat(row.indentationLevel) * 18 + 44)
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 14)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
         }
-        .animation(.easeInOut(duration: 0.22), value: isExpanded)
-    }
-
-    private func toggleOptionRow(_ rowID: String) {
-        if expandedOptionRowIDs.contains(rowID) {
-            expandedOptionRowIDs.remove(rowID)
-        } else {
-            expandedOptionRowIDs.insert(rowID)
-        }
-    }
-
-    @ViewBuilder
-    private func optionEditorDropdown(for row: OptionsDisplayRow) -> some View {
-        let rowKey = row.selfKey
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                TextField("Rename", text: Binding(get: { renameByRow[rowKey, default: row.value] }, set: { renameByRow[rowKey] = $0 }))
-                    .textFieldStyle(.roundedBorder)
-
-                Button {
-                    Task {
-                        await viewModel.rename(
-                            kind: row.kind,
-                            value: row.value,
-                            nextValue: renameByRow[rowKey, default: row.value],
-                            parentValue: row.parentValue
-                        )
-                    }
-                } label: {
-                    Label("Apply Rename", systemImage: "pencil")
-                }
-                .buttonStyle(.bordered)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                ColorPicker(
-                    "Color",
-                    selection: colorSelectionBinding(for: row),
-                    supportsOpacity: false
-                )
-
-                Button {
-                    Task {
-                        await viewModel.updateColor(
-                            kind: row.kind,
-                            value: row.value,
-                            color: colorByRow[rowKey, default: row.color],
-                            parentValue: row.parentValue
-                        )
-                    }
-                } label: {
-                    Label("Update Color", systemImage: "paintpalette")
-                }
-                .buttonStyle(.bordered)
-            }
-
-            if row.kind == .category || row.kind == .incomeType {
-                Button("Move to subtype") {
-                    moveToSubtypeContext = row
-                    moveTarget = ""
-                }
-                .buttonStyle(.bordered)
-            }
-
-            if row.kind == .subcategory || row.kind == .incomeSubtype {
-                ViewThatFits {
-                    HStack {
-                        subtypeMoveButtons(for: row)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        subtypeMoveButtons(for: row)
-                    }
-                }
-            }
-
-            Button("Delete", role: .destructive) {
-                rowPendingDelete = row
-            }
-            .buttonStyle(.bordered)
-        }
-        .font(.footnote)
-    }
-
-    @ViewBuilder
-    private func subtypeMoveButtons(for row: OptionsDisplayRow) -> some View {
-        Button("Move subtype under parent") {
-            moveSubtypeContext = row
-            moveSubtypeTargetParent = ""
-        }
-        .buttonStyle(.bordered)
-
-        Button("Promote subtype to parent") {
-            promoteSubtypeContext = row
-        }
-        .buttonStyle(.bordered)
     }
 
     private func color(from hex: String) -> Color? {

@@ -23,7 +23,27 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(food?.colorToken, "#3366FF")
     }
 
-    func testIncomingSubtypeBreakdownFallsBackToUnspecified() {
+    func testExpenseSubcategoryBreakdownFallsBackToCategoryForRowsWithoutSubcategory() {
+        let rows = [
+            expense(id: "1", category: "Rent", subcategory: nil, amount: 6000, effective: 5800),
+            expense(id: "2", category: "Food", subcategory: "", amount: 1500, effective: 1040.6),
+            expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300)
+        ]
+
+        let summary = LedgerBreakdownComputing.expenses(rows: rows, mode: .subcategory, scope: may2026Scope) { _, _ in nil }
+
+        XCTAssertEqual(summary.totalRaw, 8000, accuracy: 0.0001)
+        XCTAssertEqual(summary.totalEffective, 7140.6, accuracy: 0.0001)
+        XCTAssertNil(summary.slices.first(where: { $0.label == "Unspecified Subcategory" }))
+        let rent = summary.slices.first(where: { $0.label == "Rent" })
+        XCTAssertEqual(rent?.amount ?? 0, 5800, accuracy: 0.0001)
+        let food = summary.slices.first(where: { $0.label == "Food" })
+        XCTAssertEqual(food?.amount ?? 0, 1040.6, accuracy: 0.0001)
+        let dining = summary.slices.first(where: { $0.label == "Dining" })
+        XCTAssertEqual(dining?.amount ?? 0, 300, accuracy: 0.0001)
+    }
+
+    func testIncomingSubtypeBreakdownFallsBackToIncomeTypeForRowsWithoutSubtype() {
         let rows = [
             incoming(id: "a", type: "Salary", subtype: nil, amount: 10000, effective: 10000),
             incoming(id: "b", type: "Salary", subtype: "", amount: 3000, effective: 2800),
@@ -34,8 +54,9 @@ final class LedgerBreakdownComputingTests: XCTestCase {
 
         XCTAssertEqual(summary.totalRaw, 14000, accuracy: 0.0001)
         XCTAssertEqual(summary.totalEffective, 13800, accuracy: 0.0001)
-        let unspecified = summary.slices.first(where: { $0.label == "Unspecified Subtype" })
-        XCTAssertEqual(unspecified?.amount ?? 0, 12800, accuracy: 0.0001)
+        XCTAssertNil(summary.slices.first(where: { $0.label == "Unspecified Subtype" }))
+        let salary = summary.slices.first(where: { $0.label == "Salary" })
+        XCTAssertEqual(salary?.amount ?? 0, 12800, accuracy: 0.0001)
         let family = summary.slices.first(where: { $0.label == "Family" })
         XCTAssertEqual(family?.amount ?? 0, 1000, accuracy: 0.0001)
     }
