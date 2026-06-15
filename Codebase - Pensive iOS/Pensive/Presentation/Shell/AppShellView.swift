@@ -2302,14 +2302,16 @@ private struct OptionDropDelegate: DropDelegate {
     let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
-        guard let draggedOption else { return false }
-        return canDrop(draggedOption, target)
+        draggedOption != nil
     }
 
     func dropEntered(info: DropInfo) {
-        guard let draggedOption, canDrop(draggedOption, target) else { return }
         withAnimation(.easeInOut(duration: 0.16)) {
-            dropTargetRowID = target.id
+            if let draggedOption, canDrop(draggedOption, target) {
+                dropTargetRowID = target.id
+            } else {
+                dropTargetRowID = nil
+            }
         }
     }
 
@@ -2418,6 +2420,17 @@ private struct OptionCreateSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Label {
+                        Text("Drag and drop to recategorize")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section {
                     TextField("Name", text: $draft.value)
                         .textInputAutocapitalization(.words)
@@ -2556,7 +2569,8 @@ private struct OptionEditSheet: View {
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.height(320), .medium])
+            .presentationDragIndicator(.visible)
             .confirmationDialog("Delete option?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     Task {
@@ -2808,7 +2822,7 @@ private struct OptionsFeatureView: View {
                         ForEach(group.children, id: \.selfKey) { child in
                             Divider()
                                 .padding(.leading, 42)
-                            optionCompactRow(for: child)
+                            optionCompactRow(for: child, dropTarget: group.parent)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -3511,10 +3525,11 @@ private struct OptionsFeatureView: View {
         }
     }
 
-    private func optionCompactRow(for row: OptionsDisplayRow) -> some View {
+    private func optionCompactRow(for row: OptionsDisplayRow, dropTarget: OptionsDisplayRow? = nil) -> some View {
+        let resolvedDropTarget = dropTarget ?? row
         let payload = OptionDragPayload(kind: row.kind, value: row.value, parentValue: row.parentValue)
         let isDragged = draggedOption?.sourceID == row.id
-        let isDropTarget = dropTargetRowID == row.id
+        let isDropTarget = dropTargetRowID == resolvedDropTarget.id
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
@@ -3599,6 +3614,9 @@ private struct OptionsFeatureView: View {
         .scaleEffect(isDragged ? 0.985 : 1)
         .animation(.easeInOut(duration: 0.16), value: isDragged)
         .animation(.easeInOut(duration: 0.16), value: isDropTarget)
+        .onTapGesture {
+            optionEditorContext = row
+        }
         .onDrag {
             withAnimation(.easeInOut(duration: 0.16)) {
                 draggedOption = payload
@@ -3608,7 +3626,7 @@ private struct OptionsFeatureView: View {
         .onDrop(
             of: [UTType.text],
             delegate: OptionDropDelegate(
-                target: row,
+                target: resolvedDropTarget,
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
                 canDrop: { payload, target in canDropOption(payload, on: target) },
