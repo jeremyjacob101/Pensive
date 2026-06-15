@@ -2298,17 +2298,15 @@ private struct OptionDropDelegate: DropDelegate {
     let target: OptionsDisplayRow
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
-    @Binding var dragGeneration: Int
+    @Binding var isPromoteDropTargeted: Bool
     let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
     let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
-    let refreshDrag: () -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
         draggedOption != nil
     }
 
     func dropEntered(info: DropInfo) {
-        refreshDrag()
         withAnimation(.easeInOut(duration: 0.16)) {
             if let draggedOption, canDrop(draggedOption, target) {
                 dropTargetRowID = target.id
@@ -2319,7 +2317,6 @@ private struct OptionDropDelegate: DropDelegate {
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        refreshDrag()
         return DropProposal(operation: .move)
     }
 
@@ -2334,8 +2331,8 @@ private struct OptionDropDelegate: DropDelegate {
         defer {
             withAnimation(.easeInOut(duration: 0.16)) {
                 dropTargetRowID = nil
+                isPromoteDropTargeted = false
                 draggedOption = nil
-                dragGeneration += 1
             }
         }
         guard let draggedOption, canDrop(draggedOption, target) else { return false }
@@ -2346,11 +2343,10 @@ private struct OptionDropDelegate: DropDelegate {
 
 private struct OptionPromoteDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
+    @Binding var dropTargetRowID: String?
     @Binding var isTargeted: Bool
-    @Binding var dragGeneration: Int
     let canPromote: (OptionDragPayload) -> Bool
     let commitPromote: (OptionDragPayload) -> Void
-    let refreshDrag: () -> Void
 
     func validateDrop(info: DropInfo) -> Bool {
         guard let draggedOption else { return false }
@@ -2359,14 +2355,12 @@ private struct OptionPromoteDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         guard let draggedOption, canPromote(draggedOption) else { return }
-        refreshDrag()
         withAnimation(.easeInOut(duration: 0.16)) {
             isTargeted = true
         }
     }
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
-        refreshDrag()
         return DropProposal(operation: .move)
     }
 
@@ -2379,9 +2373,9 @@ private struct OptionPromoteDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         defer {
             withAnimation(.easeInOut(duration: 0.16)) {
+                dropTargetRowID = nil
                 isTargeted = false
                 draggedOption = nil
-                dragGeneration += 1
             }
         }
         guard let draggedOption, canPromote(draggedOption) else { return false }
@@ -2394,7 +2388,6 @@ private struct OptionResetDropDelegate: DropDelegate {
     @Binding var draggedOption: OptionDragPayload?
     @Binding var dropTargetRowID: String?
     @Binding var isPromoteDropTargeted: Bool
-    @Binding var dragGeneration: Int
 
     func validateDrop(info: DropInfo) -> Bool {
         draggedOption != nil
@@ -2405,7 +2398,6 @@ private struct OptionResetDropDelegate: DropDelegate {
             draggedOption = nil
             dropTargetRowID = nil
             isPromoteDropTargeted = false
-            dragGeneration += 1
         }
         return true
     }
@@ -2707,11 +2699,11 @@ private struct OptionsFeatureView: View {
     @State private var accountEditorContext: OptionsDisplayRow?
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
+    @State private var accountPagerResetToken = 0
     @State private var optionEditorContext: OptionsDisplayRow?
     @State private var draggedOption: OptionDragPayload?
     @State private var dropTargetRowID: String?
     @State private var isPromoteDropTargeted = false
-    @State private var optionDragGeneration = 0
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2805,6 +2797,7 @@ private struct OptionsFeatureView: View {
             resetOptionDrag()
             selectedAccountID = nil
             selectedAccountLedgerTab = .expenses
+            accountPagerResetToken = 0
         }
         .onChange(of: selectedAccountID) { _, _ in
             guard let selectedAccountRow else { return }
@@ -2888,15 +2881,13 @@ private struct OptionsFeatureView: View {
             delegate: OptionResetDropDelegate(
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
-                isPromoteDropTargeted: $isPromoteDropTargeted,
-                dragGeneration: $optionDragGeneration
+                isPromoteDropTargeted: $isPromoteDropTargeted
             )
         )
     }
 
     private var shouldShowPromoteDropZone: Bool {
         guard let draggedOption, draggedOption.isChild else { return false }
-        guard dropTargetRowID == nil || isPromoteDropTargeted else { return false }
         return (viewModel.selectedKind == .category && draggedOption.kind == .subcategory)
             || (viewModel.selectedKind == .incomeType && draggedOption.kind == .incomeSubtype)
     }
@@ -2928,11 +2919,10 @@ private struct OptionsFeatureView: View {
             of: [UTType.text],
             delegate: OptionPromoteDropDelegate(
                 draggedOption: $draggedOption,
+                dropTargetRowID: $dropTargetRowID,
                 isTargeted: $isPromoteDropTargeted,
-                dragGeneration: $optionDragGeneration,
                 canPromote: canPromoteOption,
-                commitPromote: performPromoteDrop,
-                refreshDrag: keepOptionDragAlive
+                commitPromote: performPromoteDrop
             )
         )
     }
@@ -3103,6 +3093,7 @@ private struct OptionsFeatureView: View {
             .padding(.horizontal, 4)
 
             TabView(selection: Binding(get: { selectedAccountID ?? "" }, set: { next in
+                guard !next.isEmpty, next != selectedAccountID else { return }
                 selectedAccountID = next
                 selectedAccountLedgerTab = .expenses
             })) {
@@ -3113,6 +3104,7 @@ private struct OptionsFeatureView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .id("account-pager-\(accountPagerResetToken)")
             .frame(height: 202)
 
             accountPageDots(rows: rows)
@@ -3141,10 +3133,16 @@ private struct OptionsFeatureView: View {
             .contentShape(RoundedRectangle(cornerRadius: 20))
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.24)) {
-                    selectedAccountID = row.id
-                    selectedAccountLedgerTab = .expenses
+                    openAccountDetail(for: row)
                 }
             }
+    }
+
+    private func openAccountDetail(for row: OptionsDisplayRow) {
+        accountPagerResetToken += 1
+        selectedAccountID = row.id
+        selectedAccountLedgerTab = .expenses
+        Task { await viewModel.loadInitialLedgerIfNeeded(for: row, tab: .expenses) }
     }
 
     private func accountStackTopShadow() -> some View {
@@ -3524,33 +3522,15 @@ private struct OptionsFeatureView: View {
     }
 
     private func resetOptionDrag() {
-        optionDragGeneration += 1
         draggedOption = nil
         dropTargetRowID = nil
         isPromoteDropTargeted = false
     }
 
     private func beginOptionDrag(_ payload: OptionDragPayload) {
-        optionDragGeneration += 1
         draggedOption = payload
         dropTargetRowID = nil
         isPromoteDropTargeted = false
-        keepOptionDragAlive()
-    }
-
-    private func keepOptionDragAlive() {
-        guard draggedOption != nil else { return }
-        optionDragGeneration += 1
-        scheduleOptionDragCleanup(generation: optionDragGeneration, delay: 0.85)
-    }
-
-    private func scheduleOptionDragCleanup(generation: Int, delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            guard optionDragGeneration == generation else { return }
-            withAnimation(.easeInOut(duration: 0.16)) {
-                resetOptionDrag()
-            }
-        }
     }
 
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
@@ -3708,10 +3688,9 @@ private struct OptionsFeatureView: View {
                 target: resolvedDropTarget,
                 draggedOption: $draggedOption,
                 dropTargetRowID: $dropTargetRowID,
-                dragGeneration: $optionDragGeneration,
+                isPromoteDropTargeted: $isPromoteDropTargeted,
                 canDrop: { payload, target in canDropOption(payload, on: target) },
-                commitDrop: { payload, target in performOptionDrop(payload, on: target) },
-                refreshDrag: keepOptionDragAlive
+                commitDrop: { payload, target in performOptionDrop(payload, on: target) }
             )
         )
     }
