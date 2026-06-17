@@ -579,7 +579,7 @@ struct DateRangePickerSheet: View {
                     }
                 } else {
                     HStack {
-                        Text("Start")
+                        Text("Start Date")
                         Spacer()
                         ZStack(alignment: .trailing) {
                             DatePicker("", selection: $draftStartDate, displayedComponents: .date)
@@ -591,7 +591,7 @@ struct DateRangePickerSheet: View {
                     }
 
                     HStack {
-                        Text("End")
+                        Text("End Date")
                         Spacer()
                         ZStack(alignment: .trailing) {
                             DatePicker("", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)

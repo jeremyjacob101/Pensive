@@ -1513,10 +1513,9 @@ private struct TrackingSelectionSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .disabled(isSaving)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(isSaving ? "Saving..." : "Done") {
+                    Button("Done") {
                         Task { await save() }
                     }
                     .disabled(isSaving)
@@ -1579,15 +1578,8 @@ private struct TrackingSelectionRowView: View {
                 Circle()
                     .fill(optionColor(from: row.color) ?? .gray)
                     .frame(width: 12, height: 12)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.value)
-                        .foregroundStyle(.primary)
-                    if let parent = row.parentValue, !parent.isEmpty {
-                        Text(parent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text(row.value)
+                    .foregroundStyle(.primary)
                 Spacer()
             }
             .padding(.leading, CGFloat(row.indentationLevel) * 18)
@@ -1663,6 +1655,8 @@ private struct TrackingTimelineRowCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(row.label)
                     .font(.headline)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
                 TrackingPipelinePreview(segments: row.segments)
             }
@@ -4356,71 +4350,122 @@ private struct BreakdownMetricCard: View {
     }
 }
 
-@MainActor
-private final class BreakdownViewModel: ObservableObject {
-    @Published var state: ViewLoadState = .loading
-    @Published var searchText = ""
-    @Published var selectedFilters: Set<String> = []
-    @Published var month = Date()
-    @Published var startDate = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
-    @Published var endDate = Date()
-    @Published var summary: SummaryRangeResponse?
-    @Published private(set) var isScopeLoading = false
+private struct BreakdownFilterSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var expenseVM: LedgerFeatureViewModel
+    @ObservedObject var incomingVM: LedgerFeatureViewModel
 
-    private let api: ConvexAPI
-    private let calendar = LedgerScopeLogic.calendar
+    @State private var filterKind: LedgerKind = .expense
+    @State private var selectedTab: LedgerFilterTab = .account
 
-    init(api: ConvexAPI) {
-        self.api = api
-        let today = Date()
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
-        let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? today
-        startDate = monthStart
-        endDate = monthEnd
+    private var activeVM: LedgerFeatureViewModel {
+        filterKind == .expense ? expenseVM : incomingVM
     }
 
-    func onAppear() {
-        Task {
-            await load()
-        }
-    }
+    var body: some View {
+        NavigationStack {
+            List {
+                Picker("Type", selection: $filterKind) {
+                    Text("Expenses").tag(LedgerKind.expense)
+                    Text("Incomings").tag(LedgerKind.incoming)
+                }
+                .pickerStyle(.segmented)
 
-    func syncMonthToRange() {
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: month)) ?? month
-        let monthEnd = calendar.date(byAdding: DateComponents(month: 1, day: -1), to: monthStart) ?? monthStart
-        startDate = monthStart
-        endDate = monthEnd
-        Task { await load() }
-    }
+                Picker("Filter", selection: $selectedTab) {
+                    Text("Account").tag(LedgerFilterTab.account)
+                    Text(activeVM.kind == .incoming ? "Income Type" : "Category").tag(LedgerFilterTab.category)
+                }
+                .pickerStyle(.segmented)
 
-    func load() async {
-        let shouldShowFullScreenError = !state.hasLoadedContent
-        if shouldShowFullScreenError {
-            state = .loading
-        } else {
-            isScopeLoading = true
-        }
-        defer { isScopeLoading = false }
-        do {
-            summary = try await api.summaries.range(.init(startDate: LedgerScopeLogic.isoDate(startDate), endDate: LedgerScopeLogic.isoDate(endDate)))
-            state = .content
-        } catch {
-            if shouldShowFullScreenError {
-                state = .error(message: "Failed to load breakdown")
+                if selectedTab == .account {
+                    Section {
+                        ForEach(activeVM.accountFilterChoices, id: \.self) { account in
+                            LedgerAccountFilterRow(
+                                value: account,
+                                colorHex: activeVM.accountColor(for: account),
+                                isSelected: isSelectedBinding(for: account)
+                            )
+                        }
+                    }
+                } else {
+                    Section {
+                        HStack {
+                            Button("Select All") {
+                                updateCategorySelection(selectAll: true)
+                            }
+                            .disabled(allCategoriesSelected)
+                            Spacer()
+                            Button("Deselect All") {
+                                updateCategorySelection(selectAll: false)
+                            }
+                            .disabled(noCategoriesSelected)
+                        }
+
+                        ForEach(activeVM.categoryFilterRows) { row in
+                            LedgerCategoryFilterRow(
+                                row: row,
+                                isSelected: isSelectedBinding(for: row.value)
+                            )
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filters")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
+    }
+
+    private func isSelectedBinding(for value: String) -> Binding<Bool> {
+        Binding {
+            activeVM.selectedFilters.contains(value)
+        } set: { isSelected in
+            var next = activeVM.selectedFilters
+            if isSelected {
+                next.insert(value)
+            } else {
+                next.remove(value)
+            }
+            activeVM.updateFilters(next)
+        }
+    }
+
+    private var allCategoriesSelected: Bool {
+        let categoryValues = Set(activeVM.categoryFilterRows.map(\.value))
+        return activeVM.selectedFilters.isSuperset(of: categoryValues)
+    }
+
+    private var noCategoriesSelected: Bool {
+        let categoryValues = Set(activeVM.categoryFilterRows.map(\.value))
+        return activeVM.selectedFilters.isDisjoint(with: categoryValues)
+    }
+
+    private func updateCategorySelection(selectAll: Bool) {
+        var next = activeVM.selectedFilters
+        let values = Set(activeVM.categoryFilterRows.map(\.value))
+        if selectAll {
+            next.formUnion(values)
+        } else {
+            next.subtract(values)
+        }
+        activeVM.updateFilters(next)
     }
 }
 
 private struct BreakdownFeatureView: View {
-    @StateObject private var viewModel: BreakdownViewModel
-    @State private var showDateRange = false
-    @State private var showSearch = false
-    @State private var showFilters = false
+    @StateObject private var expenseVM: LedgerFeatureViewModel
+    @StateObject private var incomingVM: LedgerFeatureViewModel
 
-    init(api: ConvexAPI) {
-        _viewModel = StateObject(wrappedValue: BreakdownViewModel(api: api))
-    }
+    @State private var showDateRange = false
+    @State private var showFilters = false
+    @State private var rangeStartDate: Date
+    @State private var rangeEndDate: Date
 
     private let formatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -4430,44 +4475,87 @@ private struct BreakdownFeatureView: View {
         return f
     }()
 
-    var body: some View {
-        LoadStateView(state: viewModel.state, retry: { Task { await viewModel.load() } }) {
-            List {
-                if let summary = viewModel.summary {
-                    Section {
-                        BreakdownMetricCard(title: "TOTAL INCOMINGS", total: money(summary.totals.effectiveIncomings), perMonth: monthly(value: summary.totals.effectiveIncomings, count: summary.monthlyBuckets.count), tint: .green)
-                        BreakdownMetricCard(title: "TOTAL EXPENSES", total: money(summary.totals.effectiveExpenses), perMonth: monthly(value: summary.totals.effectiveExpenses, count: summary.monthlyBuckets.count), tint: .red)
-                        BreakdownMetricCard(title: "TOTAL SAVINGS", total: money(summary.totals.effectiveNet), perMonth: monthly(value: summary.totals.effectiveNet, count: summary.monthlyBuckets.count), tint: .blue)
-                        DateScopeNavigatorRow(
-                            scope: breakdownScope,
-                            onCalendar: { showDateRange = true },
-                            onShiftMonth: shiftScopeByMonth,
-                            onFilter: { showFilters = true },
-                            isLoading: viewModel.isScopeLoading
-                        )
-                        .listRowSeparator(.hidden)
-                    }
-                    .opacity(viewModel.isScopeLoading ? 0.66 : 1)
-                    .overlay {
-                        if viewModel.isScopeLoading {
-                            ProgressView()
-                                .controlSize(.large)
-                        }
-                    }
-                    .animation(.easeInOut(duration: 0.18), value: viewModel.isScopeLoading)
-                }
+    init(api: ConvexAPI) {
+        let expense = LedgerFeatureViewModel(kind: .expense, api: api)
+        let incoming = LedgerFeatureViewModel(kind: .incoming, api: api)
+        _expenseVM = StateObject(wrappedValue: expense)
+        _incomingVM = StateObject(wrappedValue: incoming)
+        _rangeStartDate = State(initialValue: expense.scope.startDate)
+        _rangeEndDate = State(initialValue: expense.scope.endDate)
+    }
 
-                if let summary = viewModel.summary {
+    var body: some View {
+        let isLoading = expenseVM.isScopeLoading || incomingVM.isScopeLoading
+        let loadingState: ViewLoadState = {
+            if case .loading = expenseVM.state { return .loading }
+            if case .loading = incomingVM.state { return .loading }
+            return expenseVM.state
+        }()
+        LoadStateView(state: loadingState) {
+            List {
+                Section {
+                    DateScopeNavigatorRow(
+                        scope: expenseVM.scope,
+                        onCalendar: { showDateRange = true },
+                        onShiftMonth: shiftScopeByMonth,
+                        onFilter: { showFilters = true },
+                        isLoading: isLoading
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
+                    BreakdownMetricCard(
+                        title: "TOTAL INCOMINGS",
+                        total: money(incomingVM.filteredTotalEffective),
+                        perMonth: monthly(value: incomingVM.filteredTotalEffective),
+                        tint: .green
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+
+                    BreakdownMetricCard(
+                        title: "TOTAL INCOMINGS",
+                        total: money(incomingVM.filteredTotalEffective),
+                        perMonth: monthly(value: incomingVM.filteredTotalEffective),
+                        tint: .green
+                    )
+                    BreakdownMetricCard(
+                        title: "TOTAL EXPENSES",
+                        total: money(expenseVM.filteredTotalEffective),
+                        perMonth: monthly(value: expenseVM.filteredTotalEffective),
+                        tint: .red
+                    )
+                    BreakdownMetricCard(
+                        title: "TOTAL SAVINGS",
+                        total: money(incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
+                        perMonth: monthly(value: incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
+                        tint: .blue
+                    )
+                }
+                .opacity(isLoading ? 0.66 : 1)
+                .overlay {
+                    if isLoading {
+                        ProgressView()
+                            .controlSize(.large)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.18), value: isLoading)
+
+                if !expenseVM.monthlyFilteredTotals.isEmpty || !incomingVM.monthlyFilteredTotals.isEmpty {
                     Section("Per Month") {
-                        ForEach(summary.monthlyBuckets, id: \.month) { row in
+                        let scopeMonths = LedgerScopeLogic.targetMonths(startDate: expenseVM.scope.startDate, endDate: expenseVM.scope.endDate)
+                        ForEach(scopeMonths, id: \.self) { month in
+                            let incomingTotal = incomingVM.monthlyFilteredTotals.first(where: { $0.month == month })?.total ?? 0
+                            let expenseTotal = expenseVM.monthlyFilteredTotals.first(where: { $0.month == month })?.total ?? 0
+                            let net = incomingTotal - expenseTotal
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(row.month).font(.headline)
+                                Text(DateScope.monthLabel(month)).font(.headline)
                                 HStack {
-                                    Text("Incomings \(money(row.effectiveIncomings))")
+                                    Text("Incomings \(money(incomingTotal))")
                                     Spacer()
-                                    Text("Expenses \(money(row.effectiveExpenses))")
+                                    Text("Expenses \(money(expenseTotal))")
                                     Spacer()
-                                    Text("Savings \(money(row.effectiveNet))").foregroundStyle(row.effectiveNet >= 0 ? .green : .red)
+                                    Text("Savings \(money(net))").foregroundStyle(net >= 0 ? .green : .red)
                                 }
                                 .font(.footnote)
                             }
@@ -4478,48 +4566,58 @@ private struct BreakdownFeatureView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Breakdown")
             .navigationBarTitleDisplayMode(.large)
-            .refreshable { await viewModel.load() }
-        }
-        .onChange(of: viewModel.startDate) { _, _ in Task { await viewModel.load() } }
-        .onChange(of: viewModel.endDate) { _, _ in Task { await viewModel.load() } }
-        .toolbar {
-            LedgerToolbarControls(
-                onSearch: { showSearch = true }
-            )
-        }
-        .sheet(isPresented: $showSearch) {
-            SearchSheet(text: $viewModel.searchText) { viewModel.searchText = $0 }
+            .refreshable { await refreshCurrent() }
         }
         .sheet(isPresented: $showFilters) {
-            MultiSelectFilterSheet(title: "Filters", choices: [], selected: $viewModel.selectedFilters)
+            BreakdownFilterSheet(expenseVM: expenseVM, incomingVM: incomingVM)
         }
         .sheet(isPresented: $showDateRange) {
-            DateRangePickerSheet(startDate: $viewModel.startDate, endDate: $viewModel.endDate)
+            DateRangePickerSheet(
+                startDate: $rangeStartDate,
+                endDate: $rangeEndDate,
+                oldestMonth: expenseVM.oldestMonth,
+                newestMonth: expenseVM.newestMonth,
+                onApplyRange: { startDate, endDate in
+                    let scope = DateScope(startDate: startDate, endDate: endDate, includeMonthYearOverlapOutsideDate: false)
+                    setScopeOnBoth(scope)
+                    rangeStartDate = startDate
+                    rangeEndDate = endDate
+                }
+            )
         }
-        .task { viewModel.onAppear() }
+        .task {
+            expenseVM.onAppear()
+            incomingVM.onAppear()
+        }
     }
 
     private func money(_ value: Double) -> String {
         formatter.string(from: NSNumber(value: value)) ?? "₪\(value)"
     }
 
-    private func monthly(value: Double, count: Int) -> String {
-        guard count > 0 else { return money(value) }
-        return money(value / Double(count))
-    }
-
-    private var breakdownScope: DateScope {
-        DateScope(
-            startDate: viewModel.startDate,
-            endDate: viewModel.endDate,
-            includeMonthYearOverlapOutsideDate: false
-        )
+    private func monthly(value: Double) -> String {
+        let months = expenseVM.scope.isWholeMonthRange
+            ? LedgerScopeLogic.targetMonths(startDate: expenseVM.scope.startDate, endDate: expenseVM.scope.endDate).count
+            : 1
+        guard months > 0 else { return money(value) }
+        return money(value / Double(months))
     }
 
     private func shiftScopeByMonth(_ value: Int) {
-        let shifted = breakdownScope.shiftedByMonths(value)
-        viewModel.startDate = shifted.startDate
-        viewModel.endDate = shifted.endDate
+        let next = expenseVM.scope.shiftedByMonths(value)
+        setScopeOnBoth(next)
+    }
+
+    private func setScopeOnBoth(_ scope: DateScope) {
+        expenseVM.setScope(scope)
+        incomingVM.setScope(scope)
+        rangeStartDate = scope.startDate
+        rangeEndDate = scope.endDate
+    }
+
+    private func refreshCurrent() async {
+        await expenseVM.refresh()
+        await incomingVM.refresh()
     }
 }
 

@@ -290,6 +290,9 @@ final class LedgerFeatureViewModel: ObservableObject {
                 "incomeType": options.incomeType,
                 "incomeSubtype": options.incomeSubtype
             ]
+            if selectedFilters.isEmpty {
+                selectedFilters = Set(filterChoices)
+            }
         } catch {
             alertText = message(for: error)
         }
@@ -361,6 +364,47 @@ final class LedgerFeatureViewModel: ObservableObject {
             let filtered = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText)
             return makeIncomingBreakdownSummary(rows: filtered, mode: breakdownMode)
         }
+    }
+
+    var filteredTotalEffective: Double {
+        breakdownSummary.totalEffective
+    }
+
+    struct MonthlyBreakdownRow {
+        let month: MonthYear
+        let total: Double
+    }
+
+    var monthlyFilteredTotals: [MonthlyBreakdownRow] {
+        let months = LedgerScopeLogic.targetMonths(startDate: scope.startDate, endDate: scope.endDate)
+        let rawRows: [(amount: Double, date: Date, monthYears: [MonthYear])]
+        switch kind {
+        case .expense:
+            let filtered = LedgerFiltering.filterExpenses(expenses, selected: selectedFilters, searchText: searchText)
+            rawRows = filtered.map { ($0.effectiveAmount, $0.date, $0.monthYears) }
+        case .incoming:
+            let filtered = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText)
+            rawRows = filtered.map { ($0.effectiveAmount, $0.date, $0.monthYears) }
+        }
+        return months.map { month in
+            let monthBounds = LedgerScopeLogic.monthBounds(for: month)!
+            let monthScope = DateScope(startDate: monthBounds.start, endDate: monthBounds.end, includeMonthYearOverlapOutsideDate: true)
+            let total = rawRows.reduce(0) { partial, row in
+                partial + LedgerScopeLogic.proportionalContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: monthScope)
+            }
+            return MonthlyBreakdownRow(month: month, total: total.isFinite ? total : 0)
+        }
+    }
+
+    var totalEffectiveInScope: Double {
+        let rows: [Double]
+        switch kind {
+        case .expense:
+            rows = expenses.map { LedgerScopeLogic.proportionalContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
+        case .incoming:
+            rows = incomings.map { LedgerScopeLogic.proportionalContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
+        }
+        return rows.filter { $0.isFinite }.reduce(0, +)
     }
 
     var filterChoices: [String] {

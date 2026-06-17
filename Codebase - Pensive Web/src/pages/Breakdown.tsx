@@ -4,7 +4,7 @@ import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdo
 import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
 import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
 import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
-import { ScopeCalendarButton } from "../components/ScopeCalendarButton";
+import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
@@ -35,6 +35,9 @@ export function Breakdown() {
     useState<BreakdownFilterSource>("expense");
   const [activeFilterKind, setActiveFilterKind] =
     useState<BreakdownFilterKind>("account");
+  const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(false);
+  const [draftCustomStart, setDraftCustomStart] = useState("");
+  const [draftCustomEnd, setDraftCustomEnd] = useState("");
 
   const initialDateState = useMemo(
     () => parseDateState(storedDateState),
@@ -684,18 +687,71 @@ export function Breakdown() {
           onJumpToNewest={jumpToNewest}
         />
 
-        <div className="breakdown-scope-panel">
-          <span className="breakdown-scope-label">{rangeLabelText}</span>
-          <ScopeCalendarButton
-            mode={mode}
-            targetMonths={scope.targetMonths}
-            startDate={scope.startDate}
-            endDate={scope.endDate}
-            monthBounds={monthBounds}
-            onApplyMonths={applySelectedMonths}
-            onApplyCustom={applyCustomRange}
-          />
+        <div className="pie-chart-panel-modes">
+          <button
+            type="button"
+            className={`pie-mode-btn${mode === "month" && !isCustomEditorOpen ? " active" : ""}`}
+            onClick={() => {
+              setIsCustomEditorOpen(false);
+              if (mode === "custom") {
+                resetToNewestMonth();
+              }
+            }}
+          >
+            Months
+          </button>
+          <button
+            type="button"
+            className={`pie-mode-btn${isCustomEditorOpen || mode === "custom" ? " active" : ""}`}
+            onClick={() => {
+              setIsCustomEditorOpen(true);
+              setDraftCustomStart(scope.startDate);
+              setDraftCustomEnd(scope.endDate);
+            }}
+          >
+            Custom
+          </button>
         </div>
+
+        {(isCustomEditorOpen || mode === "custom") ? (
+          <div className="pie-chart-panel-dates">
+            <label className="pie-date-field">
+              From
+              <input
+                type="date"
+                value={draftCustomStart}
+                onChange={(e) => setDraftCustomStart(e.target.value)}
+              />
+            </label>
+            <label className="pie-date-field">
+              To
+              <input
+                type="date"
+                value={draftCustomEnd}
+                onChange={(e) => setDraftCustomEnd(e.target.value)}
+              />
+            </label>
+            <div className="pie-date-actions">
+              <button
+                type="button"
+                className="pie-apply-btn"
+                disabled={!draftCustomStart || !draftCustomEnd || draftCustomStart > draftCustomEnd}
+                onClick={() => {
+                  applyCustomRange(draftCustomStart, draftCustomEnd);
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        ) : (
+          <MonthYearMultiSelect
+            label="Applied Months"
+            value={scope.targetMonths}
+            onChange={applySelectedMonths}
+            required
+          />
+        )}
       </aside>
 
       <div className="entry-card-list breakdown-content">

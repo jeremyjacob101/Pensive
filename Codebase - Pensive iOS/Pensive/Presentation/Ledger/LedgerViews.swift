@@ -250,7 +250,7 @@ private struct LedgerScreen: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(row.title).font(.headline)
+                Text(row.title).font(.headline).lineLimit(1)
                 Text(row.subtitle).font(.subheadline).foregroundStyle(.secondary)
                 Text(row.amountLine).font(.subheadline.weight(.medium))
                 Text(row.appliedLine).font(.footnote).foregroundStyle(.secondary)
@@ -263,14 +263,23 @@ private struct LedgerScreen: View {
     }
 }
 
-private enum LedgerFilterTab: String, CaseIterable, Identifiable {
-    case account = "Account"
-    case category = "Category"
+enum LedgerFilterTab: CaseIterable, Identifiable {
+    case account
+    case category
 
-    var id: String { rawValue }
+    var id: Self { self }
+
+    func label(for kind: LedgerKind) -> String {
+        switch self {
+        case .account:
+            return "Account"
+        case .category:
+            return kind == .incoming ? "Income Type" : "Category"
+        }
+    }
 }
 
-private struct LedgerFilterSheet: View {
+struct LedgerFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
@@ -281,7 +290,7 @@ private struct LedgerFilterSheet: View {
             List {
                 Picker("Filter", selection: $selectedTab) {
                     ForEach(LedgerFilterTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
+                        Text(tab.label(for: viewModel.kind)).tag(tab)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -302,10 +311,12 @@ private struct LedgerFilterSheet: View {
                             Button("Select All") {
                                 updateCategorySelection(selectAll: true)
                             }
+                            .disabled(allCategoriesSelected)
                             Spacer()
                             Button("Deselect All") {
                                 updateCategorySelection(selectAll: false)
                             }
+                            .disabled(noCategoriesSelected)
                         }
 
                         ForEach(viewModel.categoryFilterRows) { row in
@@ -320,7 +331,7 @@ private struct LedgerFilterSheet: View {
             .navigationTitle("Filters")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Clear") { viewModel.updateFilters(Set<String>()) }
+                    Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -343,6 +354,16 @@ private struct LedgerFilterSheet: View {
         }
     }
 
+    private var allCategoriesSelected: Bool {
+        let categoryValues = Set(viewModel.categoryFilterRows.map(\.value))
+        return viewModel.selectedFilters.isSuperset(of: categoryValues)
+    }
+
+    private var noCategoriesSelected: Bool {
+        let categoryValues = Set(viewModel.categoryFilterRows.map(\.value))
+        return viewModel.selectedFilters.isDisjoint(with: categoryValues)
+    }
+
     private func updateCategorySelection(selectAll: Bool) {
         var next = viewModel.selectedFilters
         let values = Set(viewModel.categoryFilterRows.map(\.value))
@@ -355,7 +376,7 @@ private struct LedgerFilterSheet: View {
     }
 }
 
-private struct LedgerAccountFilterRow: View {
+struct LedgerAccountFilterRow: View {
     let value: String
     let colorHex: String?
     @Binding var isSelected: Bool
@@ -392,7 +413,7 @@ private struct LedgerAccountFilterRow: View {
     }
 }
 
-private struct LedgerCategoryFilterRow: View {
+struct LedgerCategoryFilterRow: View {
     let row: LedgerFilterOptionRow
     @Binding var isSelected: Bool
 
@@ -408,15 +429,8 @@ private struct LedgerCategoryFilterRow: View {
                 Circle()
                     .fill(optionColor(from: row.color) ?? .gray)
                     .frame(width: 12, height: 12)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(row.value)
-                        .foregroundStyle(.primary)
-                    if let parent = row.parentValue, !parent.isEmpty {
-                        Text(parent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                Text(row.value)
+                    .foregroundStyle(.primary)
                 Spacer()
             }
             .padding(.leading, CGFloat(row.indentationLevel) * 18)
@@ -436,7 +450,7 @@ private struct LedgerCategoryFilterRow: View {
     }
 }
 
-private struct LedgerBreakdownCard: View {
+struct LedgerBreakdownCard: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
     private let moneyFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
