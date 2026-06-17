@@ -1,10 +1,10 @@
 import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
 import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
-import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
+import { formatMonthYearLabel, formatMonthYearShortLabel, formatRangeLabel, getMonthsBetween } from "../helpers/dates";
 import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
 import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
-import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
+import { fallbackCurrentMonth, validMonth } from "../helpers/monthScope";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
@@ -38,6 +38,22 @@ export function Breakdown() {
   const [isCustomEditorOpen, setIsCustomEditorOpen] = useState(false);
   const [draftCustomStart, setDraftCustomStart] = useState("");
   const [draftCustomEnd, setDraftCustomEnd] = useState("");
+  const currentMonth = useMemo(() => fallbackCurrentMonth(), []);
+  const monthOptions = useMemo(() => {
+    const oldest = validMonth(monthBounds?.oldestMonth)
+      ? monthBounds.oldestMonth
+      : currentMonth;
+    const newestFromData = validMonth(monthBounds?.newestMonth)
+      ? monthBounds.newestMonth
+      : currentMonth;
+    const newest =
+      newestFromData > currentMonth ? newestFromData : currentMonth;
+    const start = oldest <= newest ? oldest : newest;
+    const finish = oldest <= newest ? newest : oldest;
+    return getMonthsBetween(start, finish).reverse();
+  }, [currentMonth, monthBounds]);
+  const [draftStartMonth, setDraftStartMonth] = useState(currentMonth);
+  const [draftEndMonth, setDraftEndMonth] = useState(currentMonth);
 
   const initialDateState = useMemo(
     () => parseDateState(storedDateState),
@@ -696,6 +712,9 @@ export function Breakdown() {
               if (mode === "custom") {
                 resetToNewestMonth();
               }
+              const sorted = [...scope.targetMonths].sort((a, b) => a.localeCompare(b));
+              setDraftStartMonth(sorted[0] ?? currentMonth);
+              setDraftEndMonth(sorted[sorted.length - 1] ?? currentMonth);
             }}
           >
             Months
@@ -745,12 +764,49 @@ export function Breakdown() {
             </div>
           </div>
         ) : (
-          <MonthYearMultiSelect
-            label="Applied Months"
-            value={scope.targetMonths}
-            onChange={applySelectedMonths}
-            required
-          />
+          <div className="scope-calendar-panel">
+            <label>
+              Start Month
+              <select
+                value={draftStartMonth}
+                onChange={(event) => setDraftStartMonth(event.target.value)}
+              >
+                {monthOptions.map((month) => (
+                  <option key={`start-${month}`} value={month}>
+                    {formatMonthYearShortLabel(`${month}-01`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              End Month
+              <select
+                value={draftEndMonth}
+                onChange={(event) => setDraftEndMonth(event.target.value)}
+              >
+                {monthOptions.map((month) => (
+                  <option key={`end-${month}`} value={month}>
+                    {formatMonthYearShortLabel(`${month}-01`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="scope-calendar-actions">
+              <button
+                type="button"
+                className="scope-calendar-apply"
+                disabled={!draftStartMonth || !draftEndMonth || draftStartMonth > draftEndMonth}
+                onClick={() => {
+                  if (!draftStartMonth || !draftEndMonth || draftStartMonth > draftEndMonth) return;
+                  applySelectedMonths(
+                    getMonthsBetween(draftStartMonth, draftEndMonth),
+                  );
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
         )}
       </aside>
 

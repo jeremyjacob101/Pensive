@@ -250,7 +250,7 @@ private struct LedgerScreen: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(row.title).font(.headline).lineLimit(1)
+                Text(row.title).font(.headline)
                 Text(row.subtitle).font(.subheadline).foregroundStyle(.secondary)
                 Text(row.amountLine).font(.subheadline.weight(.medium))
                 Text(row.appliedLine).font(.footnote).foregroundStyle(.secondary)

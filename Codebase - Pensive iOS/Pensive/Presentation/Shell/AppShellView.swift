@@ -1655,8 +1655,6 @@ private struct TrackingTimelineRowCard: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(row.label)
                     .font(.headline)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("tracking_row_title_\(row.key)")
                 TrackingPipelinePreview(segments: row.segments)
             }
