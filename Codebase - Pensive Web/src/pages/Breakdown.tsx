@@ -39,26 +39,6 @@ export function Breakdown() {
   const [draftCustomStart, setDraftCustomStart] = useState("");
   const [draftCustomEnd, setDraftCustomEnd] = useState("");
   const currentMonth = useMemo(() => fallbackCurrentMonth(), []);
-  const monthOptions = useMemo(() => {
-    const oldest = validMonth(monthBounds?.oldestMonth)
-      ? monthBounds.oldestMonth
-      : currentMonth;
-    const newestFromData = validMonth(monthBounds?.newestMonth)
-      ? monthBounds.newestMonth
-      : currentMonth;
-    const newest =
-      newestFromData > currentMonth ? newestFromData : currentMonth;
-    const start = oldest <= newest ? oldest : newest;
-    const finish = oldest <= newest ? newest : oldest;
-    return getMonthsBetween(start, finish).reverse();
-  }, [currentMonth, monthBounds]);
-  const [draftStartMonth, setDraftStartMonth] = useState(currentMonth);
-  const [draftEndMonth, setDraftEndMonth] = useState(currentMonth);
-
-  const initialDateState = useMemo(
-    () => parseDateState(storedDateState),
-    [storedDateState],
-  );
 
   const userOptions = useQuery(api.userOptions.list);
   const expenseMonthBounds = useQuery(api.expenses.monthBounds);
@@ -80,6 +60,28 @@ export function Breakdown() {
       ),
     };
   }, [expenseMonthBounds, incomingMonthBounds]);
+
+  const monthOptions = useMemo(() => {
+    const oldest = validMonth(monthBounds?.oldestMonth)
+      ? monthBounds.oldestMonth
+      : currentMonth;
+    const newestFromData = validMonth(monthBounds?.newestMonth)
+      ? monthBounds.newestMonth
+      : currentMonth;
+    const newest =
+      newestFromData > currentMonth ? newestFromData : currentMonth;
+    const start = oldest <= newest ? oldest : newest;
+    const finish = oldest <= newest ? newest : oldest;
+    return getMonthsBetween(start, finish).reverse();
+  }, [currentMonth, monthBounds]);
+
+  const [draftStartMonth, setDraftStartMonth] = useState(currentMonth);
+  const [draftEndMonth, setDraftEndMonth] = useState(currentMonth);
+
+  const initialDateState = useMemo(
+    () => parseDateState(storedDateState),
+    [storedDateState],
+  );
 
   const {
     mode,
