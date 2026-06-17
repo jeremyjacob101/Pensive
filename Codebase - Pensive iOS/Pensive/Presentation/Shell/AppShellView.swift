@@ -4510,26 +4510,26 @@ private struct BreakdownFeatureView: View {
                         tint: .green
                     )
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
 
-                    BreakdownMetricCard(
-                        title: "TOTAL INCOMINGS",
-                        total: money(incomingVM.filteredTotalEffective),
-                        perMonth: monthly(value: incomingVM.filteredTotalEffective),
-                        tint: .green
-                    )
                     BreakdownMetricCard(
                         title: "TOTAL EXPENSES",
                         total: money(expenseVM.filteredTotalEffective),
                         perMonth: monthly(value: expenseVM.filteredTotalEffective),
                         tint: .red
                     )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
                     BreakdownMetricCard(
                         title: "TOTAL SAVINGS",
                         total: money(incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
                         perMonth: monthly(value: incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
                         tint: .blue
                     )
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+                    .listRowBackground(Color.clear)
                 }
+                .listSectionSpacing(16)
                 .opacity(isLoading ? 0.66 : 1)
                 .overlay {
                     if isLoading {
