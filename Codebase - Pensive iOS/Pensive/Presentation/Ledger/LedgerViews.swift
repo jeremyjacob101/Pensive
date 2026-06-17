@@ -297,6 +297,18 @@ struct LedgerFilterSheet: View {
 
                 if selectedTab == .account {
                     Section {
+                        HStack {
+                            Button("Select All") {
+                                updateAccountSelection(selectAll: true)
+                            }
+                            .disabled(allAccountsSelected)
+                            Spacer()
+                            Button("Deselect All") {
+                                updateAccountSelection(selectAll: false)
+                            }
+                            .disabled(noAccountsSelected)
+                        }
+
                         ForEach(viewModel.accountFilterChoices, id: \.self) { account in
                             LedgerAccountFilterRow(
                                 value: account,
@@ -352,6 +364,27 @@ struct LedgerFilterSheet: View {
             }
             viewModel.updateFilters(next)
         }
+    }
+
+    private var allAccountsSelected: Bool {
+        let accountValues = Set(viewModel.accountFilterChoices)
+        return viewModel.selectedFilters.isSuperset(of: accountValues)
+    }
+
+    private var noAccountsSelected: Bool {
+        let accountValues = Set(viewModel.accountFilterChoices)
+        return viewModel.selectedFilters.isDisjoint(with: accountValues)
+    }
+
+    private func updateAccountSelection(selectAll: Bool) {
+        var next = viewModel.selectedFilters
+        let values = Set(viewModel.accountFilterChoices)
+        if selectAll {
+            next.formUnion(values)
+        } else {
+            next.subtract(values)
+        }
+        viewModel.updateFilters(next)
     }
 
     private var allCategoriesSelected: Bool {
@@ -438,16 +471,17 @@ struct LedgerCategoryFilterRow: View {
         }
         .buttonStyle(.plain)
     }
+}
 
-    private func optionColor(from hex: String?) -> Color? {
-        guard let hex else { return nil }
-        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
-        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
-        let red = Double((value >> 16) & 0xff) / 255.0
-        let green = Double((value >> 8) & 0xff) / 255.0
-        let blue = Double(value & 0xff) / 255.0
-        return Color(red: red, green: green, blue: blue)
-    }
+private func coloredDotUIImage(color: Color?, size: CGFloat = 14) -> UIImage? {
+    guard let color else { return nil }
+    let uiColor = UIColor(color)
+    UIGraphicsBeginImageContextWithOptions(CGSize(width: size, height: size), false, 0)
+    uiColor.setFill()
+    UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size, height: size)).fill()
+    let image = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+    return image
 }
 
 struct LedgerBreakdownCard: View {
@@ -570,15 +604,78 @@ private extension Color {
 
 private enum EditorMode { case create, edit }
 
+private func optionColor(from hex: String?) -> Color? {
+    guard let hex else { return nil }
+    let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+    guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+    let red = Double((value >> 16) & 0xff) / 255.0
+    let green = Double((value >> 8) & 0xff) / 255.0
+    let blue = Double(value & 0xff) / 255.0
+    return Color(red: red, green: green, blue: blue)
+}
+
+private struct UserOptionPicker: View {
+    let title: String
+    let options: [UserOptionRow]
+    @Binding var selection: String
+    var showNone: Bool = false
+
+    var body: some View {
+        Menu {
+            if showNone {
+                Button("None") { selection = "" }
+            }
+            ForEach(options, id: \.value) { option in
+                Button {
+                    selection = option.value
+                } label: {
+                    HStack(spacing: 6) {
+                        if let image = coloredDotUIImage(color: optionColor(from: option.color)) {
+                            Image(uiImage: image)
+                                .renderingMode(.original)
+                        }
+                        Text(option.value)
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Text(title)
+                Spacer()
+                HStack(spacing: 4) {
+                    Text(selection.isEmpty ? "Select" : selection)
+                        .foregroundStyle(selection.isEmpty ? .secondary : .primary)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        .tint(.primary)
+    }
+}
+
+private struct FormFieldRow<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .foregroundStyle(.primary)
+            Spacer(minLength: 8)
+            content
+                .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
 private struct ExpenseEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: LedgerFeatureViewModel
     @State private var drafts: [ExpenseEditorDraft]
     @State private var selectedIndex = 0
     let mode: EditorMode
-
-    @State private var addAccount = ""
-    @State private var addCategory = ""
 
     init(viewModel: LedgerFeatureViewModel, initialDraft: ExpenseEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
@@ -589,6 +686,55 @@ private struct ExpenseEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                FormFieldRow(label: "Name") {
+                    TextField("Name", text: binding(\.expense))
+                }
+                UserOptionPicker(title: "Account", options: viewModel.optionsByKind["account"] ?? [], selection: binding(\.account))
+                UserOptionPicker(title: "Category", options: viewModel.optionsByKind["category"] ?? [], selection: binding(\.category))
+                let subcategories = (viewModel.optionsByKind["subcategory"] ?? []).filter { $0.parentValue == currentDraft.category }
+                if !subcategories.isEmpty {
+                    UserOptionPicker(title: "Subcategory", options: subcategories, selection: Binding(get: { currentDraft.subcategory ?? "" }, set: { value in
+                        updateCurrent { $0.subcategory = value.isEmpty ? nil : value }
+                    }), showNone: true)
+                }
+                FormFieldRow(label: "Paid To") {
+                    TextField("Paid To", text: binding(\.paidTo))
+                }
+                FormFieldRow(label: "Amount") {
+                    TextField("Amount", text: Binding(get: {
+                        let val = currentDraft.amount
+                        return val == 0 ? "" : val.formatted(.number.precision(.fractionLength(0...2)))
+                    }, set: { str in
+                        let val = Double(str) ?? 0
+                        updateCurrent { draft in
+                            draft.amount = val
+                            if draft.effectiveAmountMode == .auto {
+                                draft.effectiveAmount = val
+                            }
+                        }
+                    }))
+                    .keyboardType(.decimalPad)
+                }
+                FormFieldRow(label: "Effective Amount") {
+                    TextField("Effective Amount", text: Binding(get: {
+                        let val = currentDraft.effectiveAmount
+                        return val == 0 ? "" : val.formatted(.number.precision(.fractionLength(0...2)))
+                    }, set: { str in
+                        updateCurrent { draft in
+                            draft.effectiveAmount = Double(str) ?? 0
+                            draft.effectiveAmountMode = .manual
+                        }
+                    }))
+                    .keyboardType(.decimalPad)
+                }
+                DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
+                TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
+                    updateCurrent { $0.notes = value.isEmpty ? nil : value }
+                }))
+                TextField("Comments", text: Binding(get: { currentDraft.comments ?? "" }, set: { value in
+                    updateCurrent { $0.comments = value.isEmpty ? nil : value }
+                }))
+
                 if mode == .create {
                     Section("Bulk Group") {
                         Text("Entries: \(drafts.count)")
@@ -610,34 +756,6 @@ private struct ExpenseEditorSheet: View {
                             }
                         }
                     }
-                }
-
-                TextField("Name", text: binding(\.expense))
-                TextField("Account", text: binding(\.account))
-                TextField("Category", text: binding(\.category))
-                TextField("Subcategory", text: Binding(get: { currentDraft.subcategory ?? "" }, set: { value in
-                    updateCurrent { $0.subcategory = value.isEmpty ? nil : value }
-                }))
-                TextField("Paid To", text: binding(\.paidTo))
-                TextField("Amount", value: binding(\.amount), format: .number)
-                TextField("Effective Amount", value: binding(\.effectiveAmount), format: .number)
-                Picker("Effective Mode", selection: binding(\.effectiveAmountMode)) {
-                    Text("Auto").tag(EffectiveAmountMode.auto)
-                    Text("Manual").tag(EffectiveAmountMode.manual)
-                }
-                DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
-                TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
-                    updateCurrent { $0.notes = value.isEmpty ? nil : value }
-                }))
-                TextField("Comments", text: Binding(get: { currentDraft.comments ?? "" }, set: { value in
-                    updateCurrent { $0.comments = value.isEmpty ? nil : value }
-                }))
-
-                Section("Add missing option") {
-                    TextField("New account", text: $addAccount)
-                    Button("Add account") { Task { await viewModel.addMissingOption(kind: "account", value: addAccount); addAccount = "" } }
-                    TextField("New category", text: $addCategory)
-                    Button("Add category") { Task { await viewModel.addMissingOption(kind: "category", value: addCategory); addCategory = "" } }
                 }
             }
             .navigationTitle(mode == .create ? "New Expense" : "Edit Expense")
@@ -726,9 +844,6 @@ private struct IncomingEditorSheet: View {
     @State private var selectedIndex = 0
     let mode: EditorMode
 
-    @State private var addType = ""
-    @State private var addAccount = ""
-
     init(viewModel: LedgerFeatureViewModel, initialDraft: IncomingEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
         _drafts = State(initialValue: [initialDraft])
@@ -761,18 +876,46 @@ private struct IncomingEditorSheet: View {
                     }
                 }
 
-                TextField("Name", text: binding(\.incoming))
-                TextField("Paid By", text: binding(\.paidBy))
-                TextField("Type", text: binding(\.incomeType))
-                TextField("Subtype", text: Binding(get: { currentDraft.incomeSubtype ?? "" }, set: { value in
-                    updateCurrent { $0.incomeSubtype = value.isEmpty ? nil : value }
-                }))
-                TextField("Account", text: binding(\.account))
-                TextField("Amount", value: binding(\.amount), format: .number)
-                TextField("Effective Amount", value: binding(\.effectiveAmount), format: .number)
-                Picker("Effective Mode", selection: binding(\.effectiveAmountMode)) {
-                    Text("Auto").tag(EffectiveAmountMode.auto)
-                    Text("Manual").tag(EffectiveAmountMode.manual)
+                FormFieldRow(label: "Name") {
+                    TextField("Name", text: binding(\.incoming))
+                }
+                FormFieldRow(label: "Paid By") {
+                    TextField("Paid By", text: binding(\.paidBy))
+                }
+                UserOptionPicker(title: "Type", options: viewModel.optionsByKind["incomeType"] ?? [], selection: binding(\.incomeType))
+                let subtypes = (viewModel.optionsByKind["incomeSubtype"] ?? []).filter { $0.parentValue == currentDraft.incomeType }
+                if !subtypes.isEmpty {
+                    UserOptionPicker(title: "Subtype", options: subtypes, selection: Binding(get: { currentDraft.incomeSubtype ?? "" }, set: { value in
+                        updateCurrent { $0.incomeSubtype = value.isEmpty ? nil : value }
+                    }), showNone: true)
+                }
+                UserOptionPicker(title: "Account", options: viewModel.optionsByKind["account"] ?? [], selection: binding(\.account))
+                FormFieldRow(label: "Amount") {
+                    TextField("Amount", text: Binding(get: {
+                        let val = currentDraft.amount
+                        return val == 0 ? "" : val.formatted(.number.precision(.fractionLength(0...2)))
+                    }, set: { str in
+                        let val = Double(str) ?? 0
+                        updateCurrent { draft in
+                            draft.amount = val
+                            if draft.effectiveAmountMode == .auto {
+                                draft.effectiveAmount = val
+                            }
+                        }
+                    }))
+                    .keyboardType(.decimalPad)
+                }
+                FormFieldRow(label: "Effective Amount") {
+                    TextField("Effective Amount", text: Binding(get: {
+                        let val = currentDraft.effectiveAmount
+                        return val == 0 ? "" : val.formatted(.number.precision(.fractionLength(0...2)))
+                    }, set: { str in
+                        updateCurrent { draft in
+                            draft.effectiveAmount = Double(str) ?? 0
+                            draft.effectiveAmountMode = .manual
+                        }
+                    }))
+                    .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
                 TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
@@ -782,11 +925,27 @@ private struct IncomingEditorSheet: View {
                     updateCurrent { $0.comments = value.isEmpty ? nil : value }
                 }))
 
-                Section("Add missing option") {
-                    TextField("New income type", text: $addType)
-                    Button("Add type") { Task { await viewModel.addMissingOption(kind: "incomeType", value: addType); addType = "" } }
-                    TextField("New account", text: $addAccount)
-                    Button("Add account") { Task { await viewModel.addMissingOption(kind: "account", value: addAccount); addAccount = "" } }
+                if mode == .create {
+                    Section("Bulk Group") {
+                        Text("Entries: \(drafts.count)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Picker("Editing Entry", selection: $selectedIndex) {
+                            ForEach(Array(drafts.indices), id: \.self) { index in
+                                Text("Entry \(index + 1)").tag(index)
+                            }
+                        }
+                        Button("Add Another in Bulk Group") {
+                            drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
+                            selectedIndex = drafts.count - 1
+                        }
+                        if drafts.count > 1 {
+                            Button("Remove Current Entry", role: .destructive) {
+                                drafts.remove(at: selectedIndex)
+                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle(mode == .create ? "New Incoming" : "Edit Incoming")

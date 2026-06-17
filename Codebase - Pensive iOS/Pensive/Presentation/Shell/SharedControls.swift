@@ -143,32 +143,11 @@ struct LedgerToolbarControls: ToolbarContent {
     }
 
     private var toolbarMenu: some View {
-        Menu {
-            if let onAdd {
-                Button(action: onAdd) {
-                    Label(addTitle, systemImage: "plus")
-                }
-                .accessibilityIdentifier("ledger_add_toolbar")
-            }
-
-            if let onFilter {
-                Button(action: onFilter) {
-                    Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                }
-                .accessibilityIdentifier("ledger_filter_toolbar")
-            }
-
-            if let onCalendar {
-                Button(action: onCalendar) {
-                    Label("Dates", systemImage: "calendar")
-                }
-                .accessibilityIdentifier("ledger_calendar_toolbar")
-            }
-        } label: {
+        Button(action: { onAdd?() }) {
             Image(systemName: "plus")
         }
-        .accessibilityLabel("Ledger Actions")
-        .accessibilityIdentifier("ledger_actions_toolbar")
+        .accessibilityIdentifier("ledger_add_toolbar")
+        .accessibilityLabel(addTitle)
     }
 
     private func compactToolbarButton(
