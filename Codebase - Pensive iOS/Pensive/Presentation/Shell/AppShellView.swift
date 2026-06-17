@@ -2338,6 +2338,114 @@ private struct OptionAutoScrollRequest: Equatable {
     let token: Int
 }
 
+private struct OptionRowLongPressInstaller: UIViewRepresentable {
+    var isEnabled: Bool
+    var locationInOptionSpace: (CGPoint) -> CGPoint?
+    var onBegan: (CGPoint) -> Void
+    var onChanged: (CGPoint) -> Void
+    var onEnded: (CGPoint?) -> Void
+    var onCancelled: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIView(context: Context) -> InstallerView {
+        let view = InstallerView()
+        view.isUserInteractionEnabled = false
+        view.coordinator = context.coordinator
+        return view
+    }
+
+    func updateUIView(_ view: InstallerView, context: Context) {
+        context.coordinator.parent = self
+        view.coordinator = context.coordinator
+        context.coordinator.install(on: view.superview)
+        context.coordinator.updateGesture()
+    }
+
+    static func dismantleUIView(_ uiView: InstallerView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    final class InstallerView: UIView {
+        weak var coordinator: Coordinator?
+
+        override func didMoveToSuperview() {
+            super.didMoveToSuperview()
+            coordinator?.install(on: superview)
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: OptionRowLongPressInstaller
+        private weak var installedView: UIView?
+        private let gesture = UILongPressGestureRecognizer()
+
+        init(parent: OptionRowLongPressInstaller) {
+            self.parent = parent
+            super.init()
+            gesture.addTarget(self, action: #selector(handleGesture(_:)))
+            gesture.delegate = self
+            gesture.cancelsTouchesInView = false
+            gesture.delaysTouchesBegan = false
+            gesture.delaysTouchesEnded = false
+            updateGesture()
+        }
+
+        func install(on view: UIView?) {
+            guard installedView !== view else { return }
+            if let installedView {
+                installedView.removeGestureRecognizer(gesture)
+            }
+            installedView = view
+            view?.addGestureRecognizer(gesture)
+        }
+
+        func uninstall() {
+            installedView?.removeGestureRecognizer(gesture)
+            installedView = nil
+        }
+
+        func updateGesture() {
+            gesture.isEnabled = parent.isEnabled
+            gesture.minimumPressDuration = 0.5
+            gesture.allowableMovement = 10
+        }
+
+        @objc private func handleGesture(_ recognizer: UILongPressGestureRecognizer) {
+            guard parent.isEnabled else { return }
+            let localLocation = recognizer.location(in: recognizer.view)
+            let optionLocation = parent.locationInOptionSpace(localLocation)
+
+            switch recognizer.state {
+            case .began:
+                if let optionLocation {
+                    parent.onBegan(optionLocation)
+                }
+            case .changed:
+                if let optionLocation {
+                    parent.onChanged(optionLocation)
+                }
+            case .ended:
+                parent.onEnded(optionLocation)
+            case .cancelled, .failed:
+                parent.onCancelled()
+            default:
+                break
+            }
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            parent.isEnabled
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+    }
+}
+
 private enum AccountLedgerTab: String, CaseIterable, Identifiable {
     case expenses
     case incomings
@@ -2374,47 +2482,6 @@ private struct OptionEditDraft {
     init(row: OptionsDisplayRow) {
         value = row.value
         color = row.color
-    }
-}
-
-private enum OptionSheetToolbarActionStyle {
-    case neutral
-    case primary
-}
-
-private struct OptionSheetToolbarActionLabel: View {
-    let title: String
-    let style: OptionSheetToolbarActionStyle
-    var isEnabled = true
-
-    var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(foregroundColor)
-            .padding(.horizontal, 13)
-            .padding(.vertical, 7)
-            .background {
-                Capsule(style: .continuous)
-                    .fill(backgroundColor)
-            }
-            .overlay {
-                Capsule(style: .continuous)
-                    .strokeBorder(borderColor, lineWidth: 0.8)
-            }
-    }
-
-    private var foregroundColor: Color {
-        guard isEnabled else { return .secondary }
-        return style == .primary ? .white : .primary
-    }
-
-    private var backgroundColor: Color {
-        guard isEnabled else { return Color(uiColor: .tertiarySystemGroupedBackground) }
-        return style == .primary ? .accentColor : Color(uiColor: .tertiarySystemGroupedBackground)
-    }
-
-    private var borderColor: Color {
-        style == .primary && isEnabled ? .clear : Color.secondary.opacity(0.16)
     }
 }
 
@@ -2461,15 +2528,7 @@ private struct OptionCreateSheet: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        OptionSheetToolbarActionLabel(title: "Cancel", style: .neutral)
-                    }
-                    .buttonStyle(.plain)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
                             await viewModel.add(
@@ -2481,9 +2540,8 @@ private struct OptionCreateSheet: View {
                             dismiss()
                         }
                     } label: {
-                        OptionSheetToolbarActionLabel(title: "Create", style: .primary, isEnabled: !isCreateDisabled)
+                        Text("Create")
                     }
-                    .buttonStyle(.plain)
                     .disabled(isCreateDisabled)
                 }
             }
@@ -2540,6 +2598,8 @@ private struct OptionEditSheet: View {
     let row: OptionsDisplayRow
     @State private var draft: OptionEditDraft
     @State private var showDeleteConfirmation = false
+    @State private var addAsSubtype = false
+    @State private var selectedSubtypeParent = ""
 
     init(viewModel: OptionsViewModel, row: OptionsDisplayRow) {
         self.viewModel = viewModel
@@ -2551,20 +2611,12 @@ private struct OptionEditSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Label {
-                        Text("Drag and drop to recategorize")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } icon: {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(.secondary)
+                    LabeledContent("Name") {
+                        TextField("", text: $draft.value)
+                            .textInputAutocapitalization(.words)
+                            .submitLabel(.done)
+                            .multilineTextAlignment(.trailing)
                     }
-                }
-
-                Section {
-                    TextField("Name", text: $draft.value)
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.done)
 
                     ColorPicker(
                         "Color",
@@ -2574,14 +2626,44 @@ private struct OptionEditSheet: View {
                         ),
                         supportsOpacity: false
                     )
-                }
 
-                Section {
+                    if canMoveToSubtype {
+                        Toggle("Add as subtype", isOn: $addAsSubtype)
+                            .onChange(of: addAsSubtype) { _, isEnabled in
+                                if !isEnabled {
+                                    selectedSubtypeParent = ""
+                                }
+                            }
+
+                        if addAsSubtype {
+                            Picker("Parent", selection: $selectedSubtypeParent) {
+                                Text("Select Parent").tag("")
+                                ForEach(subtypeTargets, id: \.self) { parent in
+                                    Text(parent).tag(parent)
+                                }
+                            }
+                        }
+                    }
+
+                    if canPromoteSubtype {
+                        Button(promoteButtonTitle) {
+                            Task {
+                                await viewModel.promoteSubtype(
+                                    kind: row.kind,
+                                    value: row.value,
+                                    parentValue: row.parentValue ?? ""
+                                )
+                                dismiss()
+                            }
+                        }
+                    }
+
                     Button("Delete", role: .destructive) {
                         showDeleteConfirmation = true
                     }
                 }
             }
+            .listSectionSpacing(0)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .presentationDetents([.height(360), .medium])
@@ -2596,24 +2678,15 @@ private struct OptionEditSheet: View {
                 Button("Cancel", role: .cancel) {}
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        OptionSheetToolbarActionLabel(title: "Cancel", style: .neutral)
-                    }
-                    .buttonStyle(.plain)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
                             await saveChanges()
                             dismiss()
                         }
                     } label: {
-                        OptionSheetToolbarActionLabel(title: "Save", style: .primary, isEnabled: hasChanges)
+                        Text("Save")
                     }
-                    .buttonStyle(.plain)
                     .disabled(!hasChanges)
                 }
             }
@@ -2633,7 +2706,43 @@ private struct OptionEditSheet: View {
     private var hasChanges: Bool {
         let nextName = draft.value.trimmingCharacters(in: .whitespacesAndNewlines)
         let nextColor = normalizedHex(draft.color)
-        return !nextName.isEmpty && (nextName != row.value || (nextColor != nil && nextColor != normalizedHex(row.color)))
+        let hasFieldChanges = nextName != row.value || (nextColor != nil && nextColor != normalizedHex(row.color))
+        return !nextName.isEmpty && (hasFieldChanges || hasValidSubtypeTarget)
+    }
+
+    private var subtypeTargets: [String] {
+        guard row.kind.supportsNestedOptions else { return [] }
+        return viewModel.moveToSubtypeTargets(kind: row.kind, excluding: row.value)
+    }
+
+    private var canMoveToSubtype: Bool {
+        row.kind.supportsNestedOptions && !rowHasChildren && !subtypeTargets.isEmpty
+    }
+
+    private var rowHasChildren: Bool {
+        guard let childKind = viewModel.childKind(for: row.kind) else { return false }
+        return (viewModel.optionsByKind[childKind] ?? []).contains { child in
+            (child.parentValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == row.value
+        }
+    }
+
+    private var hasValidSubtypeTarget: Bool {
+        addAsSubtype && !selectedSubtypeParent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canPromoteSubtype: Bool {
+        row.kind.supportsParent && !(row.parentValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var promoteButtonTitle: String {
+        switch row.kind {
+        case .subcategory:
+            return "Promote to Own Category"
+        case .incomeSubtype:
+            return "Promote to Own Income Type"
+        default:
+            return "Promote to Own Category"
+        }
     }
 
     private func saveChanges() async {
@@ -2648,6 +2757,14 @@ private struct OptionEditSheet: View {
 
         if colorChanged {
             await viewModel.updateColor(kind: row.kind, value: nameChanged ? nextName : row.value, color: nextColor, parentValue: row.parentValue)
+        }
+
+        if hasValidSubtypeTarget {
+            await viewModel.moveToSubtype(
+                kind: row.kind,
+                sourceValue: nameChanged ? nextName : row.value,
+                targetValue: selectedSubtypeParent
+            )
         }
     }
 
@@ -2701,8 +2818,6 @@ private struct OptionsFeatureView: View {
     @State private var optionDragPreviewLocation: CGPoint?
     @State private var activeOptionDragSourceID: String?
     @State private var optionDragSessionGeneration = 0
-    @State private var optionHoldActivationID: String?
-    @State private var optionHoldActivationGeneration = 0
     @State private var optionRowTapSuppressedUntil = Date.distantPast
     @State private var optionScrollViewportHeight: CGFloat = 0
     @State private var optionAutoScrollDirection = 0
@@ -2837,6 +2952,7 @@ private struct OptionsFeatureView: View {
                 }
                 .padding(.bottom, 24)
             }
+            .scrollDisabled(draggedOption != nil)
             .coordinateSpace(name: optionDropCoordinateSpace)
             .overlay(alignment: .topLeading) {
                 optionDragPreviewOverlay()
@@ -3543,7 +3659,6 @@ private struct OptionsFeatureView: View {
         optionDragPreviewRow = nil
         optionDragPreviewLocation = nil
         activeOptionDragSourceID = nil
-        optionHoldActivationID = nil
     }
 
     private func beginOptionDrag(_ payload: OptionDragPayload, row: OptionsDisplayRow) -> Int {
@@ -3608,28 +3723,6 @@ private struct OptionsFeatureView: View {
         withAnimation(.easeInOut(duration: 0.16)) {
             _ = beginOptionDrag(payload, row: row)
         }
-    }
-
-    private func scheduleOptionHoldActivation(_ payload: OptionDragPayload, row: OptionsDisplayRow) {
-        guard optionHoldActivationID != payload.sourceID else { return }
-        optionHoldActivationID = payload.sourceID
-        optionHoldActivationGeneration += 1
-        let generation = optionHoldActivationGeneration
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            guard optionHoldActivationGeneration == generation else { return }
-            guard optionHoldActivationID == payload.sourceID else { return }
-            guard optionEditorContext == nil, accountEditorContext == nil, !showCreateOption else {
-                cancelOptionHoldActivation()
-                return
-            }
-            ensureOptionDragStarted(payload, row: row)
-        }
-    }
-
-    private func cancelOptionHoldActivation() {
-        optionHoldActivationID = nil
-        optionHoldActivationGeneration += 1
     }
 
     private func optionDropFrame(at location: CGPoint, for payload: OptionDragPayload) -> OptionDropFrame? {
@@ -3790,40 +3883,11 @@ private struct OptionsFeatureView: View {
         dropTargetRowID != nil || isPromoteDropTargeted
     }
 
-    private func optionRowDragGesture(for payload: OptionDragPayload, row: OptionsDisplayRow) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.5, maximumDistance: 18)
-            .sequenced(before: DragGesture(minimumDistance: 6, coordinateSpace: .named(optionDropCoordinateSpace)))
-            .onChanged { value in
-                switch value {
-                case .first(true):
-                    scheduleOptionHoldActivation(payload, row: row)
-                case .second(true, let dragValue):
-                    if let location = dragValue?.location {
-                        updateOptionDragHover(payload, row: row, at: location)
-                    }
-                default:
-                    break
-                }
-            }
-            .onEnded { value in
-                cancelOptionHoldActivation()
-                switch value {
-                case .second(true, let dragValue):
-                    completeOptionDrag(payload, at: dragValue?.location)
-                case .first(true):
-                    completeOptionDrag(payload, at: nil)
-                default:
-                    resetOptionDrag()
-                }
-            }
-    }
-
     private func suppressOptionRowTap(for interval: TimeInterval = 0.55) {
         optionRowTapSuppressedUntil = Date().addingTimeInterval(interval)
     }
 
     private func openOptionEditorFromRowTap(_ row: OptionsDisplayRow) {
-        cancelOptionHoldActivation()
         if Date() < optionRowTapSuppressedUntil || draggedOption != nil || activeOptionDragSourceID != nil {
             resetOptionDrag()
             suppressOptionRowTap(for: 0.25)
@@ -3831,6 +3895,43 @@ private struct OptionsFeatureView: View {
         }
         resetOptionDrag()
         optionEditorContext = row
+    }
+
+    private func optionRowLocation(from localLocation: CGPoint, row: OptionsDisplayRow) -> CGPoint? {
+        guard let rowFrame = optionRowDropFrame(for: row)?.rect else { return nil }
+        return CGPoint(x: rowFrame.minX + localLocation.x, y: rowFrame.minY + localLocation.y)
+    }
+
+    private var canStartOptionRowLongPress: Bool {
+        optionEditorContext == nil && accountEditorContext == nil && !showCreateOption
+    }
+
+    private func optionRowLongPressInstaller(for payload: OptionDragPayload, row: OptionsDisplayRow) -> some View {
+        OptionRowLongPressInstaller(
+            isEnabled: canStartOptionRowLongPress,
+            locationInOptionSpace: { localLocation in
+                optionRowLocation(from: localLocation, row: row)
+            },
+            onBegan: { location in
+                guard canStartOptionRowLongPress else { return }
+                ensureOptionDragStarted(payload, row: row)
+                updateOptionDragHover(payload, row: row, at: location)
+            },
+            onChanged: { location in
+                guard activeOptionDragSourceID == payload.sourceID || draggedOption?.sourceID == payload.sourceID else { return }
+                updateOptionDragHover(payload, row: row, at: location)
+            },
+            onEnded: { location in
+                guard activeOptionDragSourceID == payload.sourceID || draggedOption?.sourceID == payload.sourceID else {
+                    resetOptionDrag()
+                    return
+                }
+                completeOptionDrag(payload, at: location)
+            },
+            onCancelled: {
+                resetOptionDrag()
+            }
+        )
     }
 
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
@@ -3980,7 +4081,10 @@ private struct OptionsFeatureView: View {
         .onTapGesture {
             openOptionEditorFromRowTap(row)
         }
-        .simultaneousGesture(optionRowDragGesture(for: payload, row: row), including: .gesture)
+        .overlay {
+            optionRowLongPressInstaller(for: payload, row: row)
+                .allowsHitTesting(false)
+        }
     }
 
     private func color(from hex: String) -> Color? {

@@ -653,9 +653,6 @@ export function Tracking() {
                     <span className="option-color-dot" />
                     <span className="tracking-picker-label">
                       <span>{row.value}</span>
-                      {row.parentValue ? (
-                        <small>{row.parentValue}</small>
-                      ) : null}
                     </span>
                   </button>
                 ))

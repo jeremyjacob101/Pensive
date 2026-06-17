@@ -1,8 +1,10 @@
 import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
+import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { formatMonthYearLabel, formatRangeLabel } from "../helpers/dates";
 import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
 import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
+import { ScopeCalendarButton } from "../components/ScopeCalendarButton";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
@@ -10,9 +12,11 @@ import type { PersistedDateState } from "../types/breakdown";
 import { BREAKDOWN_STORAGE_KEYS } from "../types/breakdown";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { parseStoredList } from "../helpers/storage";
-import { toOptionValues } from "../helpers/options";
 import { api } from "@pensive/convex-api";
 import { useQuery } from "convex/react";
+
+type BreakdownFilterSource = "expense" | "incoming";
+type BreakdownFilterKind = "account" | "category";
 
 export function Breakdown() {
   const [storedDateState, setStoredDateState] = useLocalStorage(
@@ -27,6 +31,10 @@ export function Breakdown() {
     useLocalStorage(EXPENSE_CATEGORY_DESELECTED_KEY, "[]");
   const [storedIncomingTypeDeselected, setStoredIncomingTypeDeselected] =
     useLocalStorage(INCOMING_TYPE_DESELECTED_KEY, "[]");
+  const [activeFilterSource, setActiveFilterSource] =
+    useState<BreakdownFilterSource>("expense");
+  const [activeFilterKind, setActiveFilterKind] =
+    useState<BreakdownFilterKind>("account");
 
   const initialDateState = useMemo(
     () => parseDateState(storedDateState),
@@ -67,6 +75,7 @@ export function Breakdown() {
     jumpToOldest,
     jumpToNewest,
     applyCustomRange,
+    applySelectedMonths,
     resetToNewestMonth,
   } = useSingleMonthScope(monthBounds, initialDateState);
 
@@ -85,17 +94,6 @@ export function Breakdown() {
 
   const expenses = useMemo(() => scopedExpenses ?? [], [scopedExpenses]);
   const incomings = useMemo(() => scopedIncomings ?? [], [scopedIncomings]);
-
-  const [customStart, setCustomStart] = useState(
-    initialDateState.customRange?.startDate ?? "",
-  );
-  const [customEnd, setCustomEnd] = useState(
-    initialDateState.customRange?.endDate ?? "",
-  );
-  const customStartValue =
-    mode === "custom" && !customStart ? scope.startDate : customStart;
-  const customEndValue =
-    mode === "custom" && !customEnd ? scope.endDate : customEnd;
 
   const rangeLabelText =
     mode === "custom"
@@ -253,6 +251,191 @@ export function Breakdown() {
       ),
     [incomingTypeDeselectedSet, incomingTypeOptions],
   );
+  const expenseAccountFilterOptions = useMemo(
+    () =>
+      expenseAccountOptions.map((value) => ({
+        value,
+        color: getOptionColor(userOptions, "account", value),
+      })),
+    [expenseAccountOptions, userOptions],
+  );
+  const incomingAccountFilterOptions = useMemo(
+    () =>
+      incomingAccountOptions.map((value) => ({
+        value,
+        color: getOptionColor(userOptions, "account", value),
+      })),
+    [incomingAccountOptions, userOptions],
+  );
+  const expenseCategoryFilterOptions = useMemo(
+    () =>
+      expenseCategoryOptions.map((value) => {
+        const [parent, child] = value.split(" / ");
+        return {
+          value,
+          color: child
+            ? getScopedOptionColor(userOptions, "subcategory", child, parent)
+            : getOptionColor(userOptions, "category", value),
+        };
+      }),
+    [expenseCategoryOptions, userOptions],
+  );
+  const incomingTypeFilterOptions = useMemo(
+    () =>
+      incomingTypeOptions.map((value) => {
+        const [parent, child] = value.split(" / ");
+        return {
+          value,
+          color: child
+            ? getScopedOptionColor(userOptions, "incomeSubtype", child, parent)
+            : getOptionColor(userOptions, "incomeType", value),
+        };
+      }),
+    [incomingTypeOptions, userOptions],
+  );
+
+  useEffect(() => {
+    const valid = new Set(expenseAccountOptions);
+    const next = parseStoredList(storedExpenseAccountDeselected).filter((
+      value,
+    ) => valid.has(value));
+    if (next.length !== expenseAccountDeselectedSet.size) {
+      setStoredExpenseAccountDeselected(JSON.stringify(next));
+    }
+  }, [
+    expenseAccountDeselectedSet.size,
+    expenseAccountOptions,
+    setStoredExpenseAccountDeselected,
+    storedExpenseAccountDeselected,
+  ]);
+  useEffect(() => {
+    const valid = new Set(incomingAccountOptions);
+    const next = parseStoredList(storedIncomingAccountDeselected).filter((
+      value,
+    ) => valid.has(value));
+    if (next.length !== incomingAccountDeselectedSet.size) {
+      setStoredIncomingAccountDeselected(JSON.stringify(next));
+    }
+  }, [
+    incomingAccountDeselectedSet.size,
+    incomingAccountOptions,
+    setStoredIncomingAccountDeselected,
+    storedIncomingAccountDeselected,
+  ]);
+  useEffect(() => {
+    const valid = new Set(expenseCategoryOptions);
+    const next = parseStoredList(storedExpenseCategoryDeselected).filter((
+      value,
+    ) => valid.has(value));
+    if (next.length !== expenseCategoryDeselectedSet.size) {
+      setStoredExpenseCategoryDeselected(JSON.stringify(next));
+    }
+  }, [
+    expenseCategoryDeselectedSet.size,
+    expenseCategoryOptions,
+    setStoredExpenseCategoryDeselected,
+    storedExpenseCategoryDeselected,
+  ]);
+  useEffect(() => {
+    const valid = new Set(incomingTypeOptions);
+    const next = parseStoredList(storedIncomingTypeDeselected).filter((value) =>
+      valid.has(value));
+    if (next.length !== incomingTypeDeselectedSet.size) {
+      setStoredIncomingTypeDeselected(JSON.stringify(next));
+    }
+  }, [
+    incomingTypeDeselectedSet.size,
+    incomingTypeOptions,
+    setStoredIncomingTypeDeselected,
+    storedIncomingTypeDeselected,
+  ]);
+
+  const activeFilterDropdown = useMemo(() => {
+    if (activeFilterSource === "expense" && activeFilterKind === "account") {
+      return {
+        label: "Account",
+        options: expenseAccountFilterOptions,
+        selected: selectedExpenseAccounts,
+        optionValues: expenseAccountOptions,
+        onChange: (next: string[]) => {
+          const nextSet = new Set(next);
+          setStoredExpenseAccountDeselected(
+            JSON.stringify(
+              expenseAccountOptions.filter((value) => !nextSet.has(value)),
+            ),
+          );
+        },
+      };
+    }
+
+    if (activeFilterSource === "expense") {
+      return {
+        label: "Category/Subcategory",
+        options: expenseCategoryFilterOptions,
+        selected: selectedExpenseCategories,
+        optionValues: expenseCategoryOptions,
+        onChange: (next: string[]) => {
+          const nextSet = new Set(next);
+          setStoredExpenseCategoryDeselected(
+            JSON.stringify(
+              expenseCategoryOptions.filter((value) => !nextSet.has(value)),
+            ),
+          );
+        },
+      };
+    }
+
+    if (activeFilterKind === "account") {
+      return {
+        label: "Account",
+        options: incomingAccountFilterOptions,
+        selected: selectedIncomingAccounts,
+        optionValues: incomingAccountOptions,
+        onChange: (next: string[]) => {
+          const nextSet = new Set(next);
+          setStoredIncomingAccountDeselected(
+            JSON.stringify(
+              incomingAccountOptions.filter((value) => !nextSet.has(value)),
+            ),
+          );
+        },
+      };
+    }
+
+    return {
+      label: "Income Type/Subtype",
+      options: incomingTypeFilterOptions,
+      selected: selectedIncomingTypes,
+      optionValues: incomingTypeOptions,
+      onChange: (next: string[]) => {
+        const nextSet = new Set(next);
+        setStoredIncomingTypeDeselected(
+          JSON.stringify(
+            incomingTypeOptions.filter((value) => !nextSet.has(value)),
+          ),
+        );
+      },
+    };
+  }, [
+    activeFilterKind,
+    activeFilterSource,
+    expenseAccountFilterOptions,
+    expenseAccountOptions,
+    expenseCategoryFilterOptions,
+    expenseCategoryOptions,
+    incomingAccountFilterOptions,
+    incomingAccountOptions,
+    incomingTypeFilterOptions,
+    incomingTypeOptions,
+    selectedExpenseAccounts,
+    selectedExpenseCategories,
+    selectedIncomingAccounts,
+    selectedIncomingTypes,
+    setStoredExpenseAccountDeselected,
+    setStoredExpenseCategoryDeselected,
+    setStoredIncomingAccountDeselected,
+    setStoredIncomingTypeDeselected,
+  ]);
 
   const selectedExpenseAccountSet = useMemo(
     () => new Set(selectedExpenseAccounts),
@@ -275,7 +458,7 @@ export function Breakdown() {
     () =>
       expenses.filter(
         (row) =>
-          selectedExpenseAccountSet.has(row.account) &&
+          selectedExpenseAccountSet.has(row.account.trim()) &&
           selectedExpenseCategorySet.has(expenseCategoryLabel(row)),
       ),
     [
@@ -290,7 +473,7 @@ export function Breakdown() {
     () =>
       incomings.filter(
         (row) =>
-          selectedIncomingAccountSet.has(row.account) &&
+          selectedIncomingAccountSet.has(row.account.trim()) &&
           selectedIncomingTypeSet.has(incomingTypeLabel(row)),
       ),
     [
@@ -403,17 +586,6 @@ export function Breakdown() {
     scopedExpenses === undefined ||
     scopedIncomings === undefined;
 
-  const applyCustomScope = () => {
-    if (
-      !customStartValue ||
-      !customEndValue ||
-      customStartValue > customEndValue
-    ) {
-      return;
-    }
-    applyCustomRange(customStartValue, customEndValue);
-  };
-
   const resetBreakdown = () => {
     setStoredExpenseAccountDeselected("[]");
     setStoredIncomingAccountDeselected("[]");
@@ -427,8 +599,6 @@ export function Breakdown() {
       }
     }
 
-    setCustomStart("");
-    setCustomEnd("");
     resetToNewestMonth();
   };
 
@@ -451,76 +621,51 @@ export function Breakdown() {
             </button>
           </div>
 
-          <div className="breakdown-filter-group">
-            <div className="breakdown-filter-group-title">Expenses</div>
-            <div className="left-filter-toolbar">
-              <MultiSelectFilterDropdown
-                label="Expense Account"
-                options={expenseAccountOptions}
-                selected={selectedExpenseAccounts}
-                onChange={(next) => {
-                  const nextSet = new Set(next);
-                  setStoredExpenseAccountDeselected(
-                    JSON.stringify(
-                      expenseAccountOptions.filter(
-                        (value) => !nextSet.has(value),
-                      ),
-                    ),
-                  );
-                }}
-              />
-              <MultiSelectFilterDropdown
-                label="Category/Subcategory"
-                options={expenseCategoryOptions}
-                selected={selectedExpenseCategories}
-                onChange={(next) => {
-                  const nextSet = new Set(next);
-                  setStoredExpenseCategoryDeselected(
-                    JSON.stringify(
-                      expenseCategoryOptions.filter(
-                        (value) => !nextSet.has(value),
-                      ),
-                    ),
-                  );
-                }}
-              />
-            </div>
+          <div className="breakdown-filter-tabs" aria-label="Breakdown source">
+            <button
+              type="button"
+              className={activeFilterSource === "expense" ? "active" : ""}
+              onClick={() => setActiveFilterSource("expense")}
+            >
+              Expenses
+            </button>
+            <button
+              type="button"
+              className={activeFilterSource === "incoming" ? "active" : ""}
+              onClick={() => setActiveFilterSource("incoming")}
+            >
+              Incomings
+            </button>
           </div>
 
-          <div className="breakdown-filter-group">
-            <div className="breakdown-filter-group-title">Incomings</div>
-            <div className="left-filter-toolbar">
-              <MultiSelectFilterDropdown
-                label="Incoming Account"
-                options={incomingAccountOptions}
-                selected={selectedIncomingAccounts}
-                onChange={(next) => {
-                  const nextSet = new Set(next);
-                  setStoredIncomingAccountDeselected(
-                    JSON.stringify(
-                      incomingAccountOptions.filter(
-                        (value) => !nextSet.has(value),
-                      ),
-                    ),
-                  );
-                }}
-              />
-              <MultiSelectFilterDropdown
-                label="Type/Subtype"
-                options={incomingTypeOptions}
-                selected={selectedIncomingTypes}
-                onChange={(next) => {
-                  const nextSet = new Set(next);
-                  setStoredIncomingTypeDeselected(
-                    JSON.stringify(
-                      incomingTypeOptions.filter(
-                        (value) => !nextSet.has(value),
-                      ),
-                    ),
-                  );
-                }}
-              />
-            </div>
+          <div className="breakdown-filter-tabs" aria-label="Breakdown filter">
+            <button
+              type="button"
+              className={activeFilterKind === "account" ? "active" : ""}
+              onClick={() => setActiveFilterKind("account")}
+            >
+              Account
+            </button>
+            <button
+              type="button"
+              className={activeFilterKind === "category" ? "active" : ""}
+              onClick={() => setActiveFilterKind("category")}
+            >
+              {activeFilterSource === "expense" ? "Category" : "Income Type"}
+            </button>
+          </div>
+
+          <div className="left-filter-toolbar breakdown-active-filter">
+            <MultiSelectFilterDropdown
+              label={activeFilterDropdown.label}
+              options={activeFilterDropdown.options}
+              selected={activeFilterDropdown.selected}
+              onChange={activeFilterDropdown.onChange}
+            />
+            <span className="breakdown-active-filter-count">
+              {activeFilterDropdown.selected.length}/
+              {activeFilterDropdown.optionValues.length}
+            </span>
           </div>
         </div>
 
@@ -539,49 +684,17 @@ export function Breakdown() {
           onJumpToNewest={jumpToNewest}
         />
 
-        <div className="breakdown-range-panel">
-          <div className="breakdown-range-title">Custom Range</div>
-          <label>
-            From
-            <input
-              type="date"
-              value={customStartValue}
-              onChange={(event) => setCustomStart(event.target.value)}
-            />
-          </label>
-          <label>
-            To
-            <input
-              type="date"
-              value={customEndValue}
-              onChange={(event) => setCustomEnd(event.target.value)}
-            />
-          </label>
-          <div className="breakdown-range-actions">
-            <button
-              type="button"
-              className="split-entry-launcher"
-              onClick={applyCustomScope}
-              disabled={
-                !customStartValue ||
-                !customEndValue ||
-                customStartValue > customEndValue
-              }
-            >
-              Apply Range
-            </button>
-            <button
-              type="button"
-              className="split-entry-launcher"
-              onClick={() => {
-                setCustomStart("");
-                setCustomEnd("");
-                resetToNewestMonth();
-              }}
-            >
-              This Month
-            </button>
-          </div>
+        <div className="breakdown-scope-panel">
+          <span className="breakdown-scope-label">{rangeLabelText}</span>
+          <ScopeCalendarButton
+            mode={mode}
+            targetMonths={scope.targetMonths}
+            startDate={scope.startDate}
+            endDate={scope.endDate}
+            monthBounds={monthBounds}
+            onApplyMonths={applySelectedMonths}
+            onApplyCustom={applyCustomRange}
+          />
         </div>
       </aside>
 

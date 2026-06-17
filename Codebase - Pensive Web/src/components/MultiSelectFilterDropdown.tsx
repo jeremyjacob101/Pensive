@@ -1,15 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+export type MultiSelectFilterOption = {
+  value: string;
+  label?: string;
+  color?: string;
+};
+
 export function MultiSelectFilterDropdown({ label, options, selected, onChange }: {
   label: string;
-  options: string[];
+  options: Array<string | MultiSelectFilterOption>;
   selected: string[];
   onChange: (next: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const optionItems = useMemo(
+    () =>
+      options.map((option) =>
+        typeof option === "string"
+          ? { value: option, label: option }
+          : { ...option, label: option.label ?? option.value }),
+    [options],
+  );
+  const optionValues = useMemo(
+    () => optionItems.map((option) => option.value),
+    [optionItems],
+  );
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const allSelected = selected.length === options.length;
+  const allSelected = optionValues.every((option) => selectedSet.has(option));
 
   useEffect(() => {
     if (!open) return;
@@ -33,7 +51,8 @@ export function MultiSelectFilterDropdown({ label, options, selected, onChange }
       >
         <span>{label}</span>
         <span className="filter-dropdown-count">
-          {selected.length}/{options.length}
+          {optionValues.filter((option) => selectedSet.has(option)).length}/
+          {optionValues.length}
         </span>
       </button>
       {open ? (
@@ -42,7 +61,7 @@ export function MultiSelectFilterDropdown({ label, options, selected, onChange }
             <button
               type="button"
               className="filter-select-all-btn"
-              onClick={() => onChange(options)}
+              onClick={() => onChange(optionValues)}
             >
               Select all
             </button>
@@ -55,22 +74,31 @@ export function MultiSelectFilterDropdown({ label, options, selected, onChange }
             </button>
           </div>
           <div className="filter-dropdown-options">
-            {options.map((option) => {
-              const isChecked = selectedSet.has(option);
+            {optionItems.map((option) => {
+              const isChecked = selectedSet.has(option.value);
               return (
-                <label key={option} className="filter-dropdown-option">
+                <label key={option.value} className="filter-dropdown-option">
                   <input
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => {
                       if (isChecked) {
-                        onChange(selected.filter((value) => value !== option));
+                        onChange(
+                          selected.filter((value) => value !== option.value),
+                        );
                       } else {
-                        onChange([...selected, option]);
+                        onChange([...selected, option.value]);
                       }
                     }}
                   />
-                  <span>{option}</span>
+                  {option.color ? (
+                    <span
+                      className="filter-dropdown-color-dot"
+                      style={{ backgroundColor: option.color }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <span>{option.label}</span>
                 </label>
               );
             })}

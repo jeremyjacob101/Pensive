@@ -1,8 +1,8 @@
+import { getOptionColor, getScopedOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY } from "../keys/expenses";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
-import { getOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
 import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
 import { ExpensePaybackLinkManager } from "../components/PaybackLinkManager";
@@ -158,6 +158,53 @@ export function Expenses() {
     () => categoryOptions.filter((value) => !categoryDeselectedSet.has(value)),
     [categoryDeselectedSet, categoryOptions],
   );
+  const accountFilterOptions = useMemo(
+    () =>
+      accountOptions.map((value) => ({
+        value,
+        color: getOptionColor(userOptions, "account", value),
+      })),
+    [accountOptions, userOptions],
+  );
+  const categoryFilterOptions = useMemo(
+    () =>
+      categoryOptions.map((value) => {
+        const [parent, child] = value.split(" / ");
+        return {
+          value,
+          color: child
+            ? getScopedOptionColor(userOptions, "subcategory", child, parent)
+            : getOptionColor(userOptions, "category", value),
+        };
+      }),
+    [categoryOptions, userOptions],
+  );
+  useEffect(() => {
+    const valid = new Set(accountOptions);
+    const next = parseStoredList(storedAccountDeselected).filter((value) =>
+      valid.has(value));
+    if (next.length !== accountDeselectedSet.size) {
+      setStoredAccountDeselected(JSON.stringify(next));
+    }
+  }, [
+    accountDeselectedSet.size,
+    accountOptions,
+    setStoredAccountDeselected,
+    storedAccountDeselected,
+  ]);
+  useEffect(() => {
+    const valid = new Set(categoryOptions);
+    const next = parseStoredList(storedCategoryDeselected).filter((value) =>
+      valid.has(value));
+    if (next.length !== categoryDeselectedSet.size) {
+      setStoredCategoryDeselected(JSON.stringify(next));
+    }
+  }, [
+    categoryDeselectedSet.size,
+    categoryOptions,
+    setStoredCategoryDeselected,
+    storedCategoryDeselected,
+  ]);
   const selectedAccountSet = useMemo(
     () => new Set(selectedAccounts),
     [selectedAccounts],
@@ -170,7 +217,7 @@ export function Expenses() {
     () =>
       expenses.filter(
         (row) =>
-          selectedAccountSet.has(row.account) &&
+          selectedAccountSet.has(row.account.trim()) &&
           selectedCategorySet.has(expenseCategoryLabel(row)),
       ),
     [expenses, expenseCategoryLabel, selectedAccountSet, selectedCategorySet],
@@ -533,7 +580,7 @@ export function Expenses() {
             <div className="left-filter-toolbar">
               <MultiSelectFilterDropdown
                 label="Account"
-                options={accountOptions}
+                options={accountFilterOptions}
                 selected={selectedAccounts}
                 onChange={(next) => {
                   const nextSet = new Set(next);
@@ -546,7 +593,7 @@ export function Expenses() {
               />
               <MultiSelectFilterDropdown
                 label="Category/Subcategory"
-                options={categoryOptions}
+                options={categoryFilterOptions}
                 selected={selectedCategories}
                 onChange={(next) => {
                   const nextSet = new Set(next);

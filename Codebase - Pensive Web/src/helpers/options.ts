@@ -17,6 +17,23 @@ export function getOptionColor(
   return option?.color ?? FALLBACK_COLOR;
 }
 
+export function getScopedOptionColor(
+  userOptions: UserOptions | undefined,
+  kind: OptionKind,
+  value: string,
+  parentValue?: string,
+) {
+  if (!value) return FALLBACK_COLOR;
+  const normalizedParent = parentValue?.trim();
+  const option = userOptions?.[kind]?.find(
+    (item) =>
+      item.value === value &&
+      (normalizedParent === undefined ||
+        (item.parentValue ?? "") === normalizedParent),
+  );
+  return option?.color ?? getOptionColor(userOptions, kind, value);
+}
+
 export function getDefaultOptionValue(
   userOptions: UserOptions | undefined,
   kind: OptionKind,

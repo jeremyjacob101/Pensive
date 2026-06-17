@@ -291,6 +291,7 @@ private struct LedgerFilterSheet: View {
                         ForEach(viewModel.accountFilterChoices, id: \.self) { account in
                             LedgerAccountFilterRow(
                                 value: account,
+                                colorHex: viewModel.accountColor(for: account),
                                 isSelected: isSelectedBinding(for: account)
                             )
                         }
@@ -356,6 +357,7 @@ private struct LedgerFilterSheet: View {
 
 private struct LedgerAccountFilterRow: View {
     let value: String
+    let colorHex: String?
     @Binding var isSelected: Bool
 
     var body: some View {
@@ -367,6 +369,9 @@ private struct LedgerAccountFilterRow: View {
                     .font(.title3)
                     .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
                     .frame(width: 26)
+                Circle()
+                    .fill(hexColor(from: colorHex) ?? .gray)
+                    .frame(width: 12, height: 12)
                 Text(value)
                     .foregroundStyle(.primary)
                 Spacer()
@@ -374,6 +379,16 @@ private struct LedgerAccountFilterRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func hexColor(from hex: String?) -> Color? {
+        guard let hex else { return nil }
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        let red = Double((value >> 16) & 0xff) / 255.0
+        let green = Double((value >> 8) & 0xff) / 255.0
+        let blue = Double(value & 0xff) / 255.0
+        return Color(red: red, green: green, blue: blue)
     }
 }
 

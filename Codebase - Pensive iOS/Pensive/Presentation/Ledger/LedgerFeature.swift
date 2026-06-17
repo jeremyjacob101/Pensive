@@ -368,12 +368,19 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     var accountFilterChoices: [String] {
+        let fromData: Set<String>
         switch kind {
         case .expense:
-            return Array(Set(expenses.map(\.account).filter { !$0.isEmpty })).sorted()
+            fromData = Set(expenses.map(\.account).filter { !$0.isEmpty })
         case .incoming:
-            return Array(Set(incomings.map(\.account).filter { !$0.isEmpty })).sorted()
+            fromData = Set(incomings.map(\.account).filter { !$0.isEmpty })
         }
+        let fromOptions = Set((optionsByKind["account"] ?? []).map(\.value))
+        return Array(fromData.union(fromOptions)).sorted()
+    }
+
+    func accountColor(for value: String) -> String? {
+        optionsByKind["account"]?.first(where: { $0.value == value })?.color
     }
 
     var categoryFilterRows: [LedgerFilterOptionRow] {
