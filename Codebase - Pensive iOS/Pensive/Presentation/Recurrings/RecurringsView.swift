@@ -116,16 +116,11 @@ struct RecurringsFeatureView: View {
                 HStack {
                     Text(row.title).font(.headline)
                     Spacer()
-                    Text(row.kind.rawValue.capitalized).font(.caption).foregroundStyle(.secondary)
-                    Text(row.status.uppercased())
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(row.status.lowercased() == "active" ? Color.green.opacity(0.2) : Color.gray.opacity(0.2), in: Capsule())
                 }
                 Text(row.amountLine).font(.subheadline.weight(.medium))
                 Text(row.scheduleLine).font(.footnote).foregroundStyle(.secondary)
             }
+            .opacity(row.status.lowercased() == "active" ? 1 : 0.4)
         }
     }
 }

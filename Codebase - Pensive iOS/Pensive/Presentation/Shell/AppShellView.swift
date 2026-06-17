@@ -4509,8 +4509,9 @@ private struct BreakdownFeatureView: View {
                         perMonth: monthly(value: incomingVM.filteredTotalEffective),
                         tint: .green
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 8, leading: 14, bottom: 4, trailing: 14))
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
 
                     BreakdownMetricCard(
                         title: "TOTAL EXPENSES",
@@ -4518,16 +4519,19 @@ private struct BreakdownFeatureView: View {
                         perMonth: monthly(value: expenseVM.filteredTotalEffective),
                         tint: .red
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+
                     BreakdownMetricCard(
                         title: "TOTAL SAVINGS",
                         total: money(incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
                         perMonth: monthly(value: incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
                         tint: .blue
                     )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 8, trailing: 14))
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
                 .listSectionSpacing(16)
                 .opacity(isLoading ? 0.66 : 1)
@@ -4548,14 +4552,23 @@ private struct BreakdownFeatureView: View {
                             let net = incomingTotal - expenseTotal
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(DateScope.monthLabel(month)).font(.headline)
-                                HStack {
-                                    Text("Incomings \(money(incomingTotal))")
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading) {
+                                        Text("Incomings").font(.caption).foregroundStyle(.secondary)
+                                        Text(money(incomingTotal)).font(.footnote.weight(.bold))
+                                    }
                                     Spacer()
-                                    Text("Expenses \(money(expenseTotal))")
+                                    VStack(alignment: .leading) {
+                                        Text("Expenses").font(.caption).foregroundStyle(.secondary)
+                                        Text(money(expenseTotal)).font(.footnote.weight(.bold))
+                                    }
                                     Spacer()
-                                    Text("Savings \(money(net))").foregroundStyle(net >= 0 ? .green : .red)
+                                    VStack(alignment: .leading) {
+                                        Text("Savings").font(.caption).foregroundStyle(.secondary)
+                                        Text(money(net)).font(.footnote.weight(.bold))
+                                            .foregroundStyle(net >= 0 ? .green : .red)
+                                    }
                                 }
-                                .font(.footnote)
                             }
                         }
                     }
