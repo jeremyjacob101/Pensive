@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct NotepadNoteViewData: Identifiable {
     let id: String
@@ -2265,7 +2264,7 @@ private final class OptionsViewModel: ObservableObject {
     }
 }
 
-private struct OptionsDisplayRow: Identifiable {
+private struct OptionsDisplayRow: Identifiable, Equatable {
     let kind: OptionsKind
     let value: String
     let color: String
@@ -2294,125 +2293,49 @@ private struct OptionDragPayload: Equatable {
     }
 }
 
-private struct OptionDropDelegate: DropDelegate {
-    let target: OptionsDisplayRow
-    @Binding var draggedOption: OptionDragPayload?
-    @Binding var dropTargetRowID: String?
-    @Binding var isPromoteDropTargeted: Bool
-    @Binding var activeOptionDragSourceID: String?
-    @Binding var optionRowTapSuppressedUntil: Date
-    let canDrop: (OptionDragPayload, OptionsDisplayRow) -> Bool
-    let commitDrop: (OptionDragPayload, OptionsDisplayRow) -> Void
-
-    func validateDrop(info: DropInfo) -> Bool {
-        draggedOption != nil
+private struct OptionDropFrame: Equatable, Identifiable {
+    enum Kind: Equatable {
+        case row(OptionsDisplayRow)
+        case promote
     }
 
-    func dropEntered(info: DropInfo) {
-        withAnimation(.easeInOut(duration: 0.16)) {
-            if let draggedOption, canDrop(draggedOption, target) {
-                dropTargetRowID = target.id
-            } else {
-                dropTargetRowID = nil
-            }
-        }
-    }
+    let id: String
+    let kind: Kind
+    let rect: CGRect
+}
 
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        return DropProposal(operation: .move)
-    }
+private struct OptionDropFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [OptionDropFrame] = []
 
-    func dropExited(info: DropInfo) {
-        guard dropTargetRowID == target.id else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
-            dropTargetRowID = nil
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        defer {
-            withAnimation(.easeInOut(duration: 0.16)) {
-                dropTargetRowID = nil
-                isPromoteDropTargeted = false
-                draggedOption = nil
-                activeOptionDragSourceID = nil
-                optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
-            }
-        }
-        guard let draggedOption, canDrop(draggedOption, target) else { return false }
-        commitDrop(draggedOption, target)
-        return true
+    static func reduce(value: inout [OptionDropFrame], nextValue: () -> [OptionDropFrame]) {
+        value.append(contentsOf: nextValue())
     }
 }
 
-private struct OptionPromoteDropDelegate: DropDelegate {
-    @Binding var draggedOption: OptionDragPayload?
-    @Binding var dropTargetRowID: String?
-    @Binding var isTargeted: Bool
-    @Binding var activeOptionDragSourceID: String?
-    @Binding var optionRowTapSuppressedUntil: Date
-    let canPromote: (OptionDragPayload) -> Bool
-    let commitPromote: (OptionDragPayload) -> Void
+private struct OptionScrollViewportHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
 
-    func validateDrop(info: DropInfo) -> Bool {
-        guard let draggedOption else { return false }
-        return canPromote(draggedOption)
-    }
-
-    func dropEntered(info: DropInfo) {
-        guard let draggedOption, canPromote(draggedOption) else { return }
-        withAnimation(.easeInOut(duration: 0.16)) {
-            isTargeted = true
-        }
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        return DropProposal(operation: .move)
-    }
-
-    func dropExited(info: DropInfo) {
-        withAnimation(.easeInOut(duration: 0.16)) {
-            isTargeted = false
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        defer {
-            withAnimation(.easeInOut(duration: 0.16)) {
-                dropTargetRowID = nil
-                isTargeted = false
-                draggedOption = nil
-                activeOptionDragSourceID = nil
-                optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
-            }
-        }
-        guard let draggedOption, canPromote(draggedOption) else { return false }
-        commitPromote(draggedOption)
-        return true
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
-private struct OptionResetDropDelegate: DropDelegate {
-    @Binding var draggedOption: OptionDragPayload?
-    @Binding var dropTargetRowID: String?
-    @Binding var isPromoteDropTargeted: Bool
-    @Binding var activeOptionDragSourceID: String?
-    @Binding var optionRowTapSuppressedUntil: Date
+private enum OptionAutoScrollAnchor: Equatable {
+    case top
+    case bottom
 
-    func validateDrop(info: DropInfo) -> Bool {
-        draggedOption != nil
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        withAnimation(.easeInOut(duration: 0.16)) {
-            draggedOption = nil
-            dropTargetRowID = nil
-            isPromoteDropTargeted = false
-            activeOptionDragSourceID = nil
-            optionRowTapSuppressedUntil = Date().addingTimeInterval(0.55)
+    var unitPoint: UnitPoint {
+        switch self {
+        case .top: return .top
+        case .bottom: return .bottom
         }
-        return true
     }
+}
+
+private struct OptionAutoScrollRequest: Equatable {
+    let targetID: String
+    let anchor: OptionAutoScrollAnchor
+    let token: Int
 }
 
 private enum AccountLedgerTab: String, CaseIterable, Identifiable {
@@ -2773,9 +2696,21 @@ private struct OptionsFeatureView: View {
     @State private var draggedOption: OptionDragPayload?
     @State private var dropTargetRowID: String?
     @State private var isPromoteDropTargeted = false
+    @State private var optionDropFrames: [OptionDropFrame] = []
+    @State private var optionDragPreviewRow: OptionsDisplayRow?
+    @State private var optionDragPreviewLocation: CGPoint?
     @State private var activeOptionDragSourceID: String?
-    @State private var optionDragLifecycleGeneration = 0
+    @State private var optionDragSessionGeneration = 0
+    @State private var optionHoldActivationID: String?
+    @State private var optionHoldActivationGeneration = 0
     @State private var optionRowTapSuppressedUntil = Date.distantPast
+    @State private var optionScrollViewportHeight: CGFloat = 0
+    @State private var optionAutoScrollDirection = 0
+    @State private var optionAutoScrollGeneration = 0
+    @State private var optionAutoScrollRequestToken = 0
+    @State private var optionAutoScrollRequest: OptionAutoScrollRequest?
+    private let optionDropCoordinateSpace = "options-option-drop-space"
+    private let optionPromoteDropZoneID = "promote-zone"
 
     init(api: ConvexAPI) {
         _viewModel = StateObject(wrappedValue: OptionsViewModel(api: api))
@@ -2879,29 +2814,49 @@ private struct OptionsFeatureView: View {
 
     @ViewBuilder
     private func optionsContent() -> some View {
-        ScrollView {
-            LazyVStack(spacing: 14) {
-                optionsKindPicker()
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color(uiColor: .secondarySystemGroupedBackground))
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
+        ScrollViewReader { scrollProxy in
+            ScrollView {
+                LazyVStack(spacing: 14) {
+                    optionsKindPicker()
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
 
-                if viewModel.selectedKind == .account {
-                    accountOptionsContent()
-                } else {
-                    nonAccountOptionsContent()
+                    if viewModel.selectedKind == .account {
+                        accountOptionsContent()
+                    } else {
+                        nonAccountOptionsContent()
+                    }
+
+                    accountStatusMessages()
+                        .padding(.horizontal, 16)
                 }
-
-                accountStatusMessages()
-                    .padding(.horizontal, 16)
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
+            .coordinateSpace(name: optionDropCoordinateSpace)
+            .overlay(alignment: .topLeading) {
+                optionDragPreviewOverlay()
+            }
+            .background {
+                GeometryReader { proxy in
+                    Color(uiColor: .systemGroupedBackground)
+                        .preference(key: OptionScrollViewportHeightPreferenceKey.self, value: proxy.size.height)
+                }
+            }
+            .onPreferenceChange(OptionScrollViewportHeightPreferenceKey.self) { height in
+                optionScrollViewportHeight = height
+            }
+            .onChange(of: optionAutoScrollRequest) { _, request in
+                guard let request else { return }
+                withAnimation(.linear(duration: 0.12)) {
+                    scrollProxy.scrollTo(request.targetID, anchor: request.anchor.unitPoint)
+                }
+            }
         }
-        .background(Color(uiColor: .systemGroupedBackground))
     }
 
     private func optionsKindPicker() -> some View {
@@ -2919,6 +2874,7 @@ private struct OptionsFeatureView: View {
             if viewModel.selectedKind.supportsNestedOptions {
                 if shouldShowPromoteDropZone {
                     optionPromoteDropZone()
+                        .id(optionPromoteDropZoneID)
                 }
 
                 ForEach(viewModel.rowGroups) { group in
@@ -2948,16 +2904,9 @@ private struct OptionsFeatureView: View {
             }
         }
         .padding(.horizontal, 24)
-        .onDrop(
-            of: [UTType.text],
-            delegate: OptionResetDropDelegate(
-                draggedOption: $draggedOption,
-                dropTargetRowID: $dropTargetRowID,
-                isPromoteDropTargeted: $isPromoteDropTargeted,
-                activeOptionDragSourceID: $activeOptionDragSourceID,
-                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil
-            )
-        )
+        .onPreferenceChange(OptionDropFramePreferenceKey.self) { frames in
+            optionDropFrames = frames
+        }
     }
 
     private var shouldShowPromoteDropZone: Bool {
@@ -2989,18 +2938,7 @@ private struct OptionsFeatureView: View {
         }
         .scaleEffect(isPromoteDropTargeted ? 1.015 : 1)
         .animation(.easeInOut(duration: 0.16), value: isPromoteDropTargeted)
-        .onDrop(
-            of: [UTType.text],
-            delegate: OptionPromoteDropDelegate(
-                draggedOption: $draggedOption,
-                dropTargetRowID: $dropTargetRowID,
-                isTargeted: $isPromoteDropTargeted,
-                activeOptionDragSourceID: $activeOptionDragSourceID,
-                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil,
-                canPromote: canPromoteOption,
-                commitPromote: performPromoteDrop
-            )
-        )
+        .background(optionDropFrameReader(id: optionPromoteDropZoneID, kind: .promote))
     }
 
     private var promoteDropZoneTitle: String {
@@ -3598,41 +3536,286 @@ private struct OptionsFeatureView: View {
     }
 
     private func resetOptionDrag() {
+        stopOptionAutoScroll()
         draggedOption = nil
         dropTargetRowID = nil
         isPromoteDropTargeted = false
+        optionDragPreviewRow = nil
+        optionDragPreviewLocation = nil
         activeOptionDragSourceID = nil
+        optionHoldActivationID = nil
     }
 
-    private func beginOptionDrag(_ payload: OptionDragPayload) {
-        optionDragLifecycleGeneration += 1
+    private func beginOptionDrag(_ payload: OptionDragPayload, row: OptionsDisplayRow) -> Int {
+        optionDragSessionGeneration += 1
         activeOptionDragSourceID = payload.sourceID
         suppressOptionRowTap()
         draggedOption = payload
+        optionDragPreviewRow = row
+        if let rowFrame = optionRowDropFrame(for: row)?.rect {
+            optionDragPreviewLocation = CGPoint(x: rowFrame.midX, y: rowFrame.midY)
+            updateOptionAutoScroll(for: CGPoint(x: rowFrame.midX, y: rowFrame.midY))
+        }
         dropTargetRowID = nil
         isPromoteDropTargeted = false
+        return optionDragSessionGeneration
     }
 
-    private func markOptionDragPressStarted(_ payload: OptionDragPayload) {
-        if activeOptionDragSourceID != payload.sourceID {
-            optionDragLifecycleGeneration += 1
+    private func updateOptionDragHover(_ payload: OptionDragPayload, row: OptionsDisplayRow, at location: CGPoint) {
+        ensureOptionDragStarted(payload, row: row)
+        optionDragPreviewLocation = location
+        updateOptionAutoScroll(for: location)
+
+        let target = optionDropFrame(at: location, for: payload)
+        withAnimation(.easeInOut(duration: 0.16)) {
+            switch target?.kind {
+            case let .row(row):
+                isPromoteDropTargeted = false
+                dropTargetRowID = canDropOption(payload, on: row) ? row.id : nil
+            case .promote:
+                dropTargetRowID = nil
+                isPromoteDropTargeted = canPromoteOption(payload)
+            case nil:
+                dropTargetRowID = nil
+                isPromoteDropTargeted = false
+            }
         }
-        activeOptionDragSourceID = payload.sourceID
-        suppressOptionRowTap()
     }
 
-    private func scheduleOptionDragReleaseCleanup(for payload: OptionDragPayload) {
-        guard activeOptionDragSourceID == payload.sourceID || draggedOption?.sourceID == payload.sourceID else { return }
-        suppressOptionRowTap()
-        let sourceID = payload.sourceID
-        let generation = optionDragLifecycleGeneration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.28) {
-            guard optionDragLifecycleGeneration == generation else { return }
-            guard activeOptionDragSourceID == sourceID || draggedOption?.sourceID == sourceID else { return }
+    private func completeOptionDrag(_ payload: OptionDragPayload, at location: CGPoint?) {
+        defer {
             withAnimation(.easeInOut(duration: 0.16)) {
                 resetOptionDrag()
             }
+            suppressOptionRowTap(for: 0.25)
         }
+
+        guard activeOptionDragSourceID == payload.sourceID || draggedOption?.sourceID == payload.sourceID else { return }
+        guard let location, let target = optionDropFrame(at: location, for: payload) else { return }
+
+        switch target.kind {
+        case let .row(row):
+            guard canDropOption(payload, on: row) else { return }
+            performOptionDrop(payload, on: row)
+        case .promote:
+            guard canPromoteOption(payload) else { return }
+            performPromoteDrop(payload)
+        }
+    }
+
+    private func ensureOptionDragStarted(_ payload: OptionDragPayload, row: OptionsDisplayRow) {
+        guard activeOptionDragSourceID != payload.sourceID || draggedOption?.sourceID != payload.sourceID else { return }
+        withAnimation(.easeInOut(duration: 0.16)) {
+            _ = beginOptionDrag(payload, row: row)
+        }
+    }
+
+    private func scheduleOptionHoldActivation(_ payload: OptionDragPayload, row: OptionsDisplayRow) {
+        guard optionHoldActivationID != payload.sourceID else { return }
+        optionHoldActivationID = payload.sourceID
+        optionHoldActivationGeneration += 1
+        let generation = optionHoldActivationGeneration
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            guard optionHoldActivationGeneration == generation else { return }
+            guard optionHoldActivationID == payload.sourceID else { return }
+            guard optionEditorContext == nil, accountEditorContext == nil, !showCreateOption else {
+                cancelOptionHoldActivation()
+                return
+            }
+            ensureOptionDragStarted(payload, row: row)
+        }
+    }
+
+    private func cancelOptionHoldActivation() {
+        optionHoldActivationID = nil
+        optionHoldActivationGeneration += 1
+    }
+
+    private func optionDropFrame(at location: CGPoint, for payload: OptionDragPayload) -> OptionDropFrame? {
+        optionDropFrames
+            .reversed()
+            .first { frame in
+                let hitRect = frame.rect.insetBy(dx: -8, dy: -4)
+                guard hitRect.contains(location) else { return false }
+                switch frame.kind {
+                case let .row(row):
+                    return canDropOption(payload, on: row)
+                case .promote:
+                    return canPromoteOption(payload)
+                }
+            }
+    }
+
+    private func optionRowDropFrame(for row: OptionsDisplayRow) -> OptionDropFrame? {
+        optionDropFrames.last { $0.id == optionRowScrollID(for: row) }
+    }
+
+    private func optionRowScrollID(for row: OptionsDisplayRow) -> String {
+        "row:\(row.id)"
+    }
+
+    private var optionScrollTargetIDs: [String] {
+        var ids: [String] = []
+        if viewModel.selectedKind.supportsNestedOptions, shouldShowPromoteDropZone {
+            ids.append(optionPromoteDropZoneID)
+        }
+        for group in viewModel.rowGroups {
+            ids.append(optionRowScrollID(for: group.parent))
+            ids.append(contentsOf: group.children.map { optionRowScrollID(for: $0) })
+        }
+        return ids
+    }
+
+    private func updateOptionAutoScroll(for location: CGPoint) {
+        guard draggedOption != nil || activeOptionDragSourceID != nil else {
+            stopOptionAutoScroll()
+            return
+        }
+        guard optionScrollViewportHeight > 0 else { return }
+
+        let edgeBand: CGFloat = 84
+        let direction: Int
+        if location.y < edgeBand {
+            direction = -1
+        } else if location.y > optionScrollViewportHeight - edgeBand {
+            direction = 1
+        } else {
+            direction = 0
+        }
+
+        guard direction != optionAutoScrollDirection else { return }
+        optionAutoScrollDirection = direction
+        optionAutoScrollGeneration += 1
+
+        if direction != 0 {
+            scheduleOptionAutoScrollTick(generation: optionAutoScrollGeneration)
+        }
+    }
+
+    private func stopOptionAutoScroll() {
+        guard optionAutoScrollDirection != 0 else { return }
+        optionAutoScrollDirection = 0
+        optionAutoScrollGeneration += 1
+    }
+
+    private func scheduleOptionAutoScrollTick(generation: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.11) {
+            guard optionAutoScrollGeneration == generation else { return }
+            guard optionAutoScrollDirection != 0 else { return }
+            guard draggedOption != nil || activeOptionDragSourceID != nil else {
+                stopOptionAutoScroll()
+                return
+            }
+
+            optionAutoScrollStep(direction: optionAutoScrollDirection)
+            scheduleOptionAutoScrollTick(generation: generation)
+        }
+    }
+
+    private func optionAutoScrollStep(direction: Int) {
+        let targetIDs = optionScrollTargetIDs
+        guard !targetIDs.isEmpty else { return }
+        let targetIDSet = Set(targetIDs)
+        let visibleFrames = optionDropFrames.filter { frame in
+            targetIDSet.contains(frame.id)
+                && frame.rect.maxY >= 0
+                && frame.rect.minY <= optionScrollViewportHeight
+        }
+        let currentFrame = direction > 0
+            ? visibleFrames.max(by: { $0.rect.maxY < $1.rect.maxY })
+            : visibleFrames.min(by: { $0.rect.minY < $1.rect.minY })
+        guard let currentFrame, let currentIndex = targetIDs.firstIndex(of: currentFrame.id) else { return }
+
+        let targetIndex = min(max(currentIndex + direction, 0), targetIDs.count - 1)
+        guard targetIndex != currentIndex else { return }
+
+        optionAutoScrollRequestToken += 1
+        optionAutoScrollRequest = OptionAutoScrollRequest(
+            targetID: targetIDs[targetIndex],
+            anchor: direction > 0 ? .bottom : .top,
+            token: optionAutoScrollRequestToken
+        )
+    }
+
+    private func optionDropFrameReader(id: String, kind: OptionDropFrame.Kind) -> some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: OptionDropFramePreferenceKey.self,
+                value: [
+                    OptionDropFrame(
+                        id: id,
+                        kind: kind,
+                        rect: proxy.frame(in: .named(optionDropCoordinateSpace))
+                    )
+                ]
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func optionDragPreviewOverlay() -> some View {
+        if let row = optionDragPreviewRow, let location = optionDragPreviewLocation {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(color(from: row.color) ?? .gray)
+                    .frame(width: 12, height: 12)
+
+                Text(row.value)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(.primary)
+
+                Image(systemName: optionDragHasActionableTarget ? "plus.circle.fill" : "nosign")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(optionDragHasActionableTarget ? Color.accentColor : Color.secondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .frame(maxWidth: 190, alignment: .leading)
+            .background(.regularMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
+            .scaleEffect(0.96)
+            .position(x: location.x + 54, y: location.y - 22)
+            .allowsHitTesting(false)
+            .transition(.opacity.combined(with: .scale(scale: 0.94)))
+        }
+    }
+
+    private var optionDragHasActionableTarget: Bool {
+        dropTargetRowID != nil || isPromoteDropTargeted
+    }
+
+    private func optionRowDragGesture(for payload: OptionDragPayload, row: OptionsDisplayRow) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.5, maximumDistance: 18)
+            .sequenced(before: DragGesture(minimumDistance: 6, coordinateSpace: .named(optionDropCoordinateSpace)))
+            .onChanged { value in
+                switch value {
+                case .first(true):
+                    scheduleOptionHoldActivation(payload, row: row)
+                case .second(true, let dragValue):
+                    if let location = dragValue?.location {
+                        updateOptionDragHover(payload, row: row, at: location)
+                    }
+                default:
+                    break
+                }
+            }
+            .onEnded { value in
+                cancelOptionHoldActivation()
+                switch value {
+                case .second(true, let dragValue):
+                    completeOptionDrag(payload, at: dragValue?.location)
+                case .first(true):
+                    completeOptionDrag(payload, at: nil)
+                default:
+                    resetOptionDrag()
+                }
+            }
     }
 
     private func suppressOptionRowTap(for interval: TimeInterval = 0.55) {
@@ -3640,40 +3823,26 @@ private struct OptionsFeatureView: View {
     }
 
     private func openOptionEditorFromRowTap(_ row: OptionsDisplayRow) {
+        cancelOptionHoldActivation()
         if Date() < optionRowTapSuppressedUntil || draggedOption != nil || activeOptionDragSourceID != nil {
             resetOptionDrag()
             suppressOptionRowTap(for: 0.25)
             return
         }
+        resetOptionDrag()
         optionEditorContext = row
-    }
-
-    private func optionDragLifecycleGesture(for payload: OptionDragPayload) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.22, maximumDistance: 10_000)
-            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
-            .onChanged { value in
-                switch value {
-                case .first(true), .second(true, _):
-                    markOptionDragPressStarted(payload)
-                default:
-                    break
-                }
-            }
-            .onEnded { _ in
-                scheduleOptionDragReleaseCleanup(for: payload)
-            }
     }
 
     private func canDropOption(_ payload: OptionDragPayload, on target: OptionsDisplayRow) -> Bool {
         switch (payload.kind, target.kind) {
         case (.category, .category):
-            return true
+            return payload.value != target.value
         case (.subcategory, .category):
-            return payload.parentValue != nil
+            return payload.parentValue != nil && payload.parentValue != target.value
         case (.incomeType, .incomeType):
-            return true
+            return payload.value != target.value
         case (.incomeSubtype, .incomeType):
-            return payload.parentValue != nil
+            return payload.parentValue != nil && payload.parentValue != target.value
         default:
             return false
         }
@@ -3795,11 +3964,15 @@ private struct OptionsFeatureView: View {
             .contentShape(Rectangle())
         }
         .background {
-            if isDropTarget {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.12))
+            ZStack {
+                optionDropFrameReader(id: optionRowScrollID(for: row), kind: .row(resolvedDropTarget))
+                if isDropTarget {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                }
             }
         }
+        .id(optionRowScrollID(for: row))
         .opacity(isDragged ? 0.58 : 1)
         .scaleEffect(isDragged ? 0.985 : 1)
         .animation(.easeInOut(duration: 0.16), value: isDragged)
@@ -3807,26 +3980,7 @@ private struct OptionsFeatureView: View {
         .onTapGesture {
             openOptionEditorFromRowTap(row)
         }
-        .simultaneousGesture(optionDragLifecycleGesture(for: payload))
-        .onDrag {
-            withAnimation(.easeInOut(duration: 0.16)) {
-                beginOptionDrag(payload)
-            }
-            return NSItemProvider(object: payload.sourceID as NSString)
-        }
-        .onDrop(
-            of: [UTType.text],
-            delegate: OptionDropDelegate(
-                target: resolvedDropTarget,
-                draggedOption: $draggedOption,
-                dropTargetRowID: $dropTargetRowID,
-                isPromoteDropTargeted: $isPromoteDropTargeted,
-                activeOptionDragSourceID: $activeOptionDragSourceID,
-                optionRowTapSuppressedUntil: $optionRowTapSuppressedUntil,
-                canDrop: { payload, target in canDropOption(payload, on: target) },
-                commitDrop: { payload, target in performOptionDrop(payload, on: target) }
-            )
-        )
+        .simultaneousGesture(optionRowDragGesture(for: payload, row: row), including: .gesture)
     }
 
     private func color(from hex: String) -> Color? {

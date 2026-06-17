@@ -553,6 +553,8 @@ struct DateRangePickerSheet: View {
                         } label: {
                             DateRangeValuePill(text: DateScope.monthLabel(draftStartMonth))
                         }
+                        .buttonStyle(.plain)
+                        .tint(.primary)
                     }
                     .onChange(of: draftStartMonth) { _, newValue in
                         if draftEndMonth < newValue {
@@ -572,6 +574,8 @@ struct DateRangePickerSheet: View {
                         } label: {
                             DateRangeValuePill(text: DateScope.monthLabel(draftEndMonth))
                         }
+                        .buttonStyle(.plain)
+                        .tint(.primary)
                     }
                 } else {
                     HStack {
