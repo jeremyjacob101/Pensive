@@ -8,6 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		0C0A9CD9A2B5176DE940EC51 /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6F8155C7EF63E9520D985E5 /* SessionStore.swift */; };
+		A00200000000000000000001 /* LedgerPresentationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000001 /* LedgerPresentationModels.swift */; };
+		A00200000000000000000002 /* LedgerFeatureViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000002 /* LedgerFeatureViewModel.swift */; };
+		A00200000000000000000003 /* LedgerFiltering.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000003 /* LedgerFiltering.swift */; };
+		A00200000000000000000004 /* LedgerFeatureScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000004 /* LedgerFeatureScreens.swift */; };
+		A00200000000000000000005 /* LedgerFilterViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000005 /* LedgerFilterViews.swift */; };
+		A00200000000000000000006 /* LedgerEditorSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000006 /* LedgerEditorSheets.swift */; };
+		A00200000000000000000007 /* ShellSearchAndToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000007 /* ShellSearchAndToolbar.swift */; };
+		A00200000000000000000008 /* ShellDateControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000008 /* ShellDateControls.swift */; };
+		A00200000000000000000009 /* LoadStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00200000000000000000009 /* LoadStateView.swift */; };
+		A00100000000000000000001 /* NotepadFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000001 /* NotepadFeature.swift */; };
+		A00100000000000000000002 /* TrackingFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000002 /* TrackingFeature.swift */; };
+		A00100000000000000000003 /* OptionsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000003 /* OptionsModels.swift */; };
+		A00100000000000000000004 /* OptionsEditorSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000004 /* OptionsEditorSheets.swift */; };
+		A00100000000000000000005 /* OptionsFeatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000005 /* OptionsFeatureView.swift */; };
+		A00100000000000000000006 /* QuickAddFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000006 /* QuickAddFeature.swift */; };
+		A00100000000000000000007 /* FeatureRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000007 /* FeatureRootView.swift */; };
+		A00100000000000000000008 /* UserFeatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000008 /* UserFeatureView.swift */; };
+		A00100000000000000000009 /* BreakdownFeatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100000000000000000009 /* BreakdownFeatureView.swift */; };
 		2880EF2873615DD899935E23 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37FC40024A84513ECC515CEC /* RootView.swift */; };
 		32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */; };
 		33337397C5FD86C2E8F7E49C /* RecurringsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */; };
@@ -16,14 +34,11 @@
 		3A9BC558CDA2410D937EFC38 /* LedgerBreakdownComputingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */; };
 		4C798FC6CB50493AB847739E /* HTTPClientAuthRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FF70FC417186F4C2E03FBF /* HTTPClientAuthRecoveryTests.swift */; };
 		570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1060E8EA814D7616BF2AC146 /* PensiveApp.swift */; };
-		59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D911F3785CF260C05649961 /* LedgerViews.swift */; };
 		5D5E0740554D17E10CB17E92 /* SessionStoreAuthRefreshTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */; };
 		72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC9D0A2E816730A432528113 /* RecurringsFeature.swift */; };
-		88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */; };
 		8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63217945C8760A733FCC3CD /* OptionsMutationLogic.swift */; };
 		9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FCE0385815003415646F8C4 /* AuthState.swift */; };
 		9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */; };
-		A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */; };
 		AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D71033083881BE72A1960881 /* Assets.xcassets */; };
 		B29B65867F1DD23E83411C90 /* PensiveUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3DDE09513C53DC99DA6A62B /* PensiveUITests.swift */; };
 		BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */; };
@@ -55,12 +70,29 @@
 
 /* Begin PBXFileReference section */
 		066E4A37D8D8F5AC6E14E157 /* SessionStoreAuthRefreshTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreAuthRefreshTests.swift; sourceTree = "<group>"; };
+		B00200000000000000000001 /* LedgerPresentationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerPresentationModels.swift; sourceTree = "<group>"; };
+		B00200000000000000000002 /* LedgerFeatureViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeatureViewModel.swift; sourceTree = "<group>"; };
+		B00200000000000000000003 /* LedgerFiltering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFiltering.swift; sourceTree = "<group>"; };
+		B00200000000000000000004 /* LedgerFeatureScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeatureScreens.swift; sourceTree = "<group>"; };
+		B00200000000000000000005 /* LedgerFilterViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFilterViews.swift; sourceTree = "<group>"; };
+		B00200000000000000000006 /* LedgerEditorSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerEditorSheets.swift; sourceTree = "<group>"; };
+		B00200000000000000000007 /* ShellSearchAndToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSearchAndToolbar.swift; sourceTree = "<group>"; };
+		B00200000000000000000008 /* ShellDateControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellDateControls.swift; sourceTree = "<group>"; };
+		B00200000000000000000009 /* LoadStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadStateView.swift; sourceTree = "<group>"; };
+		B00100000000000000000001 /* NotepadFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotepadFeature.swift; sourceTree = "<group>"; };
+		B00100000000000000000002 /* TrackingFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackingFeature.swift; sourceTree = "<group>"; };
+		B00100000000000000000003 /* OptionsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsModels.swift; sourceTree = "<group>"; };
+		B00100000000000000000004 /* OptionsEditorSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsEditorSheets.swift; sourceTree = "<group>"; };
+		B00100000000000000000005 /* OptionsFeatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptionsFeatureView.swift; sourceTree = "<group>"; };
+		B00100000000000000000006 /* QuickAddFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddFeature.swift; sourceTree = "<group>"; };
+		B00100000000000000000007 /* FeatureRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureRootView.swift; sourceTree = "<group>"; };
+		B00100000000000000000008 /* UserFeatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserFeatureView.swift; sourceTree = "<group>"; };
+		B00100000000000000000009 /* BreakdownFeatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakdownFeatureView.swift; sourceTree = "<group>"; };
 		0FCE0385815003415646F8C4 /* AuthState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthState.swift; sourceTree = "<group>"; };
 		1060E8EA814D7616BF2AC146 /* PensiveApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PensiveApp.swift; sourceTree = "<group>"; };
 		12C8A5DC05FE932702BEE04F /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		14B0A5238291F25F063E45FD /* Pensive.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pensive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		27991D4F555E429982C9C524 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
-		2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeature.swift; sourceTree = "<group>"; };
 		3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsView.swift; sourceTree = "<group>"; };
 		37FC40024A84513ECC515CEC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
@@ -70,8 +102,6 @@
 		4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFilterStore.swift; sourceTree = "<group>"; };
 		552F5E927E4127A7C5281754 /* LedgerBreakdownComputingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerBreakdownComputingTests.swift; sourceTree = "<group>"; };
 		5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellModels.swift; sourceTree = "<group>"; };
-		5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedControls.swift; sourceTree = "<group>"; };
-		6D911F3785CF260C05649961 /* LedgerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerViews.swift; sourceTree = "<group>"; };
 		726D060B5033637BD6C1931C /* LedgerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModels.swift; sourceTree = "<group>"; };
 		8CEAE2AA2253F8FA91C7EEB3 /* ConvexAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConvexAPI.swift; sourceTree = "<group>"; };
 		B6338EF50F2E870528AF809B /* PensiveTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PensiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,9 +126,62 @@
 			children = (
 				5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */,
 				4079923627B6EFA6F2BE16E7 /* AppShellView.swift */,
-				5EA56BA91B8B941EAAA88FDC /* SharedControls.swift */,
+				B00100000000000000000007 /* FeatureRootView.swift */,
+				B00200000000000000000009 /* LoadStateView.swift */,
+				B00200000000000000000008 /* ShellDateControls.swift */,
+				B00200000000000000000007 /* ShellSearchAndToolbar.swift */,
 			);
 			path = Shell;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000001 /* Notepad */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000001 /* NotepadFeature.swift */,
+			);
+			path = Notepad;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000002 /* Tracking */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000002 /* TrackingFeature.swift */,
+			);
+			path = Tracking;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000003 /* Options */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000003 /* OptionsModels.swift */,
+				B00100000000000000000004 /* OptionsEditorSheets.swift */,
+				B00100000000000000000005 /* OptionsFeatureView.swift */,
+			);
+			path = Options;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000004 /* QuickAdd */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000006 /* QuickAddFeature.swift */,
+			);
+			path = QuickAdd;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000005 /* User */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000008 /* UserFeatureView.swift */,
+			);
+			path = User;
+			sourceTree = "<group>";
+		};
+		C00100000000000000000006 /* Breakdown */ = {
+			isa = PBXGroup;
+			children = (
+				B00100000000000000000009 /* BreakdownFeatureView.swift */,
+			);
+			path = Breakdown;
 			sourceTree = "<group>";
 		};
 		1D522BA251E12249494BF054 /* Ledger */ = {
@@ -266,9 +349,15 @@
 			isa = PBXGroup;
 			children = (
 				48693613505F00F7FEBFEEE7 /* Auth */,
+				C00100000000000000000006 /* Breakdown */,
 				DCF720E836A0C8BC588DB44E /* Ledger */,
+				C00100000000000000000001 /* Notepad */,
+				C00100000000000000000003 /* Options */,
+				C00100000000000000000004 /* QuickAdd */,
 				F3715626E52514AAE4DAFAE6 /* Recurrings */,
 				1C1FFB6B1DD8686D7A8281C1 /* Shell */,
+				C00100000000000000000002 /* Tracking */,
+				C00100000000000000000005 /* User */,
 			);
 			path = Presentation;
 			sourceTree = "<group>";
@@ -276,8 +365,12 @@
 		DCF720E836A0C8BC588DB44E /* Ledger */ = {
 			isa = PBXGroup;
 			children = (
-				2C02665BC4DC026C40EDE06E /* LedgerFeature.swift */,
-				6D911F3785CF260C05649961 /* LedgerViews.swift */,
+				B00200000000000000000006 /* LedgerEditorSheets.swift */,
+				B00200000000000000000005 /* LedgerFilterViews.swift */,
+				B00200000000000000000003 /* LedgerFiltering.swift */,
+				B00200000000000000000004 /* LedgerFeatureScreens.swift */,
+				B00200000000000000000002 /* LedgerFeatureViewModel.swift */,
+				B00200000000000000000001 /* LedgerPresentationModels.swift */,
 			);
 			path = Ledger;
 			sourceTree = "<group>";
@@ -419,23 +512,38 @@
 				C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */,
 				D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */,
 				EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */,
+				A00100000000000000000007 /* FeatureRootView.swift in Sources */,
+				A00100000000000000000009 /* BreakdownFeatureView.swift in Sources */,
 				9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */,
 				32598E2BA3485EBB94C22AC5 /* AuthTokenStore.swift in Sources */,
 				E6CDB1D2FD90169D1C4AB86E /* AuthViewModel.swift in Sources */,
 				9667DDD6196C57FF99F9CB42 /* ConvexAPI.swift in Sources */,
 				F3838279BB7FB0590509ECC2 /* ConvexTransport.swift in Sources */,
 				CF035D7019DEA233A9017889 /* HTTPClient.swift in Sources */,
-				88693FA8B0F3F36995A0BEF2 /* LedgerFeature.swift in Sources */,
+				A00200000000000000000001 /* LedgerPresentationModels.swift in Sources */,
+				A00200000000000000000002 /* LedgerFeatureViewModel.swift in Sources */,
+				A00200000000000000000003 /* LedgerFiltering.swift in Sources */,
+				A00200000000000000000004 /* LedgerFeatureScreens.swift in Sources */,
+				A00200000000000000000005 /* LedgerFilterViews.swift in Sources */,
+				A00200000000000000000006 /* LedgerEditorSheets.swift in Sources */,
 				BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */,
 				3878FF85A81FB0C58414CACD /* LedgerModels.swift in Sources */,
-				59D16D9BC91F9057E4695658 /* LedgerViews.swift in Sources */,
 				8D686B9DBAA0F5F701A9BAE9 /* OptionsMutationLogic.swift in Sources */,
+				A00100000000000000000001 /* NotepadFeature.swift in Sources */,
+				A00100000000000000000003 /* OptionsModels.swift in Sources */,
+				A00100000000000000000004 /* OptionsEditorSheets.swift in Sources */,
+				A00100000000000000000005 /* OptionsFeatureView.swift in Sources */,
 				570A5E82945D7E0FD6CFC91C /* PensiveApp.swift in Sources */,
+				A00100000000000000000006 /* QuickAddFeature.swift in Sources */,
 				72D4BB0592C9D602D7AC1C4B /* RecurringsFeature.swift in Sources */,
 				33337397C5FD86C2E8F7E49C /* RecurringsView.swift in Sources */,
 				2880EF2873615DD899935E23 /* RootView.swift in Sources */,
 				0C0A9CD9A2B5176DE940EC51 /* SessionStore.swift in Sources */,
-				A96D52A297C484431CF9AC65 /* SharedControls.swift in Sources */,
+				A00200000000000000000007 /* ShellSearchAndToolbar.swift in Sources */,
+				A00200000000000000000008 /* ShellDateControls.swift in Sources */,
+				A00200000000000000000009 /* LoadStateView.swift in Sources */,
+				A00100000000000000000002 /* TrackingFeature.swift in Sources */,
+				A00100000000000000000008 /* UserFeatureView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
