@@ -2,6 +2,56 @@ import XCTest
 @testable import Pensive
 
 final class LedgerBreakdownComputingTests: XCTestCase {
+    func testLedgerFiltersApplyAccountAndCategoryAsSeparateFilters() {
+        let rows = [
+            expense(id: "checking-food", account: "Checking", category: "Food", subcategory: "Groceries", amount: 10, effective: 10),
+            expense(id: "savings-food", account: "Savings", category: "Food", subcategory: "Groceries", amount: 20, effective: 20),
+            expense(id: "checking-rent", account: "Checking", category: "Rent", subcategory: nil, amount: 30, effective: 30),
+            expense(id: "checking-uncategorized", account: "Checking", category: "", subcategory: nil, amount: 40, effective: 40)
+        ]
+
+        let filtered = LedgerFiltering.filterExpenses(
+            rows,
+            deselectedAccounts: ["Savings"],
+            deselectedCategories: [],
+            searchText: ""
+        )
+
+        XCTAssertEqual(filtered.map(\.id), ["checking-food", "checking-rent", "checking-uncategorized"])
+
+        let deselectedCategory = LedgerFiltering.filterExpenses(
+            rows,
+            deselectedAccounts: ["Savings"],
+            deselectedCategories: ["Rent"],
+            searchText: ""
+        )
+        XCTAssertEqual(deselectedCategory.map(\.id), ["checking-food", "checking-uncategorized"])
+
+        let deselectedAccount = LedgerFiltering.filterExpenses(
+            rows,
+            deselectedAccounts: ["Checking", "Savings"],
+            deselectedCategories: [],
+            searchText: ""
+        )
+        XCTAssertTrue(deselectedAccount.isEmpty)
+    }
+
+    func testIncomingFiltersUseSubtypeKeysWithoutMatchingAnotherFilterDimension() {
+        let rows = [
+            incoming(id: "salary", account: "Checking", type: "Salary", subtype: "Monthly", amount: 10, effective: 10),
+            incoming(id: "gift", account: "Savings", type: "Gift", subtype: nil, amount: 20, effective: 20)
+        ]
+
+        let filtered = LedgerFiltering.filterIncomings(
+            rows,
+            deselectedAccounts: ["Savings"],
+            deselectedCategories: [],
+            searchText: ""
+        )
+
+        XCTAssertEqual(filtered.map(\.id), ["salary"])
+    }
+
     func testExpenseCategoryBreakdownUsesEffectiveAmountTotals() {
         let rows = [
             expense(id: "1", category: "Rent", subcategory: "Apartment", amount: 6000, effective: 5800),
@@ -61,11 +111,11 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(family?.amount ?? 0, 1000, accuracy: 0.0001)
     }
 
-    private func expense(id: String, category: String, subcategory: String?, amount: Double, effective: Double) -> Expense {
+    private func expense(id: String, account: String = "Checking", category: String, subcategory: String?, amount: Double, effective: Double) -> Expense {
         Expense(
             id: id,
             name: "Expense \(id)",
-            account: "Checking",
+            account: account,
             category: category,
             subcategory: subcategory,
             amount: amount,
@@ -83,14 +133,14 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         )
     }
 
-    private func incoming(id: String, type: String, subtype: String?, amount: Double, effective: Double) -> Incoming {
+    private func incoming(id: String, account: String = "Checking", type: String, subtype: String?, amount: Double, effective: Double) -> Incoming {
         Incoming(
             id: id,
             name: "Incoming \(id)",
             paidBy: "Employer",
             incomeType: type,
             incomeSubtype: subtype,
-            account: "Checking",
+            account: account,
             amount: amount,
             effectiveAmount: effective,
             effectiveAmountMode: .auto,

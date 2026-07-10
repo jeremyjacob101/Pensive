@@ -5,7 +5,8 @@ final class LedgerFeatureViewModel: ObservableObject {
     @Published private(set) var state: ViewLoadState = .loading
     @Published private(set) var rows: [LedgerItemViewData] = []
     @Published var searchText: String = ""
-    @Published var selectedFilters: Set<String> = []
+    @Published private(set) var selectedAccountFilters: Set<String> = []
+    @Published private(set) var selectedCategoryFilters: Set<String> = []
     @Published var scope: DateScope
     @Published var isSaving = false
     @Published private(set) var isScopeLoading = false
@@ -22,6 +23,9 @@ final class LedgerFeatureViewModel: ObservableObject {
     private let calendar: Calendar
     private let currencyFormatter: NumberFormatter
     private let filterKey: String
+    private let accountFilterKey: String
+    private let categoryFilterKey: String
+    private let filterSelectionVersionKey: String
 
     private var expenses: [Expense] = []
     private var incomings: [Incoming] = []
@@ -39,7 +43,11 @@ final class LedgerFeatureViewModel: ObservableObject {
         self.filterStore = filterStore
         self.calendar = calendar
         self.filterKey = "ledger.filters.\(kind.rawValue)"
-        self.selectedFilters = filterStore.load(for: filterKey)
+        self.accountFilterKey = "\(filterKey).accounts"
+        self.categoryFilterKey = "\(filterKey).categories"
+        self.filterSelectionVersionKey = "\(filterKey).selection-version"
+        self.selectedAccountFilters = filterStore.load(for: accountFilterKey)
+        self.selectedCategoryFilters = filterStore.load(for: categoryFilterKey)
 
         let today = Date()
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
@@ -84,6 +92,10 @@ final class LedgerFeatureViewModel: ObservableObject {
             }
         }
         do {
+            let previousAccounts = Set(accountFilterChoices)
+            let previousCategories = Set(configuredCategoryFilterRows.map(\.filterKey)).union(loadedCategoryFilterValues)
+            let shouldExpandAccounts = shouldExpandSelection(selectedAccountFilters, previousValues: previousAccounts, key: accountFilterKey)
+            let shouldExpandCategories = shouldExpandSelection(selectedCategoryFilters, previousValues: previousCategories, key: categoryFilterKey)
             switch kind {
             case .expense:
                 let loadedExpenses = try await api.expenses.listByDateScope(scope.request(calendar: calendar)).map(Expense.init)
@@ -93,6 +105,12 @@ final class LedgerFeatureViewModel: ObservableObject {
                 let loadedIncomings = try await api.incomings.listByDateScope(scope.request(calendar: calendar)).map(Incoming.init)
                 guard !Task.isCancelled, activeRefreshID == refreshID else { return }
                 incomings = loadedIncomings
+            }
+            if shouldExpandAccounts {
+                selectedAccountFilters.formUnion(loadedAccountFilterValues)
+            }
+            if shouldExpandCategories {
+                selectedCategoryFilters.formUnion(loadedCategoryFilterValues)
             }
             applyFiltersAndSearch()
         } catch {
@@ -129,8 +147,11 @@ final class LedgerFeatureViewModel: ObservableObject {
                 "incomeType": options.incomeType,
                 "incomeSubtype": options.incomeSubtype
             ]
-            if selectedFilters.isEmpty {
-                selectedFilters = Set(filterChoices)
+            if !filterStore.contains(filterSelectionVersionKey) {
+                initializeFilterSelectionsFromScratch()
+                filterStore.save(["2"], for: filterSelectionVersionKey)
+            } else {
+                initializeFilterSelectionsIfNeeded()
             }
         } catch {
             alertText = message(for: error)
@@ -169,9 +190,15 @@ final class LedgerFeatureViewModel: ObservableObject {
         }
     }
 
-    func updateFilters(_ values: Set<String>) {
-        selectedFilters = values
-        filterStore.save(values, for: filterKey)
+    func updateAccountFilters(_ values: Set<String>) {
+        selectedAccountFilters = values
+        filterStore.save(values, for: accountFilterKey)
+        applyFiltersAndSearch()
+    }
+
+    func updateCategoryFilters(_ values: Set<String>) {
+        selectedCategoryFilters = values
+        filterStore.save(values, for: categoryFilterKey)
         applyFiltersAndSearch()
     }
 
@@ -197,10 +224,10 @@ final class LedgerFeatureViewModel: ObservableObject {
     var breakdownSummary: LedgerBreakdownSummary {
         switch kind {
         case .expense:
-            let filtered = LedgerFiltering.filterExpenses(expenses, selected: selectedFilters, searchText: searchText)
+            let filtered = LedgerFiltering.filterExpenses(expenses, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText)
             return makeExpenseBreakdownSummary(rows: filtered, mode: breakdownMode)
         case .incoming:
-            let filtered = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText)
+            let filtered = LedgerFiltering.filterIncomings(incomings, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText)
             return makeIncomingBreakdownSummary(rows: filtered, mode: breakdownMode)
         }
     }
@@ -219,10 +246,10 @@ final class LedgerFeatureViewModel: ObservableObject {
         let rawRows: [(amount: Double, date: Date, monthYears: [MonthYear])]
         switch kind {
         case .expense:
-            let filtered = LedgerFiltering.filterExpenses(expenses, selected: selectedFilters, searchText: searchText)
+            let filtered = LedgerFiltering.filterExpenses(expenses, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText)
             rawRows = filtered.map { ($0.effectiveAmount, $0.date, $0.monthYears) }
         case .incoming:
-            let filtered = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText)
+            let filtered = LedgerFiltering.filterIncomings(incomings, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText)
             rawRows = filtered.map { ($0.effectiveAmount, $0.date, $0.monthYears) }
         }
         return months.map { month in
@@ -246,10 +273,6 @@ final class LedgerFeatureViewModel: ObservableObject {
         return rows.filter { $0.isFinite }.reduce(0, +)
     }
 
-    var filterChoices: [String] {
-        Array(Set(accountFilterChoices + categoryFilterRows.map(\.value))).sorted()
-    }
-
     var accountFilterChoices: [String] {
         let fromData: Set<String>
         switch kind {
@@ -267,6 +290,22 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     var categoryFilterRows: [LedgerFilterOptionRow] {
+        let configuredRows = configuredCategoryFilterRows
+        var knownKeys = Set(configuredRows.map(\.filterKey))
+        let additionalRows = loadedCategoryFilterRows.filter { knownKeys.insert($0.filterKey).inserted }
+            .sorted { $0.filterKey.localizedCaseInsensitiveCompare($1.filterKey) == .orderedAscending }
+        return configuredRows + additionalRows
+    }
+
+    private var deselectedAccountFilters: Set<String> {
+        Set(accountFilterChoices).subtracting(selectedAccountFilters)
+    }
+
+    private var deselectedCategoryFilters: Set<String> {
+        Set(categoryFilterRows.map(\.filterKey)).subtracting(selectedCategoryFilters)
+    }
+
+    private var configuredCategoryFilterRows: [LedgerFilterOptionRow] {
         switch kind {
         case .expense:
             return nestedFilterRows(parents: optionsByKind["category"] ?? [], children: optionsByKind["subcategory"] ?? [])
@@ -521,11 +560,113 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func applyFiltersAndSearch() {
         switch kind {
         case .expense:
-            rows = LedgerFiltering.filterExpenses(expenses, selected: selectedFilters, searchText: searchText).map(expenseRow)
+            rows = LedgerFiltering.filterExpenses(expenses, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText).map(expenseRow)
         case .incoming:
-            rows = LedgerFiltering.filterIncomings(incomings, selected: selectedFilters, searchText: searchText).map(incomingRow)
+            rows = LedgerFiltering.filterIncomings(incomings, deselectedAccounts: deselectedAccountFilters, deselectedCategories: deselectedCategoryFilters, searchText: searchText).map(incomingRow)
         }
         state = .content
+    }
+
+    private var loadedAccountFilterValues: Set<String> {
+        switch kind {
+        case .expense:
+            return Set(expenses.map(\.account).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        case .incoming:
+            return Set(incomings.map(\.account).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        }
+    }
+
+    private var loadedCategoryFilterValues: Set<String> {
+        switch kind {
+        case .expense:
+            return Set(expenses.map { LedgerFiltering.categoryFilterKey(parent: $0.category, child: $0.subcategory) }.filter { !$0.isEmpty })
+        case .incoming:
+            return Set(incomings.map { LedgerFiltering.categoryFilterKey(parent: $0.incomeType, child: $0.incomeSubtype) }.filter { !$0.isEmpty })
+        }
+    }
+
+    private var loadedCategoryFilterRows: [LedgerFilterOptionRow] {
+        switch kind {
+        case .expense:
+            return expenses.compactMap { row in
+                makeLoadedCategoryFilterRow(parent: row.category, child: row.subcategory)
+            }
+        case .incoming:
+            return incomings.compactMap { row in
+                makeLoadedCategoryFilterRow(parent: row.incomeType, child: row.incomeSubtype)
+            }
+        }
+    }
+
+    private func makeLoadedCategoryFilterRow(parent: String, child: String?) -> LedgerFilterOptionRow? {
+        let parent = parent.trimmingCharacters(in: .whitespacesAndNewlines)
+        let child = child?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !parent.isEmpty else { return nil }
+        return LedgerFilterOptionRow(
+            value: child ?? parent,
+            color: nil,
+            parentValue: child == nil ? nil : parent,
+            indentationLevel: child == nil ? 0 : 1
+        )
+    }
+
+    private func shouldExpandSelection(_ selected: Set<String>, previousValues: Set<String>, key: String) -> Bool {
+        if previousValues.isEmpty {
+            return !filterStore.contains(key)
+        }
+        return previousValues.isSubset(of: selected)
+    }
+
+    private func initializeFilterSelectionsIfNeeded() {
+        let accountValues = Set(accountFilterChoices)
+        let categoryRows = categoryFilterRows
+        let categoryValues = Set(categoryRows.map(\.filterKey))
+
+        if !filterStore.contains(accountFilterKey) && !filterStore.contains(categoryFilterKey) && filterStore.contains(filterKey) {
+            let legacyValues = filterStore.load(for: filterKey)
+            let legacyAccountValues = legacyValues.intersection(accountValues)
+            let legacyCategoryValues = Set(categoryRows.filter { legacyValues.contains($0.value) }.map(\.filterKey))
+            let configuredCategoryValues = Set(configuredCategoryFilterRows.map(\.filterKey))
+
+            selectedAccountFilters = legacyAccountValues.isSuperset(of: accountValues) ? accountValues : legacyAccountValues
+            selectedCategoryFilters = !configuredCategoryValues.isEmpty && legacyCategoryValues.isSuperset(of: configuredCategoryValues)
+                ? categoryValues
+                : legacyCategoryValues
+            filterStore.save(selectedAccountFilters, for: accountFilterKey)
+            filterStore.save(selectedCategoryFilters, for: categoryFilterKey)
+            applyFiltersAndSearch()
+            return
+        }
+
+        if !filterStore.contains(accountFilterKey) {
+            selectedAccountFilters = accountValues
+            filterStore.save(selectedAccountFilters, for: accountFilterKey)
+        } else {
+            selectedAccountFilters.formIntersection(accountValues)
+        }
+
+        if !filterStore.contains(categoryFilterKey) {
+            selectedCategoryFilters = categoryValues
+            filterStore.save(selectedCategoryFilters, for: categoryFilterKey)
+        } else {
+            let configuredValues = Set(configuredCategoryFilterRows.map(\.filterKey))
+            if !configuredValues.isEmpty && selectedCategoryFilters.isSuperset(of: configuredValues) {
+                selectedCategoryFilters = categoryValues
+            } else {
+                selectedCategoryFilters.formIntersection(categoryValues)
+            }
+            filterStore.save(selectedCategoryFilters, for: categoryFilterKey)
+        }
+
+        applyFiltersAndSearch()
+    }
+
+    private func initializeFilterSelectionsFromScratch() {
+        selectedAccountFilters = Set(accountFilterChoices)
+        selectedCategoryFilters = Set(categoryFilterRows.map(\.filterKey))
+        filterStore.save(selectedAccountFilters, for: accountFilterKey)
+        filterStore.save(selectedCategoryFilters, for: categoryFilterKey)
+        applyFiltersAndSearch()
     }
 
     private func nestedFilterRows(parents: [UserOptionRow], children: [UserOptionRow]) -> [LedgerFilterOptionRow] {

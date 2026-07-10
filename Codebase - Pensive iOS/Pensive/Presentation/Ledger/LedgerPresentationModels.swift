@@ -28,7 +28,11 @@ struct LedgerFilterOptionRow: Identifiable {
     let parentValue: String?
     let indentationLevel: Int
 
-    var id: String { [parentValue ?? "", value, "\(indentationLevel)"].joined(separator: "|") }
+    var filterKey: String {
+        LedgerFiltering.categoryFilterKey(parent: parentValue ?? "", child: value)
+    }
+
+    var id: String { filterKey }
 }
 
 struct ExpenseEditorDraft {

@@ -3,6 +3,7 @@ import Foundation
 protocol LedgerFilterStoring {
     func load(for key: String) -> Set<String>
     func save(_ values: Set<String>, for key: String)
+    func contains(_ key: String) -> Bool
 }
 
 final class LedgerFilterStore: LedgerFilterStoring {
@@ -18,5 +19,9 @@ final class LedgerFilterStore: LedgerFilterStoring {
 
     func save(_ values: Set<String>, for key: String) {
         defaults.set(Array(values).sorted(), forKey: key)
+    }
+
+    func contains(_ key: String) -> Bool {
+        defaults.object(forKey: key) != nil
     }
 }

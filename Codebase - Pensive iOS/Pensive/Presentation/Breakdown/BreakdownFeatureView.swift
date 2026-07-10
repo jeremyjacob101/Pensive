@@ -81,7 +81,7 @@ private struct BreakdownFilterSheet: View {
                         ForEach(activeVM.categoryFilterRows) { row in
                             LedgerCategoryFilterRow(
                                 row: row,
-                                isSelected: isSelectedBinding(for: row.value)
+                                isSelected: isSelectedBinding(for: row.filterKey)
                             )
                         }
                     }
@@ -101,37 +101,49 @@ private struct BreakdownFilterSheet: View {
 
     private func isSelectedBinding(for value: String) -> Binding<Bool> {
         Binding {
-            activeVM.selectedFilters.contains(value)
+            selectedValues.contains(value)
         } set: { isSelected in
-            var next = activeVM.selectedFilters
+            var next = selectedValues
             if isSelected {
                 next.insert(value)
             } else {
                 next.remove(value)
             }
-            activeVM.updateFilters(next)
+            updateSelectedValues(next)
+        }
+    }
+
+    private var selectedValues: Set<String> {
+        selectedTab == .account ? activeVM.selectedAccountFilters : activeVM.selectedCategoryFilters
+    }
+
+    private func updateSelectedValues(_ values: Set<String>) {
+        if selectedTab == .account {
+            activeVM.updateAccountFilters(values)
+        } else {
+            activeVM.updateCategoryFilters(values)
         }
     }
 
     private var allCategoriesSelected: Bool {
-        let categoryValues = Set(activeVM.categoryFilterRows.map(\.value))
-        return activeVM.selectedFilters.isSuperset(of: categoryValues)
+        let categoryValues = Set(activeVM.categoryFilterRows.map(\.filterKey))
+        return activeVM.selectedCategoryFilters.isSuperset(of: categoryValues)
     }
 
     private var noCategoriesSelected: Bool {
-        let categoryValues = Set(activeVM.categoryFilterRows.map(\.value))
-        return activeVM.selectedFilters.isDisjoint(with: categoryValues)
+        let categoryValues = Set(activeVM.categoryFilterRows.map(\.filterKey))
+        return activeVM.selectedCategoryFilters.isDisjoint(with: categoryValues)
     }
 
     private func updateCategorySelection(selectAll: Bool) {
-        var next = activeVM.selectedFilters
-        let values = Set(activeVM.categoryFilterRows.map(\.value))
+        var next = activeVM.selectedCategoryFilters
+        let values = Set(activeVM.categoryFilterRows.map(\.filterKey))
         if selectAll {
             next.formUnion(values)
         } else {
             next.subtract(values)
         }
-        activeVM.updateFilters(next)
+        activeVM.updateCategoryFilters(next)
     }
 }
 
@@ -310,4 +322,3 @@ struct BreakdownFeatureView: View {
         await incomingVM.refresh()
     }
 }
-

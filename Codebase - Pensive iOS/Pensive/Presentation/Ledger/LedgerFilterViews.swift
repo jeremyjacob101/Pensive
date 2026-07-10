@@ -72,7 +72,7 @@ struct LedgerFilterSheet: View {
                         ForEach(viewModel.categoryFilterRows) { row in
                             LedgerCategoryFilterRow(
                                 row: row,
-                                isSelected: isSelectedBinding(for: row.value)
+                                isSelected: isSelectedBinding(for: row.filterKey)
                             )
                         }
                     }
@@ -92,58 +92,70 @@ struct LedgerFilterSheet: View {
 
     private func isSelectedBinding(for value: String) -> Binding<Bool> {
         Binding {
-            viewModel.selectedFilters.contains(value)
+            selectedValues.contains(value)
         } set: { isSelected in
-            var next = viewModel.selectedFilters
+            var next = selectedValues
             if isSelected {
                 next.insert(value)
             } else {
                 next.remove(value)
             }
-            viewModel.updateFilters(next)
+            updateSelectedValues(next)
+        }
+    }
+
+    private var selectedValues: Set<String> {
+        selectedTab == .account ? viewModel.selectedAccountFilters : viewModel.selectedCategoryFilters
+    }
+
+    private func updateSelectedValues(_ values: Set<String>) {
+        if selectedTab == .account {
+            viewModel.updateAccountFilters(values)
+        } else {
+            viewModel.updateCategoryFilters(values)
         }
     }
 
     private var allAccountsSelected: Bool {
         let accountValues = Set(viewModel.accountFilterChoices)
-        return viewModel.selectedFilters.isSuperset(of: accountValues)
+        return viewModel.selectedAccountFilters.isSuperset(of: accountValues)
     }
 
     private var noAccountsSelected: Bool {
         let accountValues = Set(viewModel.accountFilterChoices)
-        return viewModel.selectedFilters.isDisjoint(with: accountValues)
+        return viewModel.selectedAccountFilters.isDisjoint(with: accountValues)
     }
 
     private func updateAccountSelection(selectAll: Bool) {
-        var next = viewModel.selectedFilters
+        var next = viewModel.selectedAccountFilters
         let values = Set(viewModel.accountFilterChoices)
         if selectAll {
             next.formUnion(values)
         } else {
             next.subtract(values)
         }
-        viewModel.updateFilters(next)
+        viewModel.updateAccountFilters(next)
     }
 
     private var allCategoriesSelected: Bool {
-        let categoryValues = Set(viewModel.categoryFilterRows.map(\.value))
-        return viewModel.selectedFilters.isSuperset(of: categoryValues)
+        let categoryValues = Set(viewModel.categoryFilterRows.map(\.filterKey))
+        return viewModel.selectedCategoryFilters.isSuperset(of: categoryValues)
     }
 
     private var noCategoriesSelected: Bool {
-        let categoryValues = Set(viewModel.categoryFilterRows.map(\.value))
-        return viewModel.selectedFilters.isDisjoint(with: categoryValues)
+        let categoryValues = Set(viewModel.categoryFilterRows.map(\.filterKey))
+        return viewModel.selectedCategoryFilters.isDisjoint(with: categoryValues)
     }
 
     private func updateCategorySelection(selectAll: Bool) {
-        var next = viewModel.selectedFilters
-        let values = Set(viewModel.categoryFilterRows.map(\.value))
+        var next = viewModel.selectedCategoryFilters
+        let values = Set(viewModel.categoryFilterRows.map(\.filterKey))
         if selectAll {
             next.formUnion(values)
         } else {
             next.subtract(values)
         }
-        viewModel.updateFilters(next)
+        viewModel.updateCategoryFilters(next)
     }
 }
 
