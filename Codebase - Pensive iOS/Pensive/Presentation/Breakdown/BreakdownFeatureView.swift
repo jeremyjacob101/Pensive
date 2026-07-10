@@ -165,8 +165,9 @@ struct BreakdownFeatureView: View {
     }()
 
     init(api: ConvexAPI) {
-        let expense = LedgerFeatureViewModel(kind: .expense, api: api)
-        let incoming = LedgerFeatureViewModel(kind: .incoming, api: api)
+        // Breakdown selections are independent for expenses and incomings, like the web page.
+        let expense = LedgerFeatureViewModel(kind: .expense, api: api, filterNamespace: "breakdown")
+        let incoming = LedgerFeatureViewModel(kind: .incoming, api: api, filterNamespace: "breakdown")
         _expenseVM = StateObject(wrappedValue: expense)
         _incomingVM = StateObject(wrappedValue: incoming)
         _rangeStartDate = State(initialValue: expense.scope.startDate)
@@ -277,8 +278,8 @@ struct BreakdownFeatureView: View {
             DateRangePickerSheet(
                 startDate: $rangeStartDate,
                 endDate: $rangeEndDate,
-                oldestMonth: expenseVM.oldestMonth,
-                newestMonth: expenseVM.newestMonth,
+                oldestMonth: oldestAvailableMonth,
+                newestMonth: newestAvailableMonth,
                 onApplyRange: { startDate, endDate in
                     let scope = DateScope(startDate: startDate, endDate: endDate, includeMonthYearOverlapOutsideDate: false)
                     setScopeOnBoth(scope)
@@ -298,9 +299,12 @@ struct BreakdownFeatureView: View {
     }
 
     private func monthly(value: Double) -> String {
-        let months = expenseVM.scope.isWholeMonthRange
-            ? LedgerScopeLogic.targetMonths(startDate: expenseVM.scope.startDate, endDate: expenseVM.scope.endDate).count
-            : 1
+        // The web breakdown averages across every calendar month touched by the range,
+        // including custom ranges that start or end mid-month.
+        let months = LedgerScopeLogic.targetMonths(
+            startDate: expenseVM.scope.startDate,
+            endDate: expenseVM.scope.endDate
+        ).count
         guard months > 0 else { return money(value) }
         return money(value / Double(months))
     }
@@ -311,10 +315,20 @@ struct BreakdownFeatureView: View {
     }
 
     private func setScopeOnBoth(_ scope: DateScope) {
-        expenseVM.setScope(scope)
-        incomingVM.setScope(scope)
+        // Breakdown intentionally includes rows applied to the selected month(s) even when
+        // their paid date falls outside a custom date window, matching the web calculation.
+        expenseVM.setScope(scope, includeMonthYearOverlapOutsideDate: true)
+        incomingVM.setScope(scope, includeMonthYearOverlapOutsideDate: true)
         rangeStartDate = scope.startDate
         rangeEndDate = scope.endDate
+    }
+
+    private var oldestAvailableMonth: MonthYear? {
+        [expenseVM.oldestMonth, incomingVM.oldestMonth].compactMap { $0 }.min()
+    }
+
+    private var newestAvailableMonth: MonthYear? {
+        [expenseVM.newestMonth, incomingVM.newestMonth].compactMap { $0 }.max()
     }
 
     private func refreshCurrent() async {

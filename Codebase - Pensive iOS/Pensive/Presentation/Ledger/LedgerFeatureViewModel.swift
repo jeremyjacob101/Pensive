@@ -37,12 +37,18 @@ final class LedgerFeatureViewModel: ObservableObject {
         case subcategory
     }
 
-    init(kind: LedgerKind, api: ConvexAPI, filterStore: LedgerFilterStoring = LedgerFilterStore(), calendar: Calendar = LedgerScopeLogic.calendar) {
+    init(
+        kind: LedgerKind,
+        api: ConvexAPI,
+        filterStore: LedgerFilterStoring = LedgerFilterStore(),
+        calendar: Calendar = LedgerScopeLogic.calendar,
+        filterNamespace: String = "ledger"
+    ) {
         self.kind = kind
         self.api = api
         self.filterStore = filterStore
         self.calendar = calendar
-        self.filterKey = "ledger.filters.\(kind.rawValue)"
+        self.filterKey = "\(filterNamespace).filters.\(kind.rawValue)"
         self.accountFilterKey = "\(filterKey).accounts"
         self.categoryFilterKey = "\(filterKey).categories"
         self.filterSelectionVersionKey = "\(filterKey).selection-version"
@@ -177,8 +183,11 @@ final class LedgerFeatureViewModel: ObservableObject {
         setScope(scope)
     }
 
-    func setScope(_ nextScope: DateScope) {
-        let next = normalizedScope(nextScope)
+    func setScope(_ nextScope: DateScope, includeMonthYearOverlapOutsideDate: Bool? = nil) {
+        let next = normalizedScope(
+            nextScope,
+            includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate
+        )
         let didChange = next != scope
         scope = next
 
@@ -602,11 +611,12 @@ final class LedgerFeatureViewModel: ObservableObject {
         let parent = parent.trimmingCharacters(in: .whitespacesAndNewlines)
         let child = child?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !parent.isEmpty else { return nil }
+        let normalizedChild = child?.isEmpty == true ? nil : child
         return LedgerFilterOptionRow(
-            value: child ?? parent,
+            value: normalizedChild ?? parent,
             color: nil,
-            parentValue: child == nil ? nil : parent,
-            indentationLevel: child == nil ? 0 : 1
+            parentValue: normalizedChild == nil ? nil : parent,
+            indentationLevel: normalizedChild == nil ? 0 : 1
         )
     }
 
@@ -715,7 +725,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         ))
     }
 
-    private func normalizedScope(_ scope: DateScope) -> DateScope {
+    private func normalizedScope(_ scope: DateScope, includeMonthYearOverlapOutsideDate: Bool? = nil) -> DateScope {
         let start = min(scope.startDate, scope.endDate)
         let end = max(scope.startDate, scope.endDate)
         let candidate = DateScope(
@@ -726,7 +736,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         return DateScope(
             startDate: start,
             endDate: end,
-            includeMonthYearOverlapOutsideDate: candidate.isWholeMonthRange
+            includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate ?? candidate.isWholeMonthRange
         )
     }
 
