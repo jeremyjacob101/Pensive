@@ -1,6 +1,35 @@
 import XCTest
 
 final class PensiveUITests: XCTestCase {
+    func testUnauthenticatedUserCanReachAndValidateSignInForm() {
+        let app = XCUIApplication()
+        configure(app, authenticated: false)
+        app.launchEnvironment["UI_TEST_UNAUTHENTICATED"] = "1"
+        app.launch()
+
+        XCTAssertTrue(app.otherElements["login_view"].waitForExistence(timeout: 10))
+        app.buttons["auth_submit_button"].tap()
+        XCTAssertTrue(app.staticTexts["Enter a username."].waitForExistence(timeout: 3))
+
+        app.segmentedControls["auth_mode_picker"].buttons["Create Account"].tap()
+        XCTAssertTrue(app.secureTextFields["confirm_password_field"].waitForExistence(timeout: 3))
+    }
+
+    func testAuthenticatedUserCanOpenExpenseLedgerAndNewExpenseForm() {
+        let app = XCUIApplication()
+        configure(app)
+        app.launchEnvironment["UI_TEST_LEDGER_FIXTURE"] = "1"
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["UI Test Expense"].waitForExistence(timeout: 10))
+        let addExpense = app.buttons["ledger_add_toolbar"]
+        XCTAssertTrue(addExpense.waitForExistence(timeout: 3))
+        addExpense.tap()
+        XCTAssertTrue(app.navigationBars["New Expense"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textFields["Name"].exists)
+        XCTAssertTrue(app.textFields["Amount"].exists)
+    }
+
     func testLaunchShowsRootView() {
         let app = XCUIApplication()
         app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
@@ -115,6 +144,20 @@ final class PensiveUITests: XCTestCase {
 
     private func normalizedTabName(_ tabName: String) -> String {
         tabName.lowercased().replacingOccurrences(of: " ", with: "")
+    }
+
+    private func configure(_ app: XCUIApplication, authenticated: Bool = true) {
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["APP_ENV_NAME"] = "UITest"
+        app.launchEnvironment["CONVEX_BASE_URL"] = "https://ui-test.convex.cloud"
+        app.launchEnvironment["CONVEX_HTTP_ACTION_BASE_URL"] = "https://ui-test.convex.cloud"
+        app.launchEnvironment["AUTH_CLIENT_ID"] = "ui-test-client"
+        app.launchEnvironment["LOG_LEVEL"] = "debug"
+        if authenticated {
+            app.launchEnvironment["UI_TEST_AUTHENTICATED_USER_ID"] = "ui-test-user"
+            app.launchEnvironment["UI_TEST_TRACKING_FIXTURE"] = "1"
+            app.launchEnvironment["UI_TEST_NOTEPAD_FIXTURE"] = "1"
+        }
     }
 
     private func element(id: String, app: XCUIApplication) -> XCUIElement {

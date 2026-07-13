@@ -14,6 +14,11 @@ struct AppContainer {
             let api = configuredAPI.api
             return AppContainer(environment: env, sessionStore: UITestSessionStore(userId: userId), api: api)
         }
+        if ProcessInfo.processInfo.environment["UI_TEST_UNAUTHENTICATED"] == "1" {
+            let tokenStore = AuthTokenStore()
+            let configuredAPI = AppContainer.makeAPI(environment: env, tokenStore: tokenStore)
+            return AppContainer(environment: env, sessionStore: UITestSessionStore(userId: nil), api: configuredAPI.api)
+        }
         #endif
         let tokenStore = AuthTokenStore()
         let configuredAPI = AppContainer.makeAPI(environment: env, tokenStore: tokenStore)
@@ -38,8 +43,12 @@ private final class UITestSessionStore: SessionStoring {
     var onStateChange: ((AuthState) -> Void)?
     private(set) var authMessage: String?
 
-    init(userId: String) {
-        self.state = .authenticated(UserSession(userId: userId, establishedAt: Date()))
+    init(userId: String?) {
+        if let userId {
+            self.state = .authenticated(UserSession(userId: userId, establishedAt: Date()))
+        } else {
+            self.state = .unauthenticated
+        }
         self.authMessage = nil
     }
 

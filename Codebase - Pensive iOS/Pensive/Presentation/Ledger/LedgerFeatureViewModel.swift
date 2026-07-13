@@ -68,6 +68,9 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     func onAppear() {
+        #if DEBUG
+        if loadDebugFixtureIfEnabled() { return }
+        #endif
         if rows.isEmpty {
             Task {
                 await refresh()
@@ -323,83 +326,87 @@ final class LedgerFeatureViewModel: ObservableObject {
         }
     }
 
-    func createExpense(_ draft: ExpenseEditorDraft) {
-        guard kind == .expense else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.expenses.create(expenseCreateDTO(from: draft))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func createExpense(_ draft: ExpenseEditorDraft) async -> Bool {
+        guard kind == .expense else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.expenses.create(expenseCreateDTO(from: draft))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func updateExpense(_ draft: ExpenseEditorDraft) {
-        guard kind == .expense, let id = draft.id else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.expenses.update(expenseUpdateDTO(from: draft, id: id))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func updateExpense(_ draft: ExpenseEditorDraft) async -> Bool {
+        guard kind == .expense, let id = draft.id else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.expenses.update(expenseUpdateDTO(from: draft, id: id))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func bulkCreateExpenses(_ drafts: [ExpenseEditorDraft]) {
-        guard kind == .expense else { return }
-        Task {
-            do {
-                _ = try await api.expenses.bulkCreate(rows: drafts.map(expenseCreateDTO))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func bulkCreateExpenses(_ drafts: [ExpenseEditorDraft]) async -> Bool {
+        guard kind == .expense else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.expenses.bulkCreate(rows: drafts.map(expenseCreateDTO))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func createIncoming(_ draft: IncomingEditorDraft) {
-        guard kind == .incoming else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.incomings.create(incomingCreateDTO(from: draft))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func createIncoming(_ draft: IncomingEditorDraft) async -> Bool {
+        guard kind == .incoming else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.incomings.create(incomingCreateDTO(from: draft))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func updateIncoming(_ draft: IncomingEditorDraft) {
-        guard kind == .incoming, let id = draft.id else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.incomings.update(incomingUpdateDTO(from: draft, id: id))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func updateIncoming(_ draft: IncomingEditorDraft) async -> Bool {
+        guard kind == .incoming, let id = draft.id else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.incomings.update(incomingUpdateDTO(from: draft, id: id))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func bulkCreateIncomings(_ drafts: [IncomingEditorDraft]) {
-        guard kind == .incoming else { return }
-        Task {
-            do {
-                _ = try await api.incomings.bulkCreate(rows: drafts.map(incomingCreateDTO))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func bulkCreateIncomings(_ drafts: [IncomingEditorDraft]) async -> Bool {
+        guard kind == .incoming else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.incomings.bulkCreate(rows: drafts.map(incomingCreateDTO))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
@@ -619,6 +626,42 @@ final class LedgerFeatureViewModel: ObservableObject {
             indentationLevel: normalizedChild == nil ? 0 : 1
         )
     }
+
+    #if DEBUG
+    private func loadDebugFixtureIfEnabled() -> Bool {
+        guard ProcessInfo.processInfo.environment["UI_TEST_LEDGER_FIXTURE"] == "1" else { return false }
+        let today = Date()
+        guard let month = MonthYear(String(LedgerScopeLogic.isoDate(today).prefix(7))) else { return false }
+        optionsByKind = [
+            "account": [.init(value: "Checking", color: "#3366FF", isDefault: true, isTracking: false, parentValue: nil)],
+            "category": [.init(value: "Home", color: "#FF5A5F", isDefault: false, isTracking: true, parentValue: nil)],
+            "subcategory": [],
+            "incomeType": [.init(value: "Salary", color: "#00A699", isDefault: true, isTracking: true, parentValue: nil)],
+            "incomeSubtype": []
+        ]
+        switch kind {
+        case .expense:
+            expenses = [.init(
+                id: "ui-test-expense", name: "UI Test Expense", account: "Checking", category: "Home", subcategory: nil,
+                amount: 120, effectiveAmount: 120, effectiveAmountMode: .auto, monthYears: [month], date: today,
+                paidTo: "Test Vendor", notes: nil, comments: nil, expenseId: "ui-test-expense",
+                baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil
+            )]
+        case .incoming:
+            incomings = [.init(
+                id: "ui-test-incoming", name: "UI Test Incoming", paidBy: "Test Employer", incomeType: "Salary", incomeSubtype: nil,
+                account: "Checking", amount: 1_000, effectiveAmount: 1_000, effectiveAmountMode: .auto, monthYears: [month], date: today,
+                notes: nil, comments: nil, incomingId: "ui-test-incoming", baseIncomingId: nil, subIncomingId: nil
+            )]
+        }
+        selectedAccountFilters = Set(accountFilterChoices)
+        selectedCategoryFilters = Set(categoryFilterRows.map(\.filterKey))
+        oldestMonth = month
+        newestMonth = month
+        applyFiltersAndSearch()
+        return true
+    }
+    #endif
 
     private func shouldExpandSelection(_ selected: Set<String>, previousValues: Set<String>, key: String) -> Bool {
         if previousValues.isEmpty {

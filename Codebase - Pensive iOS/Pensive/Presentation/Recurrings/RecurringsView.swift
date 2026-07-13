@@ -132,6 +132,8 @@ private struct RecurringEditorSheet: View {
     @ObservedObject var viewModel: RecurringsFeatureViewModel
     let mode: RecurringEditorMode
     @State private var draft: RecurringEditorDraft
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     init(viewModel: RecurringsFeatureViewModel, mode: RecurringEditorMode, initialDraft: RecurringEditorDraft) {
         self.viewModel = viewModel
@@ -174,19 +176,35 @@ private struct RecurringEditorSheet: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(mode == .create ? "Create" : "Save") {
-                        if mode == .create {
-                            viewModel.create(draft)
-                        } else {
-                            viewModel.update(draft)
-                        }
-                        dismiss()
+                        Task { await save() }
                     }
+                    .disabled(isSaving)
                 }
             }
+            .interactiveDismissDisabled(isSaving)
+        }
+        .alert("Couldn't save recurring", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+            Text(saveError ?? "")
         }
     }
 
     private func bindingOptional(_ keyPath: WritableKeyPath<RecurringEditorDraft, String?>) -> Binding<String> {
         Binding(get: { draft[keyPath: keyPath] ?? "" }, set: { draft[keyPath: keyPath] = $0.isEmpty ? nil : $0 })
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        let didSave = mode == .create
+            ? await viewModel.create(draft)
+            : await viewModel.update(draft)
+        if didSave {
+            dismiss()
+        } else {
+            saveError = viewModel.alertText ?? "Please check your connection and try again."
+            viewModel.alertText = nil
+        }
     }
 }

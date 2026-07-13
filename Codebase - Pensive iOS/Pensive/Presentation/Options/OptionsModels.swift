@@ -366,22 +366,23 @@ final class OptionsViewModel: ObservableObject {
         )
     }
 
-    func add(kind: OptionsKind, value: String, parentValue: String?, color: String? = nil) async {
+    @discardableResult
+    func add(kind: OptionsKind, value: String, parentValue: String?, color: String? = nil) async -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             inlineError = "Option name cannot be empty."
-            return
+            return false
         }
 
         if kind.supportsParent, (parentValue ?? "").isEmpty {
             inlineError = "Please select a parent."
-            return
+            return false
         }
 
         let normalizedColor = color.flatMap(sanitizeHexColor)
         if color != nil, normalizedColor == nil {
             inlineError = "Color must be a valid 6-digit hex value."
-            return
+            return false
         }
 
         do {
@@ -397,39 +398,47 @@ final class OptionsViewModel: ObservableObject {
             await refresh()
             successText = "Added \(trimmed)."
             inlineError = nil
+            return true
         } catch {
             inlineError = "Failed to add option."
+            return false
         }
     }
 
-    func rename(kind: OptionsKind, value: String, nextValue: String, parentValue: String?) async {
+    @discardableResult
+    func rename(kind: OptionsKind, value: String, nextValue: String, parentValue: String?) async -> Bool {
         let trimmed = nextValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             inlineError = "New name cannot be empty."
-            return
+            return false
         }
         do {
             try await api.userOptions.rename(.init(kind: kind.rawValue, value: value, nextValue: trimmed, parentValue: normalized(parentValue)))
             await refresh()
             successText = "Renamed successfully."
             inlineError = nil
+            return true
         } catch {
             inlineError = "Failed to rename option."
+            return false
         }
     }
 
-    func updateColor(kind: OptionsKind, value: String, color: String, parentValue: String?) async {
+    @discardableResult
+    func updateColor(kind: OptionsKind, value: String, color: String, parentValue: String?) async -> Bool {
         let normalizedColor = sanitizeHexColor(color)
         guard normalizedColor != nil else {
             inlineError = "Color must be a valid 6-digit hex value."
-            return
+            return false
         }
         do {
             try await api.userOptions.updateColor(.init(kind: kind.rawValue, value: value, color: normalizedColor!, parentValue: normalized(parentValue)))
             await refresh()
             inlineError = nil
+            return true
         } catch {
             inlineError = "Failed to update color."
+            return false
         }
     }
 
@@ -453,24 +462,30 @@ final class OptionsViewModel: ObservableObject {
         }
     }
 
-    func remove(kind: OptionsKind, value: String, parentValue: String?) async {
+    @discardableResult
+    func remove(kind: OptionsKind, value: String, parentValue: String?) async -> Bool {
         do {
             try await api.userOptions.remove(.init(kind: kind.rawValue, value: value, parentValue: normalized(parentValue)))
             await refresh()
             inlineError = nil
+            return true
         } catch {
             inlineError = "Failed to delete option."
+            return false
         }
     }
 
-    func moveToSubtype(kind: OptionsKind, sourceValue: String, targetValue: String) async {
+    @discardableResult
+    func moveToSubtype(kind: OptionsKind, sourceValue: String, targetValue: String) async -> Bool {
         do {
             let request = try OptionsMutationLogic.buildMoveToSubtype(kind: kind.rawValue, sourceValue: sourceValue, targetValue: targetValue)
             try await api.userOptions.moveToSubtype(request)
             await refresh()
             inlineError = nil
+            return true
         } catch {
             inlineError = message(for: error, fallback: "Failed to move to subtype.")
+            return false
         }
     }
 
@@ -490,14 +505,17 @@ final class OptionsViewModel: ObservableObject {
         }
     }
 
-    func promoteSubtype(kind: OptionsKind, value: String, parentValue: String) async {
+    @discardableResult
+    func promoteSubtype(kind: OptionsKind, value: String, parentValue: String) async -> Bool {
         do {
             let request = try OptionsMutationLogic.buildPromoteSubtype(kind: kind.rawValue, value: value, parentValue: parentValue)
             try await api.userOptions.promoteSubtype(request)
             await refresh()
             inlineError = nil
+            return true
         } catch {
             inlineError = message(for: error, fallback: "Failed to promote subtype.")
+            return false
         }
     }
 

@@ -53,11 +53,8 @@ struct AppEnvironment: Equatable {
             // Keep tests deterministic without crashing the app host.
             return "missing-in-tests"
         }
-        preconditionFailure(message)
-        #else
-        assertionFailure(message)
         #endif
-        return ""
+        fatalError(message)
     }
 
     private static var isRunningTests: Bool {

@@ -5,6 +5,8 @@ struct OptionCreateSheet: View {
     @ObservedObject var viewModel: OptionsViewModel
     let selectedKind: OptionsKind
     @Binding var draft: OptionCreateDraft
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     var body: some View {
         NavigationStack {
@@ -45,21 +47,19 @@ struct OptionCreateSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        Task {
-                            await viewModel.add(
-                                kind: addKind,
-                                value: draft.value,
-                                parentValue: draft.parentValue,
-                                color: draft.color
-                            )
-                            dismiss()
-                        }
+                        Task { await save() }
                     } label: {
                         Text("Create")
                     }
-                    .disabled(isCreateDisabled)
+                    .disabled(isCreateDisabled || isSaving)
                 }
             }
+            .interactiveDismissDisabled(isSaving)
+        }
+        .alert("Couldn't create option", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+            Text(saveError ?? "")
         }
     }
 
@@ -105,6 +105,23 @@ struct OptionCreateSheet: View {
             Int(blue * 255)
         )
     }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        let didSave = await viewModel.add(
+            kind: addKind,
+            value: draft.value,
+            parentValue: draft.parentValue,
+            color: draft.color
+        )
+        if didSave {
+            dismiss()
+        } else {
+            saveError = viewModel.inlineError ?? "Please check your connection and try again."
+            viewModel.inlineError = nil
+        }
+    }
 }
 
 struct OptionEditSheet: View {
@@ -115,6 +132,8 @@ struct OptionEditSheet: View {
     @State private var showDeleteConfirmation = false
     @State private var addAsSubtype = false
     @State private var selectedSubtypeParent = ""
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     init(viewModel: OptionsViewModel, row: OptionsDisplayRow) {
         self.viewModel = viewModel
@@ -162,15 +181,9 @@ struct OptionEditSheet: View {
 
                     if canPromoteSubtype {
                         Button(promoteButtonTitle) {
-                            Task {
-                                await viewModel.promoteSubtype(
-                                    kind: row.kind,
-                                    value: row.value,
-                                    parentValue: row.parentValue ?? ""
-                                )
-                                dismiss()
-                            }
+                            Task { await promote() }
                         }
+                        .disabled(isSaving)
                     }
 
                     Button("Delete", role: .destructive) {
@@ -186,8 +199,14 @@ struct OptionEditSheet: View {
             .confirmationDialog("Delete option?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     Task {
-                        await viewModel.remove(kind: row.kind, value: row.value, parentValue: row.parentValue)
-                        dismiss()
+                        isSaving = true
+                        defer { isSaving = false }
+                        if await viewModel.remove(kind: row.kind, value: row.value, parentValue: row.parentValue) {
+                            dismiss()
+                        } else {
+                            saveError = viewModel.inlineError ?? "Please check your connection and try again."
+                            viewModel.inlineError = nil
+                        }
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -195,16 +214,19 @@ struct OptionEditSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        Task {
-                            await saveChanges()
-                            dismiss()
-                        }
+                        Task { await save() }
                     } label: {
                         Text("Save")
                     }
-                    .disabled(!hasChanges)
+                    .disabled(!hasChanges || isSaving)
                 }
             }
+            .interactiveDismissDisabled(isSaving)
+        }
+        .alert("Couldn't save option", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: {
+            Text(saveError ?? "")
         }
     }
 
@@ -260,26 +282,49 @@ struct OptionEditSheet: View {
         }
     }
 
-    private func saveChanges() async {
+    private func saveChanges() async -> Bool {
         let nextName = draft.value.trimmingCharacters(in: .whitespacesAndNewlines)
         let nextColor = normalizedHex(draft.color) ?? row.color
         let nameChanged = !nextName.isEmpty && nextName != row.value
         let colorChanged = normalizedHex(nextColor) != normalizedHex(row.color)
 
         if nameChanged {
-            await viewModel.rename(kind: row.kind, value: row.value, nextValue: nextName, parentValue: row.parentValue)
+            guard await viewModel.rename(kind: row.kind, value: row.value, nextValue: nextName, parentValue: row.parentValue) else { return false }
         }
 
         if colorChanged {
-            await viewModel.updateColor(kind: row.kind, value: nameChanged ? nextName : row.value, color: nextColor, parentValue: row.parentValue)
+            guard await viewModel.updateColor(kind: row.kind, value: nameChanged ? nextName : row.value, color: nextColor, parentValue: row.parentValue) else { return false }
         }
 
         if hasValidSubtypeTarget {
-            await viewModel.moveToSubtype(
+            guard await viewModel.moveToSubtype(
                 kind: row.kind,
                 sourceValue: nameChanged ? nextName : row.value,
                 targetValue: selectedSubtypeParent
-            )
+            ) else { return false }
+        }
+        return true
+    }
+
+    private func save() async {
+        isSaving = true
+        defer { isSaving = false }
+        if await saveChanges() {
+            dismiss()
+        } else {
+            saveError = viewModel.inlineError ?? "Please check your connection and try again."
+            viewModel.inlineError = nil
+        }
+    }
+
+    private func promote() async {
+        isSaving = true
+        defer { isSaving = false }
+        if await viewModel.promoteSubtype(kind: row.kind, value: row.value, parentValue: row.parentValue ?? "") {
+            dismiss()
+        } else {
+            saveError = viewModel.inlineError ?? "Please check your connection and try again."
+            viewModel.inlineError = nil
         }
     }
 

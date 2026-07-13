@@ -78,31 +78,31 @@ final class RecurringsFeatureViewModel: ObservableObject {
         }
     }
 
-    func create(_ draft: RecurringEditorDraft) {
-        guard validate(draft: draft) else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.recurrings.create(createDTO(from: draft))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func create(_ draft: RecurringEditorDraft) async -> Bool {
+        guard validate(draft: draft) else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.recurrings.create(createDTO(from: draft))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 
-    func update(_ draft: RecurringEditorDraft) {
-        guard validate(draft: draft), draft.id != nil else { return }
-        Task {
-            isSaving = true
-            defer { isSaving = false }
-            do {
-                _ = try await api.recurrings.update(updateDTO(from: draft))
-                await refresh()
-            } catch {
-                alertText = message(for: error)
-            }
+    func update(_ draft: RecurringEditorDraft) async -> Bool {
+        guard validate(draft: draft), draft.id != nil else { return false }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await api.recurrings.update(updateDTO(from: draft))
+            await refresh()
+            return true
+        } catch {
+            alertText = message(for: error)
+            return false
         }
     }
 

@@ -8,6 +8,8 @@ struct OptionsFeatureView: View {
     @State private var colorByRow: [String: String] = [:]
     @State private var rowPendingDelete: OptionsDisplayRow?
     @State private var accountEditorContext: OptionsDisplayRow?
+    @State private var isSavingAccount = false
+    @State private var accountSaveError: String?
     @State private var selectedAccountID: String?
     @State private var selectedAccountLedgerTab: AccountLedgerTab = .expenses
     @State private var accountPagerResetToken = 0
@@ -83,6 +85,11 @@ struct OptionsFeatureView: View {
                                 selection: colorSelectionBinding(for: row),
                                 supportsOpacity: false
                             )
+                            if let accountSaveError {
+                                Text(accountSaveError)
+                                    .font(.footnote)
+                                    .foregroundStyle(.red)
+                            }
                         }
 
                         Section {
@@ -102,13 +109,20 @@ struct OptionsFeatureView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("Save") {
                                 Task {
-                                    await saveAccountChanges(for: row)
-                                    accountEditorContext = nil
+                                    isSavingAccount = true
+                                    defer { isSavingAccount = false }
+                                    if await saveAccountChanges(for: row) {
+                                        accountEditorContext = nil
+                                    } else {
+                                        accountSaveError = viewModel.inlineError ?? "Please check your connection and try again."
+                                        viewModel.inlineError = nil
+                                    }
                                 }
                             }
-                            .disabled(!accountHasChanges(row))
+                            .disabled(!accountHasChanges(row) || isSavingAccount)
                         }
                     }
+                    .interactiveDismissDisabled(isSavingAccount)
                 }
             }
         }
@@ -331,29 +345,30 @@ struct OptionsFeatureView: View {
         return !nextName.isEmpty && (nextName != row.value || (nextColor != nil && nextColor != currentColor))
     }
 
-    private func saveAccountChanges(for row: OptionsDisplayRow) async {
+    private func saveAccountChanges(for row: OptionsDisplayRow) async -> Bool {
         let nextName = renameByRow[row.selfKey, default: row.value].trimmingCharacters(in: .whitespacesAndNewlines)
         let nextColor = normalizedHex(colorByRow[row.selfKey, default: row.color]) ?? row.color
         let nameChanged = !nextName.isEmpty && nextName != row.value
         let colorChanged = normalizedHex(nextColor) != normalizedHex(row.color)
 
         if nameChanged {
-            await viewModel.rename(
+            guard await viewModel.rename(
                 kind: row.kind,
                 value: row.value,
                 nextValue: nextName,
                 parentValue: row.parentValue
-            )
+            ) else { return false }
         }
 
         if colorChanged {
-            await viewModel.updateColor(
+            guard await viewModel.updateColor(
                 kind: row.kind,
                 value: nameChanged ? nextName : row.value,
                 color: nextColor,
                 parentValue: row.parentValue
-            )
+            ) else { return false }
         }
+        return true
     }
 
     @ViewBuilder
@@ -412,6 +427,7 @@ struct OptionsFeatureView: View {
                 Spacer()
                 Button {
                     if let selectedAccountRow {
+                        accountSaveError = nil
                         accountEditorContext = selectedAccountRow
                     }
                 } label: {
@@ -492,6 +508,7 @@ struct OptionsFeatureView: View {
         accountCardSurface(for: row, isFocused: isFocused, compact: false)
             .frame(height: 202)
             .onTapGesture {
+                accountSaveError = nil
                 accountEditorContext = row
             }
     }
@@ -1326,4 +1343,3 @@ struct OptionsFeatureView: View {
         return "#\(clean)"
     }
 }
-
