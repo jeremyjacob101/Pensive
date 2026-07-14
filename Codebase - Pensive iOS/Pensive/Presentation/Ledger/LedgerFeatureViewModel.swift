@@ -797,8 +797,12 @@ final class LedgerFeatureViewModel: ObservableObject {
             scopeStatus: status,
             monthYears: item.monthYears.map(\.rawValue),
             warningText: LedgerFiltering.scopeWarningText(status: status),
-            details: ["Paid To: \(item.paidTo)", item.notes.map { "Notes: \($0)" }, item.comments.map { "Comments: \($0)" }].compactMap { $0 },
-            isGrouped: item.isGrouped
+            details: [item.paidTo.isEmpty ? nil : "Paid To: \(item.paidTo)", item.notes.map { "Notes: \($0)" } as String?, item.comments.map { "Comments: \($0)" } as String?].compactMap(\.self),
+            isGrouped: item.isGrouped,
+            accountColorHex: accountColor(for: item.account),
+            categoryColorHex: optionsByKind["category"]?.first(where: { $0.value == item.category })?.color,
+            effectiveAmountLine: money(scopedEffective),
+            dateLine: date(item.date)
         )
     }
 
@@ -816,8 +820,12 @@ final class LedgerFeatureViewModel: ObservableObject {
             scopeStatus: status,
             monthYears: item.monthYears.map(\.rawValue),
             warningText: LedgerFiltering.scopeWarningText(status: status),
-            details: [item.notes.map { "Notes: \($0)" }, item.comments.map { "Comments: \($0)" }].compactMap { $0 },
-            isGrouped: item.isGrouped
+            details: [item.notes.map { "Notes: \($0)" } as String?, item.comments.map { "Comments: \($0)" } as String?].compactMap(\.self),
+            isGrouped: item.isGrouped,
+            accountColorHex: accountColor(for: item.account),
+            categoryColorHex: optionsByKind["incomeType"]?.first(where: { $0.value == item.incomeType })?.color,
+            effectiveAmountLine: money(scopedEffective),
+            dateLine: date(item.date)
         )
     }
 

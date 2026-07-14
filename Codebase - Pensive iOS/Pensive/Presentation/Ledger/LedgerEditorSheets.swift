@@ -469,6 +469,7 @@ struct PartnerPickerSheet: View {
 }
 
 struct PaybackLinksManagerView: View {
+    @Environment(\.dismiss) private var dismiss
     let target: PaybackTarget
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
@@ -480,49 +481,56 @@ struct PaybackLinksManagerView: View {
     @State private var loading = false
 
     var body: some View {
-        List {
-            Section("Create link") {
-                Picker("Counterparty", selection: $selectedCandidate) {
-                    ForEach(candidates, id: \.id) { item in
-                        Text(item.title).tag(item.id)
+        NavigationStack {
+            List {
+                Section("Create link") {
+                    Picker("Counterparty", selection: $selectedCandidate) {
+                        ForEach(candidates, id: \.id) { item in
+                            Text(item.title).tag(item.id)
+                        }
+                    }
+                    TextField("Amount", text: $amount)
+                        .keyboardType(.decimalPad)
+                    TextField("Notes", text: $notes)
+                    Button("Create") {
+                        guard let parsed = Double(amount), !selectedCandidate.isEmpty else { return }
+                        Task {
+                            try? await viewModel.createPaybackLink(target: target, otherId: selectedCandidate, amount: parsed, notes: notes.isEmpty ? nil : notes)
+                            await load()
+                        }
                     }
                 }
-                TextField("Amount", text: $amount)
-                    .keyboardType(.decimalPad)
-                TextField("Notes", text: $notes)
-                Button("Create") {
-                    guard let parsed = Double(amount), !selectedCandidate.isEmpty else { return }
-                    Task {
-                        try? await viewModel.createPaybackLink(target: target, otherId: selectedCandidate, amount: parsed, notes: notes.isEmpty ? nil : notes)
-                        await load()
+
+                Section("Links") {
+                    ForEach(rows) { row in
+                        VStack(alignment: .leading) {
+                            Text(row.counterpartyTitle)
+                            Text("Allocated: \(row.allocatedAmount)")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            if let notes = row.notes, !notes.isEmpty {
+                                Text(notes).font(.footnote)
+                            }
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                Task {
+                                    try? await viewModel.removePaybackLink(id: row.id)
+                                    await load()
+                                }
+                            } label: { Text("Delete") }
+                        }
                     }
                 }
             }
-
-            Section("Links") {
-                ForEach(rows) { row in
-                    VStack(alignment: .leading) {
-                        Text(row.counterpartyTitle)
-                        Text("Allocated: \(row.allocatedAmount)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        if let notes = row.notes, !notes.isEmpty {
-                            Text(notes).font(.footnote)
-                        }
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            Task {
-                                try? await viewModel.removePaybackLink(id: row.id)
-                                await load()
-                            }
-                        } label: { Text("Delete") }
-                    }
+            .overlay { if loading { ProgressView() } }
+            .navigationTitle("Payback Links")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
                 }
             }
         }
-        .overlay { if loading { ProgressView() } }
-        .navigationTitle("Payback Links")
         .task { await load() }
     }
 

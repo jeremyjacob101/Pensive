@@ -35,6 +35,17 @@ enum PaybackTarget {
     case incoming(String)
 }
 
+private struct PaybackLinksSheetTarget: Identifiable {
+    let target: PaybackTarget
+
+    var id: String {
+        switch target {
+        case .expense(let id): return "expense-\(id)"
+        case .incoming(let id): return "incoming-\(id)"
+        }
+    }
+}
+
 private struct LedgerScreen: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
@@ -45,6 +56,7 @@ private struct LedgerScreen: View {
     @State private var editingID: LedgerRowID?
     @State private var deleteID: String?
     @State private var selectedPartnerAnchorID: LedgerRowID?
+    @State private var selectedPaybackLinksTarget: PaybackLinksSheetTarget?
     @State private var showAppliedThisMonthPaidDifferent = false
     @State private var showPaidThisMonthAppliedDifferent = false
 
@@ -177,6 +189,9 @@ private struct LedgerScreen: View {
         .sheet(item: $selectedPartnerAnchorID) { anchor in
             PartnerPickerSheet(anchorID: anchor.id, viewModel: viewModel)
         }
+        .sheet(item: $selectedPaybackLinksTarget) { selection in
+            PaybackLinksManagerView(target: selection.target, viewModel: viewModel)
+        }
         .alert("Delete item?", isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
             Button("Delete", role: .destructive) {
                 if let id = deleteID { viewModel.delete(id: id) }
@@ -246,20 +261,49 @@ private struct LedgerScreen: View {
                 Button("Remove base group", role: .destructive) { viewModel.removeExpenseBaseGroup(baseID: row.id) }
             }
 
-            NavigationLink("Manage Payback Links") {
-                PaybackLinksManagerView(target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id), viewModel: viewModel)
+            Button("Manage Payback Links") {
+                selectedPaybackLinksTarget = PaybackLinksSheetTarget(
+                    target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id)
+                )
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text(row.title).font(.headline)
-                Text(row.subtitle).font(.subheadline).foregroundStyle(.secondary)
-                Text(row.amountLine).font(.subheadline.weight(.medium))
-                Text(row.appliedLine).font(.footnote).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Image(systemName: "creditcard.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
+                        .accessibilityHidden(true)
+
+                    Text(row.title)
+                        .font(.headline)
+
+                    Circle()
+                        .fill(color(from: row.categoryColorHex) ?? Color.secondary)
+                        .frame(width: 10, height: 10)
+                        .overlay {
+                            Circle()
+                                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        }
+                        .accessibilityHidden(true)
+                }
+                Text(row.effectiveAmountLine).font(.subheadline.weight(.medium))
+                Text(row.dateLine).font(.footnote).foregroundStyle(.secondary)
             }
         }
         .swipeActions {
             Button("Edit") { editingID = LedgerRowID(id: row.id) }.tint(.blue)
             Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
+    }
+
+    private func color(from hex: String?) -> Color? {
+        guard let hex else { return nil }
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        return Color(
+            red: Double((value >> 16) & 0xff) / 255,
+            green: Double((value >> 8) & 0xff) / 255,
+            blue: Double(value & 0xff) / 255
+        )
     }
 }

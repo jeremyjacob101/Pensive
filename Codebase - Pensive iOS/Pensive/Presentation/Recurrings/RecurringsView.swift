@@ -122,8 +122,6 @@ struct RecurringsFeatureView: View {
                     Text(row.title)
                         .font(.headline)
 
-                    Spacer()
-
                     Circle()
                         .fill(color(from: row.categoryColorHex) ?? Color.secondary)
                         .frame(width: 10, height: 10)
@@ -132,9 +130,17 @@ struct RecurringsFeatureView: View {
                                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                         }
                         .accessibilityHidden(true)
+
+                    Spacer()
                 }
                 Text(row.amountLine).font(.subheadline.weight(.medium))
-                Text(row.scheduleLine).font(.footnote).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "repeat")
+                        .font(.caption)
+                    Text(ordinal(row.dayOfMonth))
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
             .opacity(row.status.lowercased() == "active" ? 1 : 0.4)
         }
@@ -149,6 +155,22 @@ struct RecurringsFeatureView: View {
             green: Double((value >> 8) & 0xff) / 255,
             blue: Double(value & 0xff) / 255
         )
+    }
+
+    private func ordinal(_ n: Int) -> String {
+        let suffix: String
+        let mod100 = n % 100
+        if mod100 >= 11 && mod100 <= 13 {
+            suffix = "th"
+        } else {
+            switch n % 10 {
+            case 1: suffix = "st"
+            case 2: suffix = "nd"
+            case 3: suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        return "\(n)\(suffix)"
     }
 }
 

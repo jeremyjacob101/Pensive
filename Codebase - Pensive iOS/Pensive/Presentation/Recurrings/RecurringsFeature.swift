@@ -13,6 +13,7 @@ struct RecurringItemViewData: Identifiable {
     let title: String
     let amountLine: String
     let scheduleLine: String
+    let dayOfMonth: Int
     let details: [String]
     let accountColorHex: String?
     let categoryColorHex: String?
@@ -253,6 +254,7 @@ final class RecurringsFeatureViewModel: ObservableObject {
                 title: row.name,
                 amountLine: money(row.amount),
                 scheduleLine: "\(row.frequency) on day \(row.dayOfMonth)",
+                dayOfMonth: row.dayOfMonth,
                 details: details,
                 accountColorHex: accountColor(for: row, kind: kind),
                 categoryColorHex: categoryColor(for: row, kind: kind)
