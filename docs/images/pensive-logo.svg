@@ -1,0 +1,55 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pRingGradient" x1="178" y1="260" x2="392" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#145A43"/>
+      <stop offset="13%" stop-color="#245B3F"/>
+      <stop offset="24%" stop-color="#73593F"/>
+      <stop offset="36%" stop-color="#B64E3F"/>
+      <stop offset="52%" stop-color="#E9433F"/>
+      <stop offset="100%" stop-color="#FF3B3F"/>
+    </linearGradient>
+
+    <linearGradient id="stemGradient" x1="146" y1="256" x2="228" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#145A43"/>
+      <stop offset="72%" stop-color="#145A43"/>
+      <stop offset="100%" stop-color="#285B40"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(-6 0)">
+    <path
+      fill="url(#pRingGradient)"
+      fill-rule="evenodd"
+      d="
+        M286 90
+        C363 90 426 153 426 230
+        C426 307 363 370 286 370
+        C209 370 146 307 146 230
+        C146 153 209 90 286 90
+        Z
+
+        M286 123
+        C227 123 179 171 179 230
+        C179 289 227 337 286 337
+        C345 337 393 289 393 230
+        C393 171 345 123 286 123
+        Z
+      "
+    />
+
+    <path
+      fill="url(#stemGradient)"
+      d="
+        M146 118
+        Q146 107 156 102
+        L183 89
+        Q198 82 198 99
+        L198 453
+        Q198 465 187 470
+        L160 483
+        Q146 490 146 473
+        Z
+      "
+    />
+  </g>
+</svg>
