@@ -14,6 +14,8 @@ struct RecurringItemViewData: Identifiable {
     let amountLine: String
     let scheduleLine: String
     let details: [String]
+    let accountColorHex: String?
+    let categoryColorHex: String?
 }
 
 struct RecurringEditorDraft {
@@ -47,6 +49,7 @@ final class RecurringsFeatureViewModel: ObservableObject {
     private let api: ConvexAPI
     private let formatter: NumberFormatter
     private(set) var recurrings: [RecurringDTO] = []
+    private var userOptions: UserOptionsListResponse?
 
     init(api: ConvexAPI) {
         self.api = api
@@ -67,7 +70,12 @@ final class RecurringsFeatureViewModel: ObservableObject {
         let shouldShowFullScreenError = !state.hasLoadedContent
         if shouldShowFullScreenError { state = .loading }
         do {
-            recurrings = try await loadAllRecurrings()
+            async let recurringsRequest = loadAllRecurrings()
+            async let optionsRequest = api.userOptions.list()
+            recurrings = try await recurringsRequest
+            if let loadedOptions = try? await optionsRequest {
+                userOptions = loadedOptions
+            }
             rebuildRows()
             // Keep screen interactive even when there are no rows so create actions remain visible.
             state = .content
@@ -245,12 +253,31 @@ final class RecurringsFeatureViewModel: ObservableObject {
                 title: row.name,
                 amountLine: money(row.amount),
                 scheduleLine: "\(row.frequency) on day \(row.dayOfMonth)",
-                details: details
+                details: details,
+                accountColorHex: accountColor(for: row, kind: kind),
+                categoryColorHex: categoryColor(for: row, kind: kind)
             )
         }.sorted(by: { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending })
 
         expenseRows = mapped.filter { $0.kind == .expense }
         incomingRows = mapped.filter { $0.kind == .incoming }
+    }
+
+    private func accountColor(for row: RecurringDTO, kind: RecurringKind) -> String? {
+        let account = kind == .expense ? row.recurringExpenseAccount : row.recurringIncomingAccount
+        guard let account else { return nil }
+        return userOptions?.account.first(where: { $0.value == account })?.color
+    }
+
+    private func categoryColor(for row: RecurringDTO, kind: RecurringKind) -> String? {
+        switch kind {
+        case .expense:
+            guard let category = row.recurringExpenseCategory else { return nil }
+            return userOptions?.category.first(where: { $0.value == category })?.color
+        case .incoming:
+            guard let incomeType = row.recurringIncomingType else { return nil }
+            return userOptions?.incomeType.first(where: { $0.value == incomeType })?.color
+        }
     }
 
     private func detailsForRow(_ row: RecurringDTO, kind: RecurringKind) -> [String] {

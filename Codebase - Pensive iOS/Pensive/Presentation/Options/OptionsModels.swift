@@ -1,6 +1,7 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
-enum OptionsKind: String, CaseIterable, Identifiable {
+enum OptionsKind: String, CaseIterable, Codable, Identifiable, Sendable {
     case account
     case category
     case subcategory
@@ -575,168 +576,39 @@ struct OptionsDisplayGroup: Identifiable {
     var id: String { parent.id }
 }
 
-struct OptionDragPayload: Equatable {
+struct OptionDragPayload: Codable, Equatable, Sendable, Transferable {
     let kind: OptionsKind
     let value: String
     let parentValue: String?
 
-    var sourceID: String { "\(kind.rawValue)|\(value)|\(parentValue ?? "")" }
+    static let contentType = UTType(exportedAs: "com.pensive.option")
 
-    var isChild: Bool {
-        kind == .subcategory || kind == .incomeSubtype
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: contentType)
     }
 }
 
-struct OptionDropFrame: Equatable, Identifiable {
-    enum Kind: Equatable {
-        case row(OptionsDisplayRow)
-        case promote
-    }
+final class OptionDragItemProvider: NSItemProvider {
+    private let onDeinit: () -> Void
 
-    let id: String
-    let kind: Kind
-    let rect: CGRect
-}
+    init(payload: OptionDragPayload, onDeinit: @escaping () -> Void) {
+        self.onDeinit = onDeinit
+        let data = try? JSONEncoder().encode(payload)
+        super.init()
 
-struct OptionDropFramePreferenceKey: PreferenceKey {
-    static var defaultValue: [OptionDropFrame] = []
-
-    static func reduce(value: inout [OptionDropFrame], nextValue: () -> [OptionDropFrame]) {
-        value.append(contentsOf: nextValue())
-    }
-}
-
-struct OptionScrollViewportHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-enum OptionAutoScrollAnchor: Equatable {
-    case top
-    case bottom
-
-    var unitPoint: UnitPoint {
-        switch self {
-        case .top: return .top
-        case .bottom: return .bottom
-        }
-    }
-}
-
-struct OptionAutoScrollRequest: Equatable {
-    let targetID: String
-    let anchor: OptionAutoScrollAnchor
-    let token: Int
-}
-
-struct OptionRowLongPressInstaller: UIViewRepresentable {
-    var isEnabled: Bool
-    var locationInOptionSpace: (CGPoint) -> CGPoint?
-    var onBegan: (CGPoint) -> Void
-    var onChanged: (CGPoint) -> Void
-    var onEnded: (CGPoint?) -> Void
-    var onCancelled: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
-    }
-
-    func makeUIView(context: Context) -> InstallerView {
-        let view = InstallerView()
-        view.isUserInteractionEnabled = false
-        view.coordinator = context.coordinator
-        return view
-    }
-
-    func updateUIView(_ view: InstallerView, context: Context) {
-        context.coordinator.parent = self
-        view.coordinator = context.coordinator
-        context.coordinator.install(on: view.superview)
-        context.coordinator.updateGesture()
-    }
-
-    static func dismantleUIView(_ uiView: InstallerView, coordinator: Coordinator) {
-        coordinator.uninstall()
-    }
-
-    final class InstallerView: UIView {
-        weak var coordinator: Coordinator?
-
-        override func didMoveToSuperview() {
-            super.didMoveToSuperview()
-            coordinator?.install(on: superview)
-        }
-    }
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var parent: OptionRowLongPressInstaller
-        private weak var installedView: UIView?
-        private let gesture = UILongPressGestureRecognizer()
-
-        init(parent: OptionRowLongPressInstaller) {
-            self.parent = parent
-            super.init()
-            gesture.addTarget(self, action: #selector(handleGesture(_:)))
-            gesture.delegate = self
-            gesture.cancelsTouchesInView = false
-            gesture.delaysTouchesBegan = false
-            gesture.delaysTouchesEnded = false
-            updateGesture()
-        }
-
-        func install(on view: UIView?) {
-            guard installedView !== view else { return }
-            if let installedView {
-                installedView.removeGestureRecognizer(gesture)
-            }
-            installedView = view
-            view?.addGestureRecognizer(gesture)
-        }
-
-        func uninstall() {
-            installedView?.removeGestureRecognizer(gesture)
-            installedView = nil
-        }
-
-        func updateGesture() {
-            gesture.isEnabled = parent.isEnabled
-            gesture.minimumPressDuration = 0.5
-            gesture.allowableMovement = 10
-        }
-
-        @objc private func handleGesture(_ recognizer: UILongPressGestureRecognizer) {
-            guard parent.isEnabled else { return }
-            let localLocation = recognizer.location(in: recognizer.view)
-            let optionLocation = parent.locationInOptionSpace(localLocation)
-
-            switch recognizer.state {
-            case .began:
-                if let optionLocation {
-                    parent.onBegan(optionLocation)
-                }
-            case .changed:
-                if let optionLocation {
-                    parent.onChanged(optionLocation)
-                }
-            case .ended:
-                parent.onEnded(optionLocation)
-            case .cancelled, .failed:
-                parent.onCancelled()
-            default:
-                break
+        if let data {
+            registerDataRepresentation(
+                forTypeIdentifier: OptionDragPayload.contentType.identifier,
+                visibility: .ownProcess
+            ) { completion in
+                completion(data, nil)
+                return nil
             }
         }
+    }
 
-        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-            parent.isEnabled
-        }
-
-        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-            true
-        }
+    deinit {
+        onDeinit()
     }
 }
 

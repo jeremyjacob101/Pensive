@@ -113,15 +113,42 @@ struct RecurringsFeatureView: View {
             .buttonStyle(.borderless)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(row.title).font(.headline)
+                HStack(spacing: 8) {
+                    Image(systemName: "creditcard.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
+                        .accessibilityHidden(true)
+
+                    Text(row.title)
+                        .font(.headline)
+
                     Spacer()
+
+                    Circle()
+                        .fill(color(from: row.categoryColorHex) ?? Color.secondary)
+                        .frame(width: 10, height: 10)
+                        .overlay {
+                            Circle()
+                                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                        }
+                        .accessibilityHidden(true)
                 }
                 Text(row.amountLine).font(.subheadline.weight(.medium))
                 Text(row.scheduleLine).font(.footnote).foregroundStyle(.secondary)
             }
             .opacity(row.status.lowercased() == "active" ? 1 : 0.4)
         }
+    }
+
+    private func color(from hex: String?) -> Color? {
+        guard let hex else { return nil }
+        let clean = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard clean.count == 6, let value = Int(clean, radix: 16) else { return nil }
+        return Color(
+            red: Double((value >> 16) & 0xff) / 255,
+            green: Double((value >> 8) & 0xff) / 255,
+            blue: Double(value & 0xff) / 255
+        )
     }
 }
 

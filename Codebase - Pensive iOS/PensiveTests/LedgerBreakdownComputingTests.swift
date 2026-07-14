@@ -252,4 +252,36 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(request.value, "Utilities")
         XCTAssertEqual(request.parentValue, "Housing")
     }
+
+    func testOptionDragPayloadRoundTripsThroughSystemTransferEncoding() throws {
+        let payload = OptionDragPayload(kind: .incomeSubtype, value: "Bonus", parentValue: "Salary")
+
+        let data = try JSONEncoder().encode(payload)
+        let decoded = try JSONDecoder().decode(OptionDragPayload.self, from: data)
+
+        XCTAssertEqual(decoded, payload)
+    }
+
+    func testOptionDragItemProviderPublishesPayloadAndEndsWhenReleased() {
+        let payload = OptionDragPayload(kind: .subcategory, value: "Utilities", parentValue: "Housing")
+        let dataLoaded = expectation(description: "Drag payload loaded")
+        var didEnd = false
+
+        autoreleasepool {
+            let provider = OptionDragItemProvider(payload: payload) {
+                didEnd = true
+            }
+
+            XCTAssertTrue(provider.hasItemConformingToTypeIdentifier(OptionDragPayload.contentType.identifier))
+            provider.loadDataRepresentation(forTypeIdentifier: OptionDragPayload.contentType.identifier) { data, error in
+                XCTAssertNil(error)
+                let decoded = data.flatMap { try? JSONDecoder().decode(OptionDragPayload.self, from: $0) }
+                XCTAssertEqual(decoded, payload)
+                dataLoaded.fulfill()
+            }
+        }
+
+        wait(for: [dataLoaded], timeout: 1)
+        XCTAssertTrue(didEnd)
+    }
 }
