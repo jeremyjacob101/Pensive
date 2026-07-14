@@ -53,6 +53,175 @@ struct UserOptionPicker: View {
     }
 }
 
+private func currentMonthYear() -> MonthYear {
+    LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()).first!
+}
+
+private func shiftedMonthYear(_ month: MonthYear, by value: Int) -> MonthYear? {
+    guard let bounds = LedgerScopeLogic.monthBounds(for: month),
+          let shifted = LedgerScopeLogic.calendar.date(byAdding: .month, value: value, to: bounds.start) else {
+        return nil
+    }
+    return LedgerScopeLogic.targetMonths(startDate: shifted, endDate: shifted).first
+}
+
+private func monthTitle(_ month: MonthYear) -> String {
+    guard let date = LedgerScopeLogic.parseISODate("\(month.rawValue)-01") else {
+        return month.rawValue
+    }
+    return date.formatted(.dateTime.month(.abbreviated))
+}
+
+struct MonthYearMultiSelect: View {
+    let label: String
+    @Binding var selection: [MonthYear]
+
+    init(label: String = "Applies to months", selection: Binding<[MonthYear]>) {
+        self.label = label
+        _selection = selection
+    }
+
+    private var normalizedSelection: [MonthYear] {
+        let normalized = Array(Set(selection)).sorted()
+        return normalized.isEmpty ? [currentMonthYear()] : normalized
+    }
+
+    private var timelineMonths: [MonthYear] {
+        let current = currentMonthYear()
+        let selected = normalizedSelection
+        let lower = min(selected.first ?? current, current)
+        let upper = max(selected.last ?? current, current)
+        guard let start = shiftedMonthYear(lower, by: -24),
+              let end = shiftedMonthYear(upper, by: 24) else {
+            return selected
+        }
+        return LedgerScopeLogic.targetMonths(
+            startDate: LedgerScopeLogic.monthBounds(for: start)?.start ?? Date(),
+            endDate: LedgerScopeLogic.monthBounds(for: end)?.start ?? Date()
+        )
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(label)
+                Spacer()
+                Text(normalizedSelection.count == 1
+                    ? monthTitle(normalizedSelection[0])
+                    : "\(normalizedSelection.count) selected")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: true) {
+                    LazyHStack(spacing: 8) {
+                        ForEach(timelineMonths, id: \.rawValue) { month in
+                            let isSelected = normalizedSelection.contains(month)
+                            Button {
+                                toggle(month)
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Text(monthTitle(month))
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(String(month.rawValue.prefix(4)))
+                                        .font(.caption)
+                                        .foregroundStyle(isSelected ? .primary : .secondary)
+                                    if month == currentMonthYear() {
+                                        Image(systemName: "circle.fill")
+                                            .font(.system(size: 5))
+                                            .accessibilityLabel("Current month")
+                                    } else {
+                                        Color.clear.frame(height: 5)
+                                    }
+                                }
+                                .frame(width: 66, height: 62)
+                                .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(isSelected ? Color.accentColor.opacity(0.16) : Color.secondary.opacity(0.08))
+                                )
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(isSelected ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: isSelected ? 1.5 : 1)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .id(month.rawValue)
+                            .accessibilityLabel("\(monthTitle(month)) \(String(month.rawValue.prefix(4)))")
+                            .accessibilityValue(isSelected ? "Selected" : "Not selected")
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 4)
+                }
+                .frame(height: 78)
+                .onAppear {
+                    proxy.scrollTo(currentMonthYear().rawValue, anchor: .center)
+                }
+            }
+
+            Text("Tap any months to include this amount in. Months do not need to be consecutive.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear {
+            if selection.isEmpty {
+                selection = [currentMonthYear()]
+            }
+        }
+    }
+
+    private func toggle(_ month: MonthYear) {
+        var next = normalizedSelection
+        if next.contains(month) {
+            guard next.count > 1 else { return }
+            next.removeAll { $0 == month }
+        } else {
+            next.append(month)
+        }
+        selection = Array(Set(next)).sorted()
+    }
+}
+
+struct SavedMonthSelectionView: View {
+    let onSave: ([MonthYear]) async -> Bool
+
+    @State private var selection: [MonthYear]
+    @State private var isSaving = false
+    @State private var errorText: String?
+
+    init(initialSelection: [MonthYear], onSave: @escaping ([MonthYear]) async -> Bool) {
+        self.onSave = onSave
+        _selection = State(initialValue: initialSelection.isEmpty ? [currentMonthYear()] : initialSelection)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            MonthYearMultiSelect(selection: $selection)
+            Button {
+                Task {
+                    isSaving = true
+                    let didSave = await onSave(selection)
+                    isSaving = false
+                    errorText = didSave ? nil : "Couldn't save the selected months."
+                }
+            } label: {
+                Label(isSaving ? "Saving…" : "Save Months", systemImage: "checkmark")
+            }
+            .buttonStyle(.bordered)
+            .disabled(isSaving)
+
+            if let errorText {
+                Text(errorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
 struct FormFieldRow<Content: View>: View {
     let label: String
     @ViewBuilder let content: Content
@@ -128,6 +297,9 @@ struct ExpenseEditorSheet: View {
                     .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
+                Section("Applies to") {
+                    MonthYearMultiSelect(selection: binding(\.monthYears))
+                }
                 TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
                     updateCurrent { $0.notes = value.isEmpty ? nil : value }
                 }))
@@ -237,6 +409,7 @@ struct ExpenseEditorSheet: View {
             amount: 0,
             effectiveAmount: 0,
             effectiveAmountMode: template.effectiveAmountMode,
+            monthYears: template.monthYears,
             date: template.date,
             paidTo: template.paidTo,
             notes: template.notes,
@@ -332,6 +505,9 @@ struct IncomingEditorSheet: View {
                     .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
+                Section("Applies to") {
+                    MonthYearMultiSelect(selection: binding(\.monthYears))
+                }
                 TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
                     updateCurrent { $0.notes = value.isEmpty ? nil : value }
                 }))
@@ -440,6 +616,7 @@ struct IncomingEditorSheet: View {
             amount: 0,
             effectiveAmount: 0,
             effectiveAmountMode: template.effectiveAmountMode,
+            monthYears: template.monthYears,
             date: template.date,
             notes: template.notes,
             comments: template.comments,

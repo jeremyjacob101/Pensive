@@ -174,9 +174,9 @@ private struct LedgerScreen: View {
         }
         .sheet(isPresented: $showCreate) {
             if viewModel.kind == .expense {
-                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
+                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
             } else {
-                IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
+                IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
             }
         }
         .sheet(item: $editingID) { selected in
@@ -266,6 +266,13 @@ private struct LedgerScreen: View {
                     target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id)
                 )
             }
+
+            SavedMonthSelectionView(
+                initialSelection: row.monthYears.compactMap(MonthYear.init),
+                onSave: { months in
+                    await viewModel.updateMonthYears(id: row.id, monthYears: months)
+                }
+            )
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {

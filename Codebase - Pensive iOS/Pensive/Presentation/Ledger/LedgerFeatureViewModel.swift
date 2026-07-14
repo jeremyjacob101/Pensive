@@ -396,6 +396,24 @@ final class LedgerFeatureViewModel: ObservableObject {
         }
     }
 
+    func updateMonthYears(id: String, monthYears: [MonthYear]) async -> Bool {
+        guard !monthYears.isEmpty else {
+            alertText = "Select at least one month."
+            return false
+        }
+
+        switch kind {
+        case .expense:
+            guard var draft = expenseDraft(id: id) else { return false }
+            draft.monthYears = monthYears
+            return await updateExpense(draft)
+        case .incoming:
+            guard var draft = incomingDraft(id: id) else { return false }
+            draft.monthYears = monthYears
+            return await updateIncoming(draft)
+        }
+    }
+
     func bulkCreateIncomings(_ drafts: [IncomingEditorDraft]) async -> Bool {
         guard kind == .incoming else { return false }
         isSaving = true
@@ -541,6 +559,9 @@ final class LedgerFeatureViewModel: ObservableObject {
             amount: item.amount,
             effectiveAmount: item.effectiveAmount,
             effectiveAmountMode: item.effectiveAmountMode,
+            monthYears: item.monthYears.isEmpty
+                ? LedgerScopeLogic.targetMonths(startDate: item.date, endDate: item.date)
+                : item.monthYears,
             date: item.date,
             paidTo: item.paidTo,
             notes: item.notes,
@@ -564,6 +585,9 @@ final class LedgerFeatureViewModel: ObservableObject {
             amount: item.amount,
             effectiveAmount: item.effectiveAmount,
             effectiveAmountMode: item.effectiveAmountMode,
+            monthYears: item.monthYears.isEmpty
+                ? LedgerScopeLogic.targetMonths(startDate: item.date, endDate: item.date)
+                : item.monthYears,
             date: item.date,
             notes: item.notes,
             comments: item.comments,
@@ -832,7 +856,8 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func expenseCreateDTO(from draft: ExpenseEditorDraft) -> ExpenseMutationDTO {
         let iso = LedgerScopeLogic.isoDate(draft.date)
         let month = String(iso.prefix(7))
-        return ExpenseMutationDTO(expense: draft.expense, account: draft.account, category: draft.category, subcategory: draft.subcategory, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, monthYears: [month], date: iso, paidTo: draft.paidTo, notes: draft.notes, comments: draft.comments, expenseId: draft.expenseId, baseExpenseId: draft.baseExpenseId, baseExpenseLabel: draft.baseExpenseLabel, subExpenseId: draft.subExpenseId)
+        let monthYears = draft.monthYears.isEmpty ? [month] : draft.monthYears.map(\.rawValue)
+        return ExpenseMutationDTO(expense: draft.expense, account: draft.account, category: draft.category, subcategory: draft.subcategory, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, monthYears: monthYears, date: iso, paidTo: draft.paidTo, notes: draft.notes, comments: draft.comments, expenseId: draft.expenseId, baseExpenseId: draft.baseExpenseId, baseExpenseLabel: draft.baseExpenseLabel, subExpenseId: draft.subExpenseId)
     }
 
     private func expenseUpdateDTO(from draft: ExpenseEditorDraft, id: String) -> ExpenseUpdateDTO {
@@ -843,7 +868,8 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func incomingCreateDTO(from draft: IncomingEditorDraft) -> IncomingMutationDTO {
         let iso = LedgerScopeLogic.isoDate(draft.date)
         let month = String(iso.prefix(7))
-        return IncomingMutationDTO(incoming: draft.incoming, paidBy: draft.paidBy, incomeType: draft.incomeType, incomeSubtype: draft.incomeSubtype, account: draft.account, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, date: iso, monthYears: [month], notes: draft.notes, comments: draft.comments, incomingId: draft.incomingId, baseIncomingId: draft.baseIncomingId, subIncomingId: draft.subIncomingId)
+        let monthYears = draft.monthYears.isEmpty ? [month] : draft.monthYears.map(\.rawValue)
+        return IncomingMutationDTO(incoming: draft.incoming, paidBy: draft.paidBy, incomeType: draft.incomeType, incomeSubtype: draft.incomeSubtype, account: draft.account, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, date: iso, monthYears: monthYears, notes: draft.notes, comments: draft.comments, incomingId: draft.incomingId, baseIncomingId: draft.baseIncomingId, subIncomingId: draft.subIncomingId)
     }
 
     private func incomingUpdateDTO(from draft: IncomingEditorDraft, id: String) -> IncomingUpdateDTO {

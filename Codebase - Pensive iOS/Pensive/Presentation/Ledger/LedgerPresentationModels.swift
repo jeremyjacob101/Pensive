@@ -49,6 +49,7 @@ struct ExpenseEditorDraft {
     var amount: Double
     var effectiveAmount: Double
     var effectiveAmountMode: EffectiveAmountMode
+    var monthYears: [MonthYear]
     var date: Date
     var paidTo: String
     var notes: String?
@@ -69,6 +70,7 @@ struct IncomingEditorDraft {
     var amount: Double
     var effectiveAmount: Double
     var effectiveAmountMode: EffectiveAmountMode
+    var monthYears: [MonthYear]
     var date: Date
     var notes: String?
     var comments: String?
