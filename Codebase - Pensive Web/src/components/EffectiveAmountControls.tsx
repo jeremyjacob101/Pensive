@@ -1,40 +1,47 @@
-import type { Dispatch, SetStateAction } from "react";
-import type { EditValues } from "../types/workspace";
+import { FormField } from "./EntryModal";
 
-export function EffectiveAmountControls({ editValues, setEditValues }: {
-  editValues: EditValues;
-  setEditValues: Dispatch<SetStateAction<EditValues>>;
+type EffectiveAmountMode = "auto" | "manual";
+
+export function EffectiveAmountControls({
+  value,
+  mode,
+  onChange,
+  onModeChange,
+  inputName,
+  modeName,
+}: {
+  value: string;
+  mode: EffectiveAmountMode;
+  onChange: (value: string) => void;
+  onModeChange: (mode: EffectiveAmountMode) => void;
+  inputName?: string;
+  modeName?: string;
 }) {
-  const mode = editValues.effectiveAmountMode === "manual" ? "manual" : "auto";
-
   return (
-    <div className="effective-amount-editor">
-      <label>
-        <span>Effective Amount</span>
+    <FormField label="Effective Amount">
+      <div className="effective-amount-input">
         <input
-          value={editValues.effectiveAmount ?? ""}
-          disabled={mode === "auto"}
-          onChange={(event) =>
-            setEditValues((values) => ({
-              ...values,
-              effectiveAmount: event.target.value,
-            }))
-          }
+          name={inputName}
+          inputMode="decimal"
+          placeholder="0.00"
+          value={value}
+          onChange={(event) => {
+            onChange(event.target.value);
+            onModeChange("manual");
+          }}
+          required
         />
-      </label>
-      <label className="effective-amount-toggle">
-        <input
-          type="checkbox"
-          checked={mode === "manual"}
-          onChange={(event) =>
-            setEditValues((values) => ({
-              ...values,
-              effectiveAmountMode: event.target.checked ? "manual" : "auto",
-            }))
-          }
-        />
-        <span>{mode === "manual" ? "Manual" : "Auto"}</span>
-      </label>
-    </div>
+        <button
+          type="button"
+          className={`effective-amount-auto${mode === "auto" ? " is-active" : ""}`}
+          aria-pressed={mode === "auto"}
+          title="Keep Effective Amount synced with Amount"
+          onClick={() => onModeChange("auto")}
+        >
+          Auto
+        </button>
+      </div>
+      {modeName ? <input type="hidden" name={modeName} value={mode} /> : null}
+    </FormField>
   );
 }

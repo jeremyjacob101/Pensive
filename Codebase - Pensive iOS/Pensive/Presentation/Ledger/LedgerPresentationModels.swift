@@ -32,7 +32,8 @@ extension MonthYear {
         guard let date = LedgerScopeLogic.parseISODate("\(rawValue)-01") else {
             return rawValue
         }
-        return "\(date.formatted(.dateTime.month(.abbreviated))) '\(rawValue.suffix(2))"
+        let twoDigitYear = rawValue.prefix(4).suffix(2)
+        return "\(date.formatted(.dateTime.month(.abbreviated))) '\(twoDigitYear)"
     }
 }
 

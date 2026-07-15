@@ -1,11 +1,15 @@
 import { buildEmptySplitExpenseDraft, buildEmptySplitIncomingDraft } from "../helpers/splitDrafts";
 import { getDefaultOptionValue, getScopedOptionValues, toOptionValues } from "../helpers/options";
+import { DisclosureSection, FormField, ModalActions, ModalSection } from "./EntryModal";
 import type { SplitExpenseDraft, SplitIncomingDraft } from "../types/splitDrafts";
+import { EMPTY_PAYBACK_DRAFT, type PaybackDraft } from "../types/paybackDraft";
+import { Layers3, PencilLine, Plus, Repeat2, Trash2 } from "lucide-react";
 import { getMonthFromIsoDate, getTodayIsoDate } from "../helpers/dates";
 import type { FormType, UserOptions } from "../types/workspace";
 import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 import { randomId16, toAmount } from "../helpers/formatters";
 import { SearchFieldDropdown } from "./SearchFieldDropdown";
+import { PaybackDraftEditor } from "./PaybackLinkManager";
 import type { Id } from "@pensive/convex-data-model";
 import { useEffect, useMemo, useState } from "react";
 import type { MenuItemKey } from "../types/ui";
@@ -15,6 +19,7 @@ import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@pensive/convex-api";
 import { createPortal } from "react-dom";
+import { EffectiveAmountControls } from "./EffectiveAmountControls";
 
 export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, onSearchQueryChange, searchFieldOptions, selectedSearchFields, onSearchFieldsChange, visibleExpenseIds, visibleIncomingIds, visibleExpenseCategories, visibleIncomingTypes, onBulkPatchExpenses, onBulkPatchIncomings, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {
   activeItem: MenuItemKey;
@@ -51,8 +56,12 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       comments?: string | null;
     };
   }) => Promise<{ updatedCount: number }>;
-  onAddExpense: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
-  onAddIncoming: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  onAddExpense: (
+    e: SyntheticEvent<HTMLFormElement>,
+  ) => Promise<Id<"expenses"> | null>;
+  onAddIncoming: (
+    e: SyntheticEvent<HTMLFormElement>,
+  ) => Promise<Id<"incomings"> | null>;
   onAddRecurring: (e: SyntheticEvent<HTMLFormElement>) => Promise<void>;
   bulkCreateExpenses: (args: {
     rows: Array<{
@@ -97,6 +106,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   userOptions: UserOptions | undefined;
 }) {
   const addUserOption = useMutation(api.userOptions.add);
+  const createPaybackLink = useMutation(api.paybackLinks.create);
   const todayIsoDate = getTodayIsoDate();
   const defaults = useMemo(
     () => ({
@@ -113,6 +123,14 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   const [incomingType, setIncomingType] = useState("");
   const [incomingSubtype, setIncomingSubtype] = useState("");
   const [incomingAccount, setIncomingAccount] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseEffectiveAmount, setExpenseEffectiveAmount] = useState("");
+  const [expenseEffectiveAmountMode, setExpenseEffectiveAmountMode] =
+    useState<"auto" | "manual">("auto");
+  const [incomingAmount, setIncomingAmount] = useState("");
+  const [incomingEffectiveAmount, setIncomingEffectiveAmount] = useState("");
+  const [incomingEffectiveAmountMode, setIncomingEffectiveAmountMode] =
+    useState<"auto" | "manual">("auto");
   const [recurringCategory, setRecurringCategory] = useState("");
   const [recurringExpenseSubcategory, setRecurringExpenseSubcategory] =
     useState("");
@@ -138,6 +156,10 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   const [incomingMonthYears, setIncomingMonthYears] = useState<string[]>(
     defaultMonth ? [defaultMonth] : [],
   );
+  const [expensePaybackDraft, setExpensePaybackDraft] =
+    useState<PaybackDraft>(EMPTY_PAYBACK_DRAFT);
+  const [incomingPaybackDraft, setIncomingPaybackDraft] =
+    useState<PaybackDraft>(EMPTY_PAYBACK_DRAFT);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [expenseBulkValues, setExpenseBulkValues] = useState({
@@ -255,6 +277,12 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     setIncomingType(defaults.incomeType);
     setIncomingSubtype("");
     setIncomingAccount(defaults.account);
+    setExpenseAmount("");
+    setExpenseEffectiveAmount("");
+    setExpenseEffectiveAmountMode("auto");
+    setIncomingAmount("");
+    setIncomingEffectiveAmount("");
+    setIncomingEffectiveAmountMode("auto");
     setRecurringCategory(defaults.category);
     setRecurringExpenseSubcategory("");
     setRecurringIncomingSubtype("");
@@ -263,6 +291,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     const month = getMonthFromIsoDate(todayIsoDate);
     setExpenseMonthYears(month ? [month] : []);
     setIncomingMonthYears(month ? [month] : []);
+    setExpensePaybackDraft(EMPTY_PAYBACK_DRAFT);
+    setIncomingPaybackDraft(EMPTY_PAYBACK_DRAFT);
   };
 
   const openForm = (nextFormType: FormType) => {
@@ -290,6 +320,62 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     setSplitIncomingDrafts([]);
     setSubmittingSplit(false);
     setFormType(null);
+  };
+
+  const handleAddExpenseSubmit = async (
+    event: SyntheticEvent<HTMLFormElement>,
+  ) => {
+    if (
+      expensePaybackDraft.candidateId &&
+      !expensePaybackDraft.allocatedAmount.trim()
+    ) {
+      window.alert("Add an allocation amount or clear the payback selection.");
+      return;
+    }
+    const expenseId = await onAddExpense(event);
+    if (!expenseId || !expensePaybackDraft.candidateId) return;
+    try {
+      await createPaybackLink({
+        expenseId,
+        incomingId: expensePaybackDraft.candidateId as Id<"incomings">,
+        allocatedAmount: toAmount(expensePaybackDraft.allocatedAmount),
+        notes: expensePaybackDraft.notes.trim() || undefined,
+      });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? `Expense saved, but the payback could not be linked: ${error.message}`
+          : "Expense saved, but the payback could not be linked.",
+      );
+    }
+  };
+
+  const handleAddIncomingSubmit = async (
+    event: SyntheticEvent<HTMLFormElement>,
+  ) => {
+    if (
+      incomingPaybackDraft.candidateId &&
+      !incomingPaybackDraft.allocatedAmount.trim()
+    ) {
+      window.alert("Add an allocation amount or clear the payback selection.");
+      return;
+    }
+    const incomingId = await onAddIncoming(event);
+    if (!incomingId || !incomingPaybackDraft.candidateId) return;
+    try {
+      await createPaybackLink({
+        expenseId: incomingPaybackDraft.candidateId as Id<"expenses">,
+        incomingId,
+        allocatedAmount: toAmount(incomingPaybackDraft.allocatedAmount),
+        notes: incomingPaybackDraft.notes.trim() || undefined,
+      });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? `Incoming saved, but the payback could not be linked: ${error.message}`
+          : "Incoming saved, but the payback could not be linked.",
+      );
+    }
   };
 
   const isSplitExpenseMode =
@@ -409,6 +495,13 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     });
   };
 
+  const removeSplitExpenseDraft = (index: number) => {
+    setSplitExpenseDrafts((current) =>
+      current.length <= 1
+        ? current
+        : current.filter((_, rowIndex) => rowIndex !== index));
+  };
+
   const updateSplitExpenseDraftMonthYears = (
     index: number,
     monthYears: string[],
@@ -448,6 +541,13 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
         },
       ];
     });
+  };
+
+  const removeSplitIncomingDraft = (index: number) => {
+    setSplitIncomingDrafts((current) =>
+      current.length <= 1
+        ? current
+        : current.filter((_, rowIndex) => rowIndex !== index));
   };
 
   const updateSplitIncomingDraftMonthYears = (
@@ -648,6 +748,9 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
     activeItem === "incomings"
       ? visibleIncomingIds.length
       : visibleExpenseIds.length;
+  const bulkTouchedCount = Object.values(
+    activeItem === "incomings" ? incomingBulkTouched : expenseBulkTouched,
+  ).filter(Boolean).length;
 
   const applyBulkEdits = async () => {
     if (visibleCount === 0) return;
@@ -835,10 +938,10 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
         <button
           type="button"
           className="add-entry-launcher"
-          aria-label={`Add ${activeItem.slice(0, -1)}`}
           onClick={openModalFromActiveTab}
         >
-          +
+          <Plus aria-hidden="true" />
+          Add {activeItem.slice(0, -1)}
         </button>
         {activeItem === "expenses" ? (
           <button
@@ -846,7 +949,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
             className="split-entry-launcher"
             onClick={openSplitExpenseForm}
           >
-            + Split
+            <Layers3 aria-hidden="true" />
+            Split expense
           </button>
         ) : null}
         {activeItem === "incomings" ? (
@@ -855,7 +959,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
             className="split-entry-launcher"
             onClick={openSplitIncomingForm}
           >
-            + Split
+            <Layers3 aria-hidden="true" />
+            Split incoming
           </button>
         ) : null}
         {activeItem === "expenses" || activeItem === "incomings" ? (
@@ -869,7 +974,8 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                 setBulkModalOpen(true);
               }}
             >
-              Edit/Apply All
+              <PencilLine aria-hidden="true" />
+              Edit visible ({visibleCount})
             </button>
             <input
               type="search"
@@ -904,9 +1010,20 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
               setBulkModalOpen(false);
             }}
           >
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="modal-card bulk-edit-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="modal-header">
-                <h3>Super Edit ({visibleCount} visible)</h3>
+                <div>
+                  <h3>
+                    Edit {visibleCount} visible {activeItem}
+                  </h3>
+                  <p className="modal-subtitle">
+                    Only enabled fields will change. Everything else stays
+                    untouched.
+                  </p>
+                </div>
                 <button
                   type="button"
                   className="modal-close"
@@ -916,7 +1033,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                   ✕
                 </button>
               </div>
-              <div className="entry-form modal-form">
+              <div className="entry-form modal-form bulk-edit-grid">
                 {activeItem === "expenses" ? (
                   <>
                     <label className="bulk-edit-toggle">
@@ -1242,10 +1359,15 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                     />
                   </>
                 )}
+                <div className="bulk-edit-summary">
+                  {bulkTouchedCount === 0
+                    ? "Choose the fields you want to change."
+                    : `${bulkTouchedCount} field${bulkTouchedCount === 1 ? "" : "s"} will change across ${visibleCount} ${activeItem}.`}
+                </div>
                 <div className="bulk-edit-actions">
                   <button
                     type="button"
-                    className="split-entry-launcher"
+                    className="modal-button modal-button-secondary"
                     onClick={() => setBulkModalOpen(false)}
                     disabled={bulkSaving}
                   >
@@ -1253,7 +1375,7 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                   </button>
                   <button
                     type="button"
-                    className="split-entry-launcher"
+                    className="modal-button modal-button-primary"
                     onClick={() => void applyBulkEdits()}
                     disabled={
                       bulkSaving ||
@@ -1263,7 +1385,9 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                         : !Object.values(incomingBulkTouched).some(Boolean))
                     }
                   >
-                    {bulkSaving ? "Applying..." : "Apply"}
+                    {bulkSaving
+                      ? "Applying…"
+                      : `Apply ${bulkTouchedCount || ""} change${bulkTouchedCount === 1 ? "" : "s"}`}
                   </button>
                 </div>
               </div>
@@ -1282,111 +1406,212 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
               onClick={(e) => e.stopPropagation()}
             >
               {!isSplitExpenseMode ? (
-                <div className="modal-card">
-                  <div className="modal-header">
-                    <h3>Add Expense</h3>
+                <form
+                  className="entry-modal entry-modal-standard entry-add-form"
+                  onSubmit={(event) => void handleAddExpenseSubmit(event)}
+                >
+                  <header className="entry-modal-header">
+                    <div className="entry-modal-heading">
+                      <h2>Add expense</h2>
+                      <p>
+                        Record the purchase now; add allocation details only
+                        when needed.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       className="modal-close"
                       onClick={closeForm}
+                      aria-label="Close add expense"
                     >
                       ✕
                     </button>
-                  </div>
-                  <form
-                    className="entry-form modal-form"
-                    onSubmit={(e) => void onAddExpense(e)}
-                  >
+                  </header>
+                  <div className="entry-modal-body">
                     <input
                       type="hidden"
                       name="monthYears"
                       value={JSON.stringify(expenseMonthYears)}
                     />
-                    <input name="expense" placeholder="Expense" required />
-                    <OptionPicker
-                      kind="account"
-                      label="Account"
-                      name="account"
-                      value={expenseAccount}
-                      options={toOptionValues(userOptions?.account)}
-                      placeholder="Account"
-                      required
-                      onChange={setExpenseAccount}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="category"
-                      label="Category"
-                      name="category"
-                      value={expenseCategory}
-                      options={toOptionValues(userOptions?.category)}
-                      placeholder="Category"
-                      required
-                      onChange={handleExpenseCategoryChange}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="subcategory"
-                      label="Subcategory"
-                      name="subcategory"
-                      value={expenseSubcategory}
-                      options={expenseSubcategoryOptions}
-                      placeholder="Subcategory"
-                      onChange={setExpenseSubcategory}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                      parentValue={expenseCategory}
-                    />
-                    <input name="amount" placeholder="Amount" required />
-                    <input
-                      name="date"
-                      type="date"
-                      defaultValue={todayIsoDate}
-                      onChange={(event) => {
-                        const month = getMonthFromIsoDate(event.target.value);
-                        if (expenseMonthYears.length === 0 && month) {
-                          setExpenseMonthYears([month]);
-                        }
-                      }}
-                      required
-                    />
+                    <ModalSection title="Details">
+                      <div className="modal-form-grid">
+                        <FormField
+                          label="Expense name"
+                          className="modal-field-wide"
+                        >
+                          <input
+                            name="expense"
+                            placeholder="e.g. Team lunch"
+                            autoFocus
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Amount">
+                          <input
+                            name="amount"
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            value={expenseAmount}
+                            onChange={(event) => {
+                              const amount = event.target.value;
+                              setExpenseAmount(amount);
+                              if (expenseEffectiveAmountMode === "auto")
+                                setExpenseEffectiveAmount(amount);
+                            }}
+                            required
+                          />
+                        </FormField>
+                        <EffectiveAmountControls
+                          inputName="effectiveAmount"
+                          modeName="effectiveAmountMode"
+                          value={expenseEffectiveAmount}
+                          mode={expenseEffectiveAmountMode}
+                          onChange={setExpenseEffectiveAmount}
+                          onModeChange={(mode) => {
+                            setExpenseEffectiveAmountMode(mode);
+                            if (mode === "auto")
+                              setExpenseEffectiveAmount(expenseAmount);
+                          }}
+                        />
+                        <FormField label="Date">
+                          <input
+                            name="date"
+                            type="date"
+                            defaultValue={todayIsoDate}
+                            onChange={(event) => {
+                              const month = getMonthFromIsoDate(
+                                event.target.value,
+                              );
+                              if (expenseMonthYears.length === 0 && month)
+                                setExpenseMonthYears([month]);
+                            }}
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Paid to">
+                          <input
+                            name="paidTo"
+                            placeholder="Person or business"
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Account">
+                          <OptionPicker
+                            kind="account"
+                            label="Account"
+                            name="account"
+                            value={expenseAccount}
+                            options={toOptionValues(userOptions?.account)}
+                            placeholder="Choose account"
+                            required
+                            onChange={setExpenseAccount}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Category">
+                          <OptionPicker
+                            kind="category"
+                            label="Category"
+                            name="category"
+                            value={expenseCategory}
+                            options={toOptionValues(userOptions?.category)}
+                            placeholder="Choose category"
+                            required
+                            onChange={handleExpenseCategoryChange}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Subcategory" optional>
+                          <OptionPicker
+                            kind="subcategory"
+                            label="Subcategory"
+                            name="subcategory"
+                            value={expenseSubcategory}
+                            options={expenseSubcategoryOptions}
+                            placeholder="Choose subcategory"
+                            onChange={setExpenseSubcategory}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                            parentValue={expenseCategory}
+                          />
+                        </FormField>
+                      </div>
+                    </ModalSection>
                     <MonthYearMultiSelect
                       value={expenseMonthYears}
                       onChange={setExpenseMonthYears}
                       required
                     />
-                    <input name="paidTo" placeholder="PaidTo" required />
-                    <input name="notes" placeholder="Notes" />
-                    <input name="comments" placeholder="Comments" />
-                    <button
-                      type="submit"
-                      className="save-plus-btn"
-                      aria-label="Save expense"
+                    <PaybackDraftEditor
+                      entryKind="expense"
+                      value={expensePaybackDraft}
+                      onChange={setExpensePaybackDraft}
                       disabled={saving}
+                    />
+                    <DisclosureSection
+                      title="Notes & comments"
+                      summary="Optional"
                     >
-                      +
-                    </button>
-                  </form>
-                </div>
+                      <div className="modal-form-grid">
+                        <FormField label="Notes" optional>
+                          <textarea
+                            name="notes"
+                            placeholder="Details you may want to search later"
+                          />
+                        </FormField>
+                        <FormField label="Comments" optional>
+                          <textarea
+                            name="comments"
+                            placeholder="Extra context"
+                          />
+                        </FormField>
+                      </div>
+                    </DisclosureSection>
+                  </div>
+                  <footer className="entry-modal-footer">
+                    <ModalActions
+                      onCancel={closeForm}
+                      primaryLabel={saving ? "Adding…" : "Add expense"}
+                      primaryType="submit"
+                      disabled={saving}
+                      secondaryAction={
+                        <button
+                          type="button"
+                          className="modal-text-action"
+                          onClick={openSplitExpenseForm}
+                        >
+                          <Layers3 aria-hidden="true" />
+                          Create a split instead
+                        </button>
+                      }
+                    />
+                  </footer>
+                </form>
               ) : (
                 <div className="split-modal-layout">
                   <div className="split-modal-toolbar">
-                    <h3>Add Split Expenses</h3>
+                    <div>
+                      <h3>Split expense</h3>
+                      <p>Create related entries and save them together.</p>
+                    </div>
                     <div className="split-modal-toolbar-actions">
                       <button
                         type="button"
-                        className="split-entry-launcher"
-                        onClick={addSplitExpenseDraft}
-                        disabled={submittingSplit}
-                      >
-                        + Split
-                      </button>
-                      <button
-                        type="button"
-                        className="save-plus-btn split-create-btn"
+                        className="modal-button modal-button-primary"
                         onClick={() => void createSplitExpenses()}
                         disabled={submittingSplit || saving}
                       >
-                        Create All
+                        {submittingSplit
+                          ? "Creating…"
+                          : `Create ${splitExpenseDrafts.length} expense${splitExpenseDrafts.length === 1 ? "" : "s"}`}
                       </button>
                       <button
                         type="button"
@@ -1405,98 +1630,128 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                         className="modal-card split-modal-card"
                       >
                         <div className="modal-header">
-                          <h3>Split #{index + 1}</h3>
+                          <h3>Entry {index + 1}</h3>
+                          {splitExpenseDrafts.length > 1 ? (
+                            <button
+                              type="button"
+                              className="icon-action-btn danger"
+                              aria-label={`Remove entry ${index + 1}`}
+                              onClick={() => removeSplitExpenseDraft(index)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                            </button>
+                          ) : null}
                         </div>
                         <div className="entry-form modal-form">
-                          <input
-                            placeholder="Expense"
-                            value={draft.expense}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "expense",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <OptionPicker
-                            kind="account"
-                            label="Account"
-                            value={draft.account}
-                            options={toOptionValues(userOptions?.account)}
-                            placeholder="Account"
-                            required
-                            onChange={(value) =>
-                              updateSplitExpenseDraft(index, "account", value)
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                          />
-                          <OptionPicker
-                            kind="category"
-                            label="Category"
-                            value={draft.category}
-                            options={toOptionValues(userOptions?.category)}
-                            placeholder="Category"
-                            required
-                            onChange={(value) =>
-                              updateSplitExpenseDraft(index, "category", value)
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                          />
-                          <OptionPicker
-                            kind="subcategory"
-                            label="Subcategory"
-                            value={draft.subcategory}
-                            options={getScopedOptionValues(
-                              userOptions,
-                              "subcategory",
-                              draft.category,
-                            )}
-                            placeholder="Subcategory"
-                            onChange={(value) =>
-                              updateSplitExpenseDraft(
-                                index,
+                          <FormField
+                            label="Expense name"
+                            className="modal-field-wide"
+                          >
+                            <input
+                              placeholder="e.g. Team dinner"
+                              value={draft.expense}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "expense",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Account">
+                            <OptionPicker
+                              kind="account"
+                              label="Account"
+                              value={draft.account}
+                              options={toOptionValues(userOptions?.account)}
+                              placeholder="Account"
+                              required
+                              onChange={(value) =>
+                                updateSplitExpenseDraft(index, "account", value)
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                            />
+                          </FormField>
+                          <FormField label="Category">
+                            <OptionPicker
+                              kind="category"
+                              label="Category"
+                              value={draft.category}
+                              options={toOptionValues(userOptions?.category)}
+                              placeholder="Category"
+                              required
+                              onChange={(value) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "category",
+                                  value,
+                                )
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                            />
+                          </FormField>
+                          <FormField label="Subcategory" optional>
+                            <OptionPicker
+                              kind="subcategory"
+                              label="Subcategory"
+                              value={draft.subcategory}
+                              options={getScopedOptionValues(
+                                userOptions,
                                 "subcategory",
-                                value,
-                              )
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                            parentValue={draft.category}
-                          />
-                          <input
-                            placeholder="Amount"
-                            value={draft.amount}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "amount",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <input
-                            type="date"
-                            value={draft.date}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "date",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
+                                draft.category,
+                              )}
+                              placeholder="Subcategory"
+                              onChange={(value) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "subcategory",
+                                  value,
+                                )
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                              parentValue={draft.category}
+                            />
+                          </FormField>
+                          <FormField label="Amount">
+                            <input
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={draft.amount}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Date">
+                            <input
+                              type="date"
+                              value={draft.date}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "date",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
                           <MonthYearMultiSelect
                             value={draft.monthYears}
                             onChange={(value) =>
@@ -1504,43 +1759,63 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                             }
                             required
                           />
-                          <input
-                            placeholder="PaidTo"
-                            value={draft.paidTo}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "paidTo",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <input
-                            placeholder="Notes"
-                            value={draft.notes}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "notes",
-                                e.target.value,
-                              )
-                            }
-                          />
-                          <input
-                            placeholder="Comments"
-                            value={draft.comments}
-                            onChange={(e) =>
-                              updateSplitExpenseDraft(
-                                index,
-                                "comments",
-                                e.target.value,
-                              )
-                            }
-                          />
+                          <FormField label="Paid to">
+                            <input
+                              placeholder="Person or business"
+                              value={draft.paidTo}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "paidTo",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Notes" optional>
+                            <input
+                              placeholder="Extra details"
+                              value={draft.notes}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "notes",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
+                          <FormField label="Comments" optional>
+                            <input
+                              placeholder="Additional context"
+                              value={draft.comments}
+                              onChange={(e) =>
+                                updateSplitExpenseDraft(
+                                  index,
+                                  "comments",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
                         </div>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      className="split-add-another"
+                      onClick={addSplitExpenseDraft}
+                      disabled={submittingSplit}
+                    >
+                      <Plus aria-hidden="true" />
+                      <span>
+                        <strong>Add another entry</strong>
+                        <small>
+                          Create one more related expense in this split.
+                        </small>
+                      </span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1559,111 +1834,212 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
               onClick={(e) => e.stopPropagation()}
             >
               {!isSplitIncomingMode ? (
-                <div className="modal-card">
-                  <div className="modal-header">
-                    <h3>Add Incoming</h3>
+                <form
+                  className="entry-modal entry-modal-standard entry-add-form"
+                  onSubmit={(event) => void handleAddIncomingSubmit(event)}
+                >
+                  <header className="entry-modal-header">
+                    <div className="entry-modal-heading">
+                      <h2>Add incoming</h2>
+                      <p>
+                        Record money received and link it to an expense when it
+                        is a reimbursement.
+                      </p>
+                    </div>
                     <button
                       type="button"
                       className="modal-close"
                       onClick={closeForm}
+                      aria-label="Close add incoming"
                     >
                       ✕
                     </button>
-                  </div>
-                  <form
-                    className="entry-form modal-form"
-                    onSubmit={(e) => void onAddIncoming(e)}
-                  >
+                  </header>
+                  <div className="entry-modal-body">
                     <input
                       type="hidden"
                       name="monthYears"
                       value={JSON.stringify(incomingMonthYears)}
                     />
-                    <input name="incoming" placeholder="Incoming" required />
-                    <input name="paidBy" placeholder="PaidBy" required />
-                    <OptionPicker
-                      kind="incomeType"
-                      label="Income Type"
-                      name="incomeType"
-                      value={incomingType}
-                      options={toOptionValues(userOptions?.incomeType)}
-                      placeholder="IncomeType"
-                      required
-                      onChange={handleIncomingTypeChange}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="incomeSubtype"
-                      label="Income Subtype"
-                      name="incomeSubtype"
-                      value={incomingSubtype}
-                      options={incomingSubtypeOptions}
-                      placeholder="IncomeSubtype"
-                      onChange={setIncomingSubtype}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                      parentValue={incomingType}
-                    />
-                    <OptionPicker
-                      kind="account"
-                      label="Account"
-                      name="account"
-                      value={incomingAccount}
-                      options={toOptionValues(userOptions?.account)}
-                      placeholder="Account"
-                      required
-                      onChange={setIncomingAccount}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <input name="amount" placeholder="Amount" required />
-                    <input
-                      name="date"
-                      type="date"
-                      defaultValue={todayIsoDate}
-                      onChange={(event) => {
-                        const month = getMonthFromIsoDate(event.target.value);
-                        if (incomingMonthYears.length === 0 && month) {
-                          setIncomingMonthYears([month]);
-                        }
-                      }}
-                      required
-                    />
+                    <ModalSection title="Details">
+                      <div className="modal-form-grid">
+                        <FormField
+                          label="Incoming name"
+                          className="modal-field-wide"
+                        >
+                          <input
+                            name="incoming"
+                            placeholder="e.g. Salary or dinner payback"
+                            autoFocus
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Amount">
+                          <input
+                            name="amount"
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            value={incomingAmount}
+                            onChange={(event) => {
+                              const amount = event.target.value;
+                              setIncomingAmount(amount);
+                              if (incomingEffectiveAmountMode === "auto")
+                                setIncomingEffectiveAmount(amount);
+                            }}
+                            required
+                          />
+                        </FormField>
+                        <EffectiveAmountControls
+                          inputName="effectiveAmount"
+                          modeName="effectiveAmountMode"
+                          value={incomingEffectiveAmount}
+                          mode={incomingEffectiveAmountMode}
+                          onChange={setIncomingEffectiveAmount}
+                          onModeChange={(mode) => {
+                            setIncomingEffectiveAmountMode(mode);
+                            if (mode === "auto")
+                              setIncomingEffectiveAmount(incomingAmount);
+                          }}
+                        />
+                        <FormField label="Date">
+                          <input
+                            name="date"
+                            type="date"
+                            defaultValue={todayIsoDate}
+                            onChange={(event) => {
+                              const month = getMonthFromIsoDate(
+                                event.target.value,
+                              );
+                              if (incomingMonthYears.length === 0 && month)
+                                setIncomingMonthYears([month]);
+                            }}
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Paid by">
+                          <input
+                            name="paidBy"
+                            placeholder="Person or organization"
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Income type">
+                          <OptionPicker
+                            kind="incomeType"
+                            label="Income Type"
+                            name="incomeType"
+                            value={incomingType}
+                            options={toOptionValues(userOptions?.incomeType)}
+                            placeholder="Choose income type"
+                            required
+                            onChange={handleIncomingTypeChange}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Income subtype" optional>
+                          <OptionPicker
+                            kind="incomeSubtype"
+                            label="Income Subtype"
+                            name="incomeSubtype"
+                            value={incomingSubtype}
+                            options={incomingSubtypeOptions}
+                            placeholder="Choose income subtype"
+                            onChange={setIncomingSubtype}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                            parentValue={incomingType}
+                          />
+                        </FormField>
+                        <FormField label="Account">
+                          <OptionPicker
+                            kind="account"
+                            label="Account"
+                            name="account"
+                            value={incomingAccount}
+                            options={toOptionValues(userOptions?.account)}
+                            placeholder="Choose account"
+                            required
+                            onChange={setIncomingAccount}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                      </div>
+                    </ModalSection>
                     <MonthYearMultiSelect
                       value={incomingMonthYears}
                       onChange={setIncomingMonthYears}
                       required
                     />
-                    <input name="notes" placeholder="Notes" />
-                    <input name="comments" placeholder="Comments" />
-                    <button
-                      type="submit"
-                      className="save-plus-btn"
-                      aria-label="Save incoming"
+                    <PaybackDraftEditor
+                      entryKind="incoming"
+                      value={incomingPaybackDraft}
+                      onChange={setIncomingPaybackDraft}
                       disabled={saving}
+                    />
+                    <DisclosureSection
+                      title="Notes & comments"
+                      summary="Optional"
                     >
-                      +
-                    </button>
-                  </form>
-                </div>
+                      <div className="modal-form-grid">
+                        <FormField label="Notes" optional>
+                          <textarea
+                            name="notes"
+                            placeholder="Details you may want to search later"
+                          />
+                        </FormField>
+                        <FormField label="Comments" optional>
+                          <textarea
+                            name="comments"
+                            placeholder="Extra context"
+                          />
+                        </FormField>
+                      </div>
+                    </DisclosureSection>
+                  </div>
+                  <footer className="entry-modal-footer">
+                    <ModalActions
+                      onCancel={closeForm}
+                      primaryLabel={saving ? "Adding…" : "Add incoming"}
+                      primaryType="submit"
+                      disabled={saving}
+                      secondaryAction={
+                        <button
+                          type="button"
+                          className="modal-text-action"
+                          onClick={openSplitIncomingForm}
+                        >
+                          <Layers3 aria-hidden="true" />
+                          Create a split instead
+                        </button>
+                      }
+                    />
+                  </footer>
+                </form>
               ) : (
                 <div className="split-modal-layout">
                   <div className="split-modal-toolbar">
-                    <h3>Add Split Incomings</h3>
+                    <div>
+                      <h3>Split incoming</h3>
+                      <p>Create related entries and save them together.</p>
+                    </div>
                     <div className="split-modal-toolbar-actions">
                       <button
                         type="button"
-                        className="split-entry-launcher"
-                        onClick={addSplitIncomingDraft}
-                        disabled={submittingSplit}
-                      >
-                        + Split
-                      </button>
-                      <button
-                        type="button"
-                        className="save-plus-btn split-create-btn"
+                        className="modal-button modal-button-primary"
                         onClick={() => void createSplitIncomings()}
                         disabled={submittingSplit || saving}
                       >
-                        Create All
+                        {submittingSplit
+                          ? "Creating…"
+                          : `Create ${splitIncomingDrafts.length} incoming${splitIncomingDrafts.length === 1 ? "" : "s"}`}
                       </button>
                       <button
                         type="button"
@@ -1682,114 +2058,146 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                         className="modal-card split-modal-card"
                       >
                         <div className="modal-header">
-                          <h3>Split #{index + 1}</h3>
+                          <h3>Entry {index + 1}</h3>
+                          {splitIncomingDrafts.length > 1 ? (
+                            <button
+                              type="button"
+                              className="icon-action-btn danger"
+                              aria-label={`Remove entry ${index + 1}`}
+                              onClick={() => removeSplitIncomingDraft(index)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                            </button>
+                          ) : null}
                         </div>
                         <div className="entry-form modal-form">
-                          <input
-                            placeholder="Incoming"
-                            value={draft.incoming}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "incoming",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <input
-                            placeholder="PaidBy"
-                            value={draft.paidBy}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "paidBy",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <OptionPicker
-                            kind="incomeType"
-                            label="Income Type"
-                            value={draft.incomeType}
-                            options={toOptionValues(userOptions?.incomeType)}
-                            placeholder="IncomeType"
-                            required
-                            onChange={(value) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "incomeType",
-                                value,
-                              )
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                          />
-                          <OptionPicker
-                            kind="incomeSubtype"
-                            label="Income Subtype"
-                            value={draft.incomeSubtype}
-                            options={getScopedOptionValues(
-                              userOptions,
-                              "incomeSubtype",
-                              draft.incomeType,
-                            )}
-                            placeholder="IncomeSubtype"
-                            onChange={(value) =>
-                              updateSplitIncomingDraft(
-                                index,
+                          <FormField
+                            label="Incoming name"
+                            className="modal-field-wide"
+                          >
+                            <input
+                              placeholder="e.g. Shared dinner payback"
+                              value={draft.incoming}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "incoming",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Paid by">
+                            <input
+                              placeholder="Person or organization"
+                              value={draft.paidBy}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "paidBy",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Income type">
+                            <OptionPicker
+                              kind="incomeType"
+                              label="Income Type"
+                              value={draft.incomeType}
+                              options={toOptionValues(userOptions?.incomeType)}
+                              placeholder="IncomeType"
+                              required
+                              onChange={(value) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "incomeType",
+                                  value,
+                                )
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                            />
+                          </FormField>
+                          <FormField label="Income subtype" optional>
+                            <OptionPicker
+                              kind="incomeSubtype"
+                              label="Income Subtype"
+                              value={draft.incomeSubtype}
+                              options={getScopedOptionValues(
+                                userOptions,
                                 "incomeSubtype",
-                                value,
-                              )
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                            parentValue={draft.incomeType}
-                          />
-                          <OptionPicker
-                            kind="account"
-                            label="Account"
-                            value={draft.account}
-                            options={toOptionValues(userOptions?.account)}
-                            placeholder="Account"
-                            required
-                            onChange={(value) =>
-                              updateSplitIncomingDraft(index, "account", value)
-                            }
-                            onCreateOption={saveOption.bind(
-                              null,
-                              addUserOption,
-                            )}
-                          />
-                          <input
-                            placeholder="Amount"
-                            value={draft.amount}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "amount",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
-                          <input
-                            type="date"
-                            value={draft.date}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "date",
-                                e.target.value,
-                              )
-                            }
-                            required
-                          />
+                                draft.incomeType,
+                              )}
+                              placeholder="IncomeSubtype"
+                              onChange={(value) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "incomeSubtype",
+                                  value,
+                                )
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                              parentValue={draft.incomeType}
+                            />
+                          </FormField>
+                          <FormField label="Account">
+                            <OptionPicker
+                              kind="account"
+                              label="Account"
+                              value={draft.account}
+                              options={toOptionValues(userOptions?.account)}
+                              placeholder="Account"
+                              required
+                              onChange={(value) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "account",
+                                  value,
+                                )
+                              }
+                              onCreateOption={saveOption.bind(
+                                null,
+                                addUserOption,
+                              )}
+                            />
+                          </FormField>
+                          <FormField label="Amount">
+                            <input
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={draft.amount}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
+                          <FormField label="Date">
+                            <input
+                              type="date"
+                              value={draft.date}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "date",
+                                  e.target.value,
+                                )
+                              }
+                              required
+                            />
+                          </FormField>
                           <MonthYearMultiSelect
                             value={draft.monthYears}
                             onChange={(value) =>
@@ -1797,31 +2205,49 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
                             }
                             required
                           />
-                          <input
-                            placeholder="Notes"
-                            value={draft.notes}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "notes",
-                                e.target.value,
-                              )
-                            }
-                          />
-                          <input
-                            placeholder="Comments"
-                            value={draft.comments}
-                            onChange={(e) =>
-                              updateSplitIncomingDraft(
-                                index,
-                                "comments",
-                                e.target.value,
-                              )
-                            }
-                          />
+                          <FormField label="Notes" optional>
+                            <input
+                              placeholder="Extra details"
+                              value={draft.notes}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "notes",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
+                          <FormField label="Comments" optional>
+                            <input
+                              placeholder="Additional context"
+                              value={draft.comments}
+                              onChange={(e) =>
+                                updateSplitIncomingDraft(
+                                  index,
+                                  "comments",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </FormField>
                         </div>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      className="split-add-another"
+                      onClick={addSplitIncomingDraft}
+                      disabled={submittingSplit}
+                    >
+                      <Plus aria-hidden="true" />
+                      <span>
+                        <strong>Add another entry</strong>
+                        <small>
+                          Create one more related incoming in this split.
+                        </small>
+                      </span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1833,149 +2259,252 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
       {formType === "recurring" &&
         createPortal(
           <div className="modal-overlay" onClick={closeForm}>
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Add Recurring</h3>
+            <form
+              className="entry-modal entry-modal-standard recurring-add-form"
+              onClick={(event) => event.stopPropagation()}
+              onSubmit={(event) => void onAddRecurring(event)}
+            >
+              <header className="entry-modal-header">
+                <div className="entry-modal-heading">
+                  <h2>Add recurring {recurringKind}</h2>
+                  <p>
+                    Set the schedule once; new entries are created
+                    automatically.
+                  </p>
+                </div>
                 <button
                   type="button"
                   className="modal-close"
                   onClick={closeForm}
+                  aria-label="Close add recurring"
                 >
                   ✕
                 </button>
-              </div>
-              <form
-                className="entry-form modal-form"
-                onSubmit={(e) => void onAddRecurring(e)}
-              >
-                <label>
-                  Kind
-                  <select
-                    name="kind"
-                    value={recurringKind}
-                    onChange={(e) =>
-                      setRecurringKind(
-                        e.target.value === "incoming" ? "incoming" : "expense",
-                      )
-                    }
-                  >
-                    <option value="expense">Expense</option>
-                    <option value="incoming">Incoming</option>
-                  </select>
-                </label>
-                <label>
-                  Status
-                  <select
-                    name="status"
-                    value={recurringStatus}
-                    onChange={(e) =>
-                      setRecurringStatus(
-                        e.target.value === "inactive" ? "inactive" : "active",
-                      )
-                    }
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </label>
-                <input name="name" placeholder="Name" required />
-                <input name="amount" placeholder="Amount" required />
-                <input name="frequency" placeholder="Frequency" required />
-                <input name="dayOfMonth" placeholder="Day of Month" required />
-                {recurringKind === "expense" ? (
-                  <>
-                    <OptionPicker
-                      kind="account"
-                      label="Expense Account"
-                      name="recurringExpenseAccount"
-                      value={expenseAccount}
-                      options={toOptionValues(userOptions?.account)}
-                      placeholder="Account"
-                      required
-                      onChange={setExpenseAccount}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="category"
-                      label="Expense Category"
-                      name="recurringExpenseCategory"
-                      value={recurringCategory}
-                      options={toOptionValues(userOptions?.category)}
-                      placeholder="Category"
-                      required
-                      onChange={handleRecurringCategoryChange}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="subcategory"
-                      label="Expense Subcategory"
-                      name="recurringExpenseSubcategory"
-                      value={recurringExpenseSubcategory}
-                      options={recurringExpenseSubcategoryOptions}
-                      placeholder="Subcategory"
-                      onChange={setRecurringExpenseSubcategory}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                      parentValue={recurringCategory}
-                    />
-                    <input
-                      name="recurringExpensePaidTo"
-                      placeholder="Paid To"
-                      required
-                    />
-                  </>
-                ) : (
-                  <>
-                    <input
-                      name="recurringIncomingPaidBy"
-                      placeholder="Paid By"
-                      required
-                    />
-                    <OptionPicker
-                      kind="incomeType"
-                      label="Income Type"
-                      name="recurringIncomingType"
-                      value={incomingType}
-                      options={toOptionValues(userOptions?.incomeType)}
-                      placeholder="Income Type"
-                      required
-                      onChange={handleIncomingTypeChange}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                    <OptionPicker
-                      kind="incomeSubtype"
-                      label="Income Subtype"
-                      name="recurringIncomingSubtype"
-                      value={recurringIncomingSubtype}
-                      options={recurringIncomingSubtypeOptions}
-                      placeholder="Income Subtype"
-                      onChange={setRecurringIncomingSubtype}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                      parentValue={incomingType}
-                    />
-                    <OptionPicker
-                      kind="account"
-                      label="Incoming Account"
-                      name="recurringIncomingAccount"
-                      value={incomingAccount}
-                      options={toOptionValues(userOptions?.account)}
-                      placeholder="Account"
-                      required
-                      onChange={setIncomingAccount}
-                      onCreateOption={saveOption.bind(null, addUserOption)}
-                    />
-                  </>
-                )}
-                <input name="notes" placeholder="Notes" />
-                <button
-                  type="submit"
-                  className="save-plus-btn"
-                  aria-label="Save recurring"
-                  disabled={saving}
+              </header>
+              <div className="entry-modal-body">
+                <input type="hidden" name="kind" value={recurringKind} />
+                <input type="hidden" name="status" value={recurringStatus} />
+                <div
+                  className="recurring-kind-switch"
+                  role="group"
+                  aria-label="Recurring entry type"
                 >
-                  +
-                </button>
-              </form>
-            </div>
+                  <button
+                    type="button"
+                    className={recurringKind === "expense" ? "active" : ""}
+                    onClick={() => setRecurringKind("expense")}
+                  >
+                    Expense
+                  </button>
+                  <button
+                    type="button"
+                    className={recurringKind === "incoming" ? "active" : ""}
+                    onClick={() => setRecurringKind("incoming")}
+                  >
+                    Incoming
+                  </button>
+                </div>
+                <label className="recurring-status-row">
+                  <span>
+                    <strong>Status</strong>
+                    <small>
+                      Inactive recurrings stay saved but do not create entries.
+                    </small>
+                  </span>
+                  <span className="recurring-status-control">
+                    {recurringStatus === "active" ? "Active" : "Inactive"}
+                    <input
+                      type="checkbox"
+                      checked={recurringStatus === "active"}
+                      onChange={(event) =>
+                        setRecurringStatus(
+                          event.target.checked ? "active" : "inactive",
+                        )
+                      }
+                    />
+                  </span>
+                </label>
+                <ModalSection title="Schedule">
+                  <div className="modal-form-grid">
+                    <FormField label="Name" className="modal-field-wide">
+                      <input
+                        name="name"
+                        placeholder={`e.g. Monthly ${recurringKind}`}
+                        autoFocus
+                        required
+                      />
+                    </FormField>
+                    <FormField label="Amount">
+                      <input
+                        name="amount"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        required
+                      />
+                    </FormField>
+                    <FormField label="Day of month">
+                      <input
+                        name="dayOfMonth"
+                        type="number"
+                        min="1"
+                        max="31"
+                        placeholder="1–31"
+                        required
+                      />
+                    </FormField>
+                  </div>
+                </ModalSection>
+                <ModalSection
+                  title={
+                    recurringKind === "expense"
+                      ? "Expense details"
+                      : "Incoming details"
+                  }
+                >
+                  <div className="modal-form-grid">
+                    {recurringKind === "expense" ? (
+                      <>
+                        <FormField label="Account">
+                          <OptionPicker
+                            kind="account"
+                            label="Expense Account"
+                            name="recurringExpenseAccount"
+                            value={expenseAccount}
+                            options={toOptionValues(userOptions?.account)}
+                            placeholder="Choose account"
+                            required
+                            onChange={setExpenseAccount}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Category">
+                          <OptionPicker
+                            kind="category"
+                            label="Expense Category"
+                            name="recurringExpenseCategory"
+                            value={recurringCategory}
+                            options={toOptionValues(userOptions?.category)}
+                            placeholder="Choose category"
+                            required
+                            onChange={handleRecurringCategoryChange}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Subcategory" optional>
+                          <OptionPicker
+                            kind="subcategory"
+                            label="Expense Subcategory"
+                            name="recurringExpenseSubcategory"
+                            value={recurringExpenseSubcategory}
+                            options={recurringExpenseSubcategoryOptions}
+                            placeholder="Choose subcategory"
+                            onChange={setRecurringExpenseSubcategory}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                            parentValue={recurringCategory}
+                          />
+                        </FormField>
+                        <FormField label="Paid to">
+                          <input
+                            name="recurringExpensePaidTo"
+                            placeholder="Person or business"
+                            required
+                          />
+                        </FormField>
+                      </>
+                    ) : (
+                      <>
+                        <FormField label="Paid by">
+                          <input
+                            name="recurringIncomingPaidBy"
+                            placeholder="Person or organization"
+                            required
+                          />
+                        </FormField>
+                        <FormField label="Income type">
+                          <OptionPicker
+                            kind="incomeType"
+                            label="Income Type"
+                            name="recurringIncomingType"
+                            value={incomingType}
+                            options={toOptionValues(userOptions?.incomeType)}
+                            placeholder="Choose income type"
+                            required
+                            onChange={handleIncomingTypeChange}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                        <FormField label="Income subtype" optional>
+                          <OptionPicker
+                            kind="incomeSubtype"
+                            label="Income Subtype"
+                            name="recurringIncomingSubtype"
+                            value={recurringIncomingSubtype}
+                            options={recurringIncomingSubtypeOptions}
+                            placeholder="Choose income subtype"
+                            onChange={setRecurringIncomingSubtype}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                            parentValue={incomingType}
+                          />
+                        </FormField>
+                        <FormField label="Account">
+                          <OptionPicker
+                            kind="account"
+                            label="Incoming Account"
+                            name="recurringIncomingAccount"
+                            value={incomingAccount}
+                            options={toOptionValues(userOptions?.account)}
+                            placeholder="Choose account"
+                            required
+                            onChange={setIncomingAccount}
+                            onCreateOption={saveOption.bind(
+                              null,
+                              addUserOption,
+                            )}
+                          />
+                        </FormField>
+                      </>
+                    )}
+                  </div>
+                </ModalSection>
+                <DisclosureSection title="Notes" summary="Optional">
+                  <FormField label="Notes" optional>
+                    <textarea
+                      name="notes"
+                      placeholder="Anything worth remembering"
+                    />
+                  </FormField>
+                </DisclosureSection>
+                <div className="recurring-schedule-summary">
+                  <Repeat2 aria-hidden="true" />
+                  Creates a new {recurringKind} on this schedule while active.
+                </div>
+              </div>
+              <footer className="entry-modal-footer">
+                <ModalActions
+                  onCancel={closeForm}
+                  primaryLabel={
+                    saving ? "Adding…" : `Add recurring ${recurringKind}`
+                  }
+                  primaryType="submit"
+                  disabled={saving}
+                />
+              </footer>
+            </form>
           </div>,
           document.body,
         )}

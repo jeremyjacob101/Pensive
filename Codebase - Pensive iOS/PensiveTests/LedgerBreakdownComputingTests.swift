@@ -2,6 +2,11 @@ import XCTest
 @testable import Pensive
 
 final class LedgerBreakdownComputingTests: XCTestCase {
+    func testMonthYearAbbreviatedLabelUsesYearRatherThanMonthNumber() {
+        XCTAssertEqual(MonthYear("2026-07")?.abbreviatedLabel, "Jul '26")
+        XCTAssertEqual(MonthYear("2027-01")?.abbreviatedLabel, "Jan '27")
+    }
+
     func testLedgerFiltersApplyAccountAndCategoryAsSeparateFilters() {
         let rows = [
             expense(id: "checking-food", account: "Checking", category: "Food", subcategory: "Groceries", amount: 10, effective: 10),

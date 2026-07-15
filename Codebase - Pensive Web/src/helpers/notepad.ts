@@ -72,3 +72,7 @@ export function columnLabel(index: number) {
 export function makeClientNoteId() {
   return `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+export function makeClientTableId() {
+  return `table-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}

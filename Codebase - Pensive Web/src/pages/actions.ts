@@ -34,17 +34,32 @@ export async function handleAddExpense(
   },
 ) {
   e.preventDefault();
-  const form = new FormData(e.currentTarget);
+  const formElement = e.currentTarget;
+  const form = new FormData(formElement);
+  const monthYears = parseMonthYears(
+    String(form.get("monthYears") ?? "[]"),
+    "",
+  );
+  if (monthYears.length === 0) return null;
   deps.setSaving(true);
   try {
     const date = String(form.get("date") ?? "");
-    await deps.createExpense({
+    const effectiveAmountMode =
+      String(form.get("effectiveAmountMode") ?? "auto") === "manual"
+        ? "manual"
+        : "auto";
+    const createdId = await deps.createExpense({
       expense: String(form.get("expense") ?? ""),
       account: String(form.get("account") ?? ""),
       category: String(form.get("category") ?? ""),
       subcategory: String(form.get("subcategory") ?? "") || undefined,
       amount: toAmount(String(form.get("amount") ?? "")),
-      monthYears: parseMonthYears(String(form.get("monthYears") ?? "[]"), date),
+      effectiveAmount:
+        effectiveAmountMode === "manual"
+          ? toAmount(String(form.get("effectiveAmount") ?? ""))
+          : undefined,
+      effectiveAmountMode,
+      monthYears,
       date,
       paidTo: String(form.get("paidTo") ?? ""),
       notes: String(form.get("notes") ?? "") || undefined,
@@ -69,9 +84,10 @@ export async function handleAddExpense(
         String(form.get("category") ?? ""),
       ),
     ]);
-    e.currentTarget.reset();
+    formElement.reset();
     deps.setFormType(null);
     deps.onSelectTab("expenses");
+    return createdId;
   } finally {
     deps.setSaving(false);
   }
@@ -90,19 +106,34 @@ export async function handleAddIncoming(
   },
 ) {
   e.preventDefault();
-  const form = new FormData(e.currentTarget);
+  const formElement = e.currentTarget;
+  const form = new FormData(formElement);
+  const monthYears = parseMonthYears(
+    String(form.get("monthYears") ?? "[]"),
+    "",
+  );
+  if (monthYears.length === 0) return null;
   deps.setSaving(true);
   try {
     const date = String(form.get("date") ?? "");
-    await deps.createIncoming({
+    const effectiveAmountMode =
+      String(form.get("effectiveAmountMode") ?? "auto") === "manual"
+        ? "manual"
+        : "auto";
+    const createdId = await deps.createIncoming({
       incoming: String(form.get("incoming") ?? ""),
       paidBy: String(form.get("paidBy") ?? ""),
       incomeType: String(form.get("incomeType") ?? ""),
       incomeSubtype: String(form.get("incomeSubtype") ?? "") || undefined,
       account: String(form.get("account") ?? ""),
       amount: toAmount(String(form.get("amount") ?? "")),
+      effectiveAmount:
+        effectiveAmountMode === "manual"
+          ? toAmount(String(form.get("effectiveAmount") ?? ""))
+          : undefined,
+      effectiveAmountMode,
       date,
-      monthYears: parseMonthYears(String(form.get("monthYears") ?? "[]"), date),
+      monthYears,
       notes: String(form.get("notes") ?? "") || undefined,
       comments: String(form.get("comments") ?? "") || undefined,
       incomingId: randomId16(),
@@ -125,9 +156,10 @@ export async function handleAddIncoming(
         String(form.get("incomeType") ?? ""),
       ),
     ]);
-    e.currentTarget.reset();
+    formElement.reset();
     deps.setFormType(null);
     deps.onSelectTab("incomings");
+    return createdId;
   } finally {
     deps.setSaving(false);
   }
@@ -145,7 +177,8 @@ export async function handleAddRecurring(
   },
 ) {
   e.preventDefault();
-  const form = new FormData(e.currentTarget);
+  const formElement = e.currentTarget;
+  const form = new FormData(formElement);
   deps.setSaving(true);
   try {
     const kind =
@@ -160,7 +193,7 @@ export async function handleAddRecurring(
       kind,
       name: String(form.get("name") ?? ""),
       amount: toAmount(String(form.get("amount") ?? "")),
-      frequency: String(form.get("frequency") ?? ""),
+      frequency: "Monthly",
       dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
       recurringExpenseAccount:
         kind === "expense"
@@ -196,7 +229,7 @@ export async function handleAddRecurring(
           : undefined,
       notes: String(form.get("notes") ?? "") || undefined,
     });
-    e.currentTarget.reset();
+    formElement.reset();
     deps.setFormType(null);
     deps.onSelectTab("recurrings");
   } finally {
@@ -288,6 +321,8 @@ export async function handleUpdateExpense(
     setEditingExpenseId: Dispatch<SetStateAction<string | null>>;
   },
 ) {
+  const monthYears = parseMonthYears(deps.editValues.monthYears, "");
+  if (monthYears.length === 0) return;
   deps.setSaving(true);
   try {
     await deps.updateExpense({
@@ -303,10 +338,7 @@ export async function handleUpdateExpense(
           : undefined,
       effectiveAmountMode:
         deps.editValues.effectiveAmountMode === "manual" ? "manual" : "auto",
-      monthYears: parseMonthYears(
-        deps.editValues.monthYears,
-        deps.editValues.date ?? row.date,
-      ),
+      monthYears,
       date: deps.editValues.date ?? "",
       paidTo: deps.editValues.paidTo ?? "",
       notes: deps.editValues.notes || undefined,
@@ -342,6 +374,8 @@ export async function handleUpdateIncoming(
     setEditingIncomingId: Dispatch<SetStateAction<string | null>>;
   },
 ) {
+  const monthYears = parseMonthYears(deps.editValues.monthYears, "");
+  if (monthYears.length === 0) return;
   deps.setSaving(true);
   try {
     await deps.updateIncoming({
@@ -359,10 +393,7 @@ export async function handleUpdateIncoming(
       effectiveAmountMode:
         deps.editValues.effectiveAmountMode === "manual" ? "manual" : "auto",
       date: deps.editValues.date ?? "",
-      monthYears: parseMonthYears(
-        deps.editValues.monthYears,
-        deps.editValues.date ?? row.date,
-      ),
+      monthYears,
       notes: deps.editValues.notes || undefined,
       comments: deps.editValues.comments || undefined,
       incomingId: deps.editValues.incomingId ?? "",
@@ -405,7 +436,7 @@ export async function handleUpdateRecurring(
       kind,
       name: deps.editValues.name ?? "",
       amount: toAmount(deps.editValues.amount ?? ""),
-      frequency: deps.editValues.frequency ?? "",
+      frequency: row.frequency || "Monthly",
       dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
       recurringExpenseAccount:
         kind === "expense"

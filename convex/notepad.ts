@@ -173,6 +173,7 @@ export const addNote = mutation({
   args: {
     noteId: v.optional(v.string()),
     title: v.optional(v.string()),
+    content: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
@@ -183,7 +184,7 @@ export const addNote = mutation({
     notes.push({
       id: args.noteId?.trim() || makeId("note"),
       title: args.title?.trim() || `Note ${notes.length + 1}`,
-      content: "",
+      content: args.content ?? "",
     });
 
     await ctx.db.patch(workspace._id, {
@@ -336,6 +337,7 @@ export const updateTable = mutation({
 
 export const addTable = mutation({
   args: {
+    tableId: v.optional(v.string()),
     title: v.optional(v.string()),
     cells: v.optional(v.array(v.array(v.string()))),
   },
@@ -346,7 +348,7 @@ export const addTable = mutation({
 
     const tables = normalizeTables(workspace);
     const notes = normalizeNotes(workspace);
-    const tableId = makeId("table");
+    const tableId = args.tableId?.trim() || makeId("table");
     const cells = args.cells ? normalizeCells(args.cells) : makeDefaultCells();
 
     tables.push({

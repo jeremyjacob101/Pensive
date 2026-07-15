@@ -1,12 +1,20 @@
 import { kindFromDraggingRowKey } from "../helpers/optionsDnD";
+import { optionKinds, type OptionKind } from "../types/schema";
 import type { DragPayload } from "../types/optionsDnD";
 import { useMutation, useQuery } from "convex/react";
-import { optionKinds } from "../types/schema";
+import { ListChecks, Plus } from "lucide-react";
 import type { CSSProperties } from "react";
 import { api } from "@pensive/convex-api";
-import { ListChecks } from "lucide-react";
 import { saveOption } from "./actions";
 import { useState } from "react";
+
+const EMPTY_OPTION_DRAFTS: Record<OptionKind, string> = {
+  account: "",
+  category: "",
+  subcategory: "",
+  incomeType: "",
+  incomeSubtype: "",
+};
 
 export function Options() {
   const addUserOption = useMutation(api.userOptions.add);
@@ -19,6 +27,11 @@ export function Options() {
   const promoteSubtype = useMutation(api.userOptions.promoteSubtype);
   const setUserOptionTracking = useMutation(api.userOptions.setTracking);
   const userOptions = useQuery(api.userOptions.list);
+  const [optionDrafts, setOptionDrafts] = useState(EMPTY_OPTION_DRAFTS);
+  const [addingKind, setAddingKind] = useState<OptionKind | null>(null);
+  const [optionAddErrors, setOptionAddErrors] = useState<
+    Partial<Record<OptionKind, string>>
+  >({});
   const [draggedOption, setDraggedOption] = useState<{
     kind: "category" | "incomeType" | "subcategory" | "incomeSubtype";
     value: string;
@@ -77,6 +90,45 @@ export function Options() {
     void removeUserOption(args);
   };
 
+  const handleAddOption = async (
+    kind: OptionKind,
+    label: string,
+    existingValues: string[],
+  ) => {
+    const value = optionDrafts[kind].trim();
+    if (!value || addingKind) return;
+
+    if (
+      existingValues.some(
+        (existing) =>
+          existing.trim().toLocaleLowerCase() === value.toLocaleLowerCase(),
+      )
+    ) {
+      setOptionAddErrors((current) => ({
+        ...current,
+        [kind]: `${label} already exists.`,
+      }));
+      return;
+    }
+
+    setAddingKind(kind);
+    setOptionAddErrors((current) => ({ ...current, [kind]: undefined }));
+    try {
+      await saveOption(addUserOption, kind, value);
+      setOptionDrafts((current) => ({ ...current, [kind]: "" }));
+    } catch (error) {
+      setOptionAddErrors((current) => ({
+        ...current,
+        [kind]:
+          error instanceof Error
+            ? error.message
+            : `Could not add ${label.toLowerCase()}.`,
+      }));
+    } finally {
+      setAddingKind(null);
+    }
+  };
+
   return (
     <div className="options-page">
       {optionKinds
@@ -97,13 +149,11 @@ export function Options() {
                 className="options-add-form"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const form = new FormData(e.currentTarget);
-                  void saveOption(
-                    addUserOption,
+                  void handleAddOption(
                     key,
-                    String(form.get("value") ?? ""),
+                    label,
+                    options.map((option) => option.value),
                   );
-                  e.currentTarget.reset();
                 }}
               >
                 <div className="options-add-header">
@@ -162,8 +212,35 @@ export function Options() {
                   id={`add-option-${key}`}
                   name="value"
                   placeholder={`Add ${label}`}
+                  value={optionDrafts[key]}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setOptionDrafts((current) => ({
+                      ...current,
+                      [key]: value,
+                    }));
+                    if (optionAddErrors[key]) {
+                      setOptionAddErrors((current) => ({
+                        ...current,
+                        [key]: undefined,
+                      }));
+                    }
+                  }}
                 />
-                <button type="submit">Add</button>
+                <button
+                  type="submit"
+                  className="options-add-button"
+                  aria-label={`Add ${label}`}
+                  title={`Add ${label}`}
+                  disabled={!optionDrafts[key].trim() || addingKind === key}
+                >
+                  <Plus aria-hidden="true" />
+                </button>
+                {optionAddErrors[key] ? (
+                  <p className="options-add-error" role="status">
+                    {optionAddErrors[key]}
+                  </p>
+                ) : null}
               </form>
 
               <div className="options-row-list">

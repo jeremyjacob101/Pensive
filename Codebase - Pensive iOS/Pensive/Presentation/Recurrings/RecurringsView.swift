@@ -82,7 +82,7 @@ struct RecurringsFeatureView: View {
             kind: kind,
             name: "",
             amount: 0,
-            frequency: "monthly",
+            frequency: "Monthly",
             dayOfMonth: 1,
             recurringExpenseAccount: nil,
             recurringExpenseCategory: nil,
@@ -98,27 +98,27 @@ struct RecurringsFeatureView: View {
 
     private func recurringRow(_ row: RecurringItemViewData) -> some View {
         DisclosureGroup {
-            Text(row.scheduleLine).font(.footnote)
-            ForEach(row.details, id: \.self) { detail in
-                Text(detail).font(.footnote).foregroundStyle(.secondary)
-            }
-            HStack {
-                Button("Edit") { editingID = RowID(id: row.id) }
-                Button(viewModel.statusInFlightIDs.contains(row.id) ? "Updating…" : (row.status.lowercased() == "active" ? "Set inactive" : "Set active")) {
-                    viewModel.toggleStatus(id: row.id, currentStatus: row.status)
+            recurringAccountCounterpartyRow(row)
+            .listRowSeparator(.hidden)
+
+            ForEach(row.details) { detail in
+                HStack(spacing: 4) {
+                    Text("\(detail.label): \(detail.value)")
+
+                    if let subvalue = detail.subvalue, !subvalue.isEmpty {
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                            .accessibilityHidden(true)
+                        Text(subvalue)
+                    }
                 }
-                .disabled(viewModel.statusInFlightIDs.contains(row.id))
-                Button("Delete", role: .destructive) { deleteID = row.id }
+                .font(.footnote)
+                .lineLimit(1)
             }
-            .buttonStyle(.borderless)
+            recurringActionRow(row)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Image(systemName: "creditcard.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
-                        .accessibilityHidden(true)
-
                     Text(row.title)
                         .font(.headline)
 
@@ -144,6 +144,77 @@ struct RecurringsFeatureView: View {
             }
             .opacity(row.status.lowercased() == "active" ? 1 : 0.4)
         }
+    }
+
+    private func recurringAccountCounterpartyRow(_ row: RecurringItemViewData) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: "creditcard.fill")
+                    .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
+                Text(row.accountName)
+            }
+
+            Image(systemName: "arrow.down")
+                .font(.caption.weight(.semibold))
+                .accessibilityHidden(true)
+
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle")
+                    .accessibilityHidden(true)
+                Text(row.counterpartyName)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func recurringActionRow(_ row: RecurringItemViewData) -> some View {
+        GeometryReader { proxy in
+            let centerY = proxy.size.height / 2
+            let toggleWidth: CGFloat = 51
+            let toggleCenterX = proxy.size.width / 2
+            let trashCenterX = proxy.size.width - 22
+            let pencilCenterX = (toggleCenterX + trashCenterX) / 2
+
+            ZStack {
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { row.status.lowercased() == "active" },
+                        set: { _ in viewModel.toggleStatus(id: row.id, currentStatus: row.status) }
+                    )
+                )
+                .labelsHidden()
+                .frame(width: toggleWidth)
+                .disabled(viewModel.statusInFlightIDs.contains(row.id))
+                .accessibilityLabel("Active")
+                .position(x: toggleCenterX, y: centerY)
+
+                Button {
+                    editingID = RowID(id: row.id)
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundStyle(.blue)
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityLabel("Edit")
+                .position(x: pencilCenterX, y: centerY)
+
+                Button(role: .destructive) {
+                    deleteID = row.id
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundStyle(.red)
+                }
+                .frame(width: 44, height: 44)
+                .accessibilityLabel("Delete")
+                .position(x: trashCenterX, y: centerY)
+            }
+        }
+        .frame(height: 44)
+        .buttonStyle(.borderless)
     }
 
     private func color(from hex: String?) -> Color? {
@@ -203,7 +274,6 @@ private struct RecurringEditorSheet: View {
                 }
                 TextField("Name", text: $draft.name)
                 TextField("Amount", value: $draft.amount, format: .number)
-                TextField("Frequency", text: $draft.frequency)
                 Stepper("Day of Month: \(draft.dayOfMonth)", value: $draft.dayOfMonth, in: 1 ... 31)
 
                 if draft.kind == .expense {

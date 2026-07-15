@@ -56,6 +56,18 @@ private struct BreakdownFilterSheet: View {
 
                 if selectedTab == .account {
                     Section {
+                        HStack {
+                            Button("Select All") {
+                                updateAccountSelection(selectAll: true)
+                            }
+                            .disabled(allAccountsSelected)
+                            Spacer()
+                            Button("Deselect All") {
+                                updateAccountSelection(selectAll: false)
+                            }
+                            .disabled(noAccountsSelected)
+                        }
+
                         ForEach(activeVM.accountFilterChoices, id: \.self) { account in
                             LedgerAccountFilterRow(
                                 value: account,
@@ -123,6 +135,27 @@ private struct BreakdownFilterSheet: View {
         } else {
             activeVM.updateCategoryFilters(values)
         }
+    }
+
+    private var allAccountsSelected: Bool {
+        let accountValues = Set(activeVM.accountFilterChoices)
+        return activeVM.selectedAccountFilters.isSuperset(of: accountValues)
+    }
+
+    private var noAccountsSelected: Bool {
+        let accountValues = Set(activeVM.accountFilterChoices)
+        return activeVM.selectedAccountFilters.isDisjoint(with: accountValues)
+    }
+
+    private func updateAccountSelection(selectAll: Bool) {
+        var next = activeVM.selectedAccountFilters
+        let values = Set(activeVM.accountFilterChoices)
+        if selectAll {
+            next.formUnion(values)
+        } else {
+            next.subtract(values)
+        }
+        activeVM.updateAccountFilters(next)
     }
 
     private var allCategoriesSelected: Bool {

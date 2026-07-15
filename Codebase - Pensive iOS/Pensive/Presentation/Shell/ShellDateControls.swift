@@ -369,7 +369,7 @@ struct DateRangePickerSheet: View {
         let lower = oldestMonth ?? min(draftStartMonth, fallback)
         let upper = max(newestMonth ?? fallback, fallback)
         guard lower <= upper else { return [fallback] }
-        return DateRangePickerSheet.months(from: lower, through: upper)
+        return Array(DateRangePickerSheet.months(from: lower, through: upper).reversed())
     }
 
     private func apply() {
@@ -461,4 +461,3 @@ private struct DateRangeValuePill: View {
             )
     }
 }
-

@@ -1,20 +1,17 @@
-import { getOptionColor, getScopedOptionColor, getScopedOptionValues, toOptionValues } from "../helpers/options";
 import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY } from "../keys/expenses";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
-import { formatRangeLabel, formatShortDisplayDate, parseMonthYears } from "../helpers/dates";
+import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
-import { EffectiveAmountControls } from "../components/EffectiveAmountControls";
-import { ExpensePaybackLinkManager } from "../components/PaybackLinkManager";
-import { MonthYearMultiSelect } from "../components/MonthYearMultiSelect";
+import { formatRangeLabel, formatShortDisplayDate } from "../helpers/dates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScopeCalendarButton } from "../components/ScopeCalendarButton";
+import { ExpenseEditModal } from "../components/TransactionEditModal";
 import { RangePieChartPanel } from "../components/RangePieChartPanel";
 import { EditableRowActions } from "../components/EditableRowActions";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { MonthNavigator } from "../components/MonthNavigator";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { OptionPicker } from "../components/OptionPicker";
 import type { TopRowSearchState } from "../types/search";
 import type { Id } from "@pensive/convex-data-model";
 import { parseStoredList } from "../helpers/storage";
@@ -24,8 +21,6 @@ import { useOutletContext } from "react-router-dom";
 import { parseSubId } from "../helpers/subId";
 import { api } from "@pensive/convex-api";
 import { CreditCard } from "lucide-react";
-import { createPortal } from "react-dom";
-import { saveOption } from "./actions";
 
 export function Expenses() {
   const {
@@ -945,208 +940,27 @@ export function Expenses() {
                                 />
                               </div>
 
-                              {isEditing
-                                ? createPortal(
-                                    <div
-                                      className="modal-overlay"
-                                      onClick={() => setEditingExpenseId(null)}
-                                    >
-                                      <div
-                                        className="modal-card"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <div className="modal-header">
-                                          <h3>Edit Expense</h3>
-                                          <button
-                                            type="button"
-                                            className="modal-close"
-                                            onClick={() =>
-                                              setEditingExpenseId(null)
-                                            }
-                                          >
-                                            ✕
-                                          </button>
-                                        </div>
-                                        <div className="entry-form modal-form">
-                                          <input
-                                            value={editValues.expense ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                expense: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          <OptionPicker
-                                            kind="account"
-                                            label="Account"
-                                            value={editValues.account ?? ""}
-                                            options={toOptionValues(
-                                              userOptions?.account,
-                                            )}
-                                            placeholder="Account"
-                                            onChange={(value) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                account: value,
-                                              }))
-                                            }
-                                            onCreateOption={saveOption.bind(
-                                              null,
-                                              addUserOption,
-                                            )}
-                                          />
-                                          <OptionPicker
-                                            kind="category"
-                                            label="Category"
-                                            value={editValues.category ?? ""}
-                                            options={toOptionValues(
-                                              userOptions?.category,
-                                            )}
-                                            placeholder="Category"
-                                            onChange={(value) =>
-                                              setEditValues((v) => {
-                                                const next: EditValues = {
-                                                  ...v,
-                                                  category: value,
-                                                };
-                                                const scoped =
-                                                  getScopedOptionValues(
-                                                    userOptions,
-                                                    "subcategory",
-                                                    value,
-                                                  );
-                                                if (
-                                                  (next.subcategory ?? "") &&
-                                                  !scoped.includes(
-                                                    next.subcategory ?? "",
-                                                  )
-                                                ) {
-                                                  next.subcategory = "";
-                                                }
-                                                return next;
-                                              })
-                                            }
-                                            onCreateOption={saveOption.bind(
-                                              null,
-                                              addUserOption,
-                                            )}
-                                          />
-                                          <OptionPicker
-                                            kind="subcategory"
-                                            label="Subcategory"
-                                            value={editValues.subcategory ?? ""}
-                                            options={getScopedOptionValues(
-                                              userOptions,
-                                              "subcategory",
-                                              editValues.category ?? "",
-                                            )}
-                                            placeholder="Subcategory"
-                                            onChange={(value) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                subcategory: value,
-                                              }))
-                                            }
-                                            onCreateOption={saveOption.bind(
-                                              null,
-                                              addUserOption,
-                                            )}
-                                            parentValue={
-                                              editValues.category ?? ""
-                                            }
-                                          />
-                                          <input
-                                            value={editValues.amount ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                amount: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          <EffectiveAmountControls
-                                            editValues={editValues}
-                                            setEditValues={setEditValues}
-                                          />
-                                          <input
-                                            type="date"
-                                            value={editValues.date ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                date: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          <MonthYearMultiSelect
-                                            value={parseMonthYears(
-                                              editValues.monthYears,
-                                              editValues.date ?? row.date,
-                                            )}
-                                            onChange={(value) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                monthYears:
-                                                  JSON.stringify(value),
-                                              }))
-                                            }
-                                            required
-                                          />
-                                          <input
-                                            value={editValues.paidTo ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                paidTo: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          <input
-                                            value={editValues.notes ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                notes: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          <input
-                                            value={editValues.comments ?? ""}
-                                            onChange={(e) =>
-                                              setEditValues((v) => ({
-                                                ...v,
-                                                comments: e.target.value,
-                                              }))
-                                            }
-                                          />
-                                          {renderPartnerEditor(row)}
-                                          <ExpensePaybackLinkManager
-                                            expenseId={row._id}
-                                            disabled={saving}
-                                          />
-                                          <button
-                                            type="button"
-                                            className="save-plus-btn"
-                                            aria-label="Save expense changes"
-                                            disabled={saving}
-                                            onClick={() =>
-                                              handleUpdateExpense(row, {
-                                                updateExpense,
-                                                editValues,
-                                                setSaving,
-                                                setEditingExpenseId,
-                                              })
-                                            }
-                                          >
-                                            +
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </div>,
-                                    document.body,
-                                  )
-                                : null}
+                              {isEditing ? (
+                                <ExpenseEditModal
+                                  expenseId={row._id}
+                                  editValues={editValues}
+                                  setEditValues={setEditValues}
+                                  userOptions={userOptions}
+                                  addUserOption={addUserOption}
+                                  saving={saving}
+                                  fallbackDate={row.date}
+                                  onClose={() => setEditingExpenseId(null)}
+                                  onSave={() =>
+                                    handleUpdateExpense(row, {
+                                      updateExpense,
+                                      editValues,
+                                      setSaving,
+                                      setEditingExpenseId,
+                                    })
+                                  }
+                                  partnerEditor={renderPartnerEditor(row)}
+                                />
+                              ) : null}
                             </div>
                           );
                         })}
@@ -1321,198 +1135,27 @@ export function Expenses() {
                       </div>
                     ) : null}
 
-                    {isEditing
-                      ? createPortal(
-                          <div
-                            className="modal-overlay"
-                            onClick={() => setEditingExpenseId(null)}
-                          >
-                            <div
-                              className="modal-card"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="modal-header">
-                                <h3>Edit Expense</h3>
-                                <button
-                                  type="button"
-                                  className="modal-close"
-                                  onClick={() => setEditingExpenseId(null)}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              <div className="entry-form modal-form">
-                                <input
-                                  value={editValues.expense ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      expense: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <OptionPicker
-                                  kind="account"
-                                  label="Account"
-                                  value={editValues.account ?? ""}
-                                  options={toOptionValues(userOptions?.account)}
-                                  placeholder="Account"
-                                  onChange={(value) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      account: value,
-                                    }))
-                                  }
-                                  onCreateOption={saveOption.bind(
-                                    null,
-                                    addUserOption,
-                                  )}
-                                />
-                                <OptionPicker
-                                  kind="category"
-                                  label="Category"
-                                  value={editValues.category ?? ""}
-                                  options={toOptionValues(
-                                    userOptions?.category,
-                                  )}
-                                  placeholder="Category"
-                                  onChange={(value) =>
-                                    setEditValues((v) => {
-                                      const next: EditValues = {
-                                        ...v,
-                                        category: value,
-                                      };
-                                      const scoped = getScopedOptionValues(
-                                        userOptions,
-                                        "subcategory",
-                                        value,
-                                      );
-                                      if (
-                                        (next.subcategory ?? "") &&
-                                        !scoped.includes(next.subcategory ?? "")
-                                      ) {
-                                        next.subcategory = "";
-                                      }
-                                      return next;
-                                    })
-                                  }
-                                  onCreateOption={saveOption.bind(
-                                    null,
-                                    addUserOption,
-                                  )}
-                                />
-                                <OptionPicker
-                                  kind="subcategory"
-                                  label="Subcategory"
-                                  value={editValues.subcategory ?? ""}
-                                  options={getScopedOptionValues(
-                                    userOptions,
-                                    "subcategory",
-                                    editValues.category ?? "",
-                                  )}
-                                  placeholder="Subcategory"
-                                  onChange={(value) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      subcategory: value,
-                                    }))
-                                  }
-                                  onCreateOption={saveOption.bind(
-                                    null,
-                                    addUserOption,
-                                  )}
-                                  parentValue={editValues.category ?? ""}
-                                />
-                                <input
-                                  value={editValues.amount ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      amount: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <EffectiveAmountControls
-                                  editValues={editValues}
-                                  setEditValues={setEditValues}
-                                />
-                                <input
-                                  type="date"
-                                  value={editValues.date ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      date: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <MonthYearMultiSelect
-                                  value={parseMonthYears(
-                                    editValues.monthYears,
-                                    editValues.date ?? row.date,
-                                  )}
-                                  onChange={(value) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      monthYears: JSON.stringify(value),
-                                    }))
-                                  }
-                                  required
-                                />
-                                <input
-                                  value={editValues.paidTo ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      paidTo: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <input
-                                  value={editValues.notes ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      notes: e.target.value,
-                                    }))
-                                  }
-                                />
-                                <input
-                                  value={editValues.comments ?? ""}
-                                  onChange={(e) =>
-                                    setEditValues((v) => ({
-                                      ...v,
-                                      comments: e.target.value,
-                                    }))
-                                  }
-                                />
-                                {renderPartnerEditor(row)}
-                                <ExpensePaybackLinkManager
-                                  expenseId={row._id}
-                                  disabled={saving}
-                                />
-                                <button
-                                  type="button"
-                                  className="save-plus-btn"
-                                  aria-label="Save expense changes"
-                                  disabled={saving}
-                                  onClick={() =>
-                                    handleUpdateExpense(row, {
-                                      updateExpense,
-                                      editValues,
-                                      setSaving,
-                                      setEditingExpenseId,
-                                    })
-                                  }
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          </div>,
-                          document.body,
-                        )
-                      : null}
+                    {isEditing ? (
+                      <ExpenseEditModal
+                        expenseId={row._id}
+                        editValues={editValues}
+                        setEditValues={setEditValues}
+                        userOptions={userOptions}
+                        addUserOption={addUserOption}
+                        saving={saving}
+                        fallbackDate={row.date}
+                        onClose={() => setEditingExpenseId(null)}
+                        onSave={() =>
+                          handleUpdateExpense(row, {
+                            updateExpense,
+                            editValues,
+                            setSaving,
+                            setEditingExpenseId,
+                          })
+                        }
+                        partnerEditor={renderPartnerEditor(row)}
+                      />
+                    ) : null}
                   </div>
                 );
               })

@@ -86,10 +86,49 @@ export function formatMonthValue(value: string): string {
 }
 
 export function normalizeMonthYears(values: string[]) {
-  return [...new Set(values.map((v) => v.trim()).filter(Boolean))].sort((
-    a,
-    b,
-  ) => a.localeCompare(b));
+  return [
+    ...new Set(
+      values
+        .map((value) => value.trim())
+        .filter((value) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value)),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Applies the picker interaction to a sparse list of months.
+ *
+ * - A selected month is always removed, including an interior month.
+ * - The first month starts a selection.
+ * - A month outside the current bounds extends the nearest edge as a range.
+ * - An unselected month inside the bounds fills only that individual gap.
+ */
+export function toggleMonthYearSelection(values: string[], month: string) {
+  const normalized = normalizeMonthYears(values);
+  const target = normalizeMonthYears([month])[0];
+  if (!target) return normalized;
+
+  if (normalized.includes(target)) {
+    return normalized.filter((value) => value !== target);
+  }
+  if (normalized.length === 0) return [target];
+
+  const start = normalized[0];
+  const end = normalized[normalized.length - 1];
+  if (target < start) {
+    return normalizeMonthYears([
+      ...getMonthsBetween(target, start),
+      ...normalized,
+    ]);
+  }
+  if (target > end) {
+    return normalizeMonthYears([
+      ...normalized,
+      ...getMonthsBetween(end, target),
+    ]);
+  }
+
+  return normalizeMonthYears([...normalized, target]);
 }
 
 export function parseMonthYears(raw: string | null | undefined, date: string) {

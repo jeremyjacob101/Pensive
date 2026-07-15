@@ -21,7 +21,7 @@ export type WorkspaceMutations = {
     expenseId: string;
     baseExpenseId?: string;
     subExpenseId?: string;
-  }) => Promise<unknown>;
+  }) => Promise<Id<"expenses">>;
   createIncoming: (args: {
     incoming: string;
     paidBy: string;
@@ -38,7 +38,7 @@ export type WorkspaceMutations = {
     incomingId: string;
     baseIncomingId?: string;
     subIncomingId?: string;
-  }) => Promise<unknown>;
+  }) => Promise<Id<"incomings">>;
   createRecurring: (args: {
     status: string;
     kind: "expense" | "incoming";

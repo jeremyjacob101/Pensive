@@ -5,6 +5,8 @@ import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
+const RECURRING_FREQUENCY = "Monthly";
+
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
   const userId = await getAuthUserId(ctx);
   if (!userId) throw new Error("Unauthenticated");
@@ -77,6 +79,7 @@ export const create = mutation({
     validateRecurringFields(args);
     return await ctx.db.insert("recurrings", {
       ...args,
+      frequency: RECURRING_FREQUENCY,
       ...(args.kind === "expense"
         ? {
             recurringIncomingPaidBy: undefined,
@@ -101,7 +104,11 @@ export const bulkCreate = mutation({
     const userId = await requireUserId(ctx);
     for (const row of rows) {
       validateRecurringFields(row);
-      await ctx.db.insert("recurrings", { ...row, userId });
+      await ctx.db.insert("recurrings", {
+        ...row,
+        frequency: RECURRING_FREQUENCY,
+        userId,
+      });
     }
     return { inserted: rows.length };
   },
@@ -130,6 +137,7 @@ export const update = mutation({
     validateRecurringFields(rest);
     await ctx.db.patch(id, {
       ...rest,
+      frequency: RECURRING_FREQUENCY,
       ...(rest.kind === "expense"
         ? {
             recurringIncomingPaidBy: undefined,

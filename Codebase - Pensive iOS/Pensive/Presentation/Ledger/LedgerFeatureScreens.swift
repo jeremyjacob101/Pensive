@@ -269,12 +269,6 @@ private struct LedgerScreen: View {
                 )
             }
 
-            SavedMonthSelectionView(
-                initialSelection: row.monthYears.compactMap(MonthYear.init),
-                onSave: { months in
-                    await viewModel.updateMonthYears(id: row.id, monthYears: months)
-                }
-            )
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {

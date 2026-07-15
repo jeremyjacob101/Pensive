@@ -44,6 +44,7 @@ export function OptionPicker({ kind, label, name, value, options, placeholder, r
   return (
     <select
       name={name}
+      aria-label={label}
       value={value}
       required={required}
       disabled={disabled}

@@ -45,6 +45,10 @@ struct OptionCreateSheet: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task { await save() }
@@ -185,16 +189,19 @@ struct OptionEditSheet: View {
                         }
                         .disabled(isSaving)
                     }
+                }
 
+                Section {
                     Button("Delete", role: .destructive) {
                         showDeleteConfirmation = true
                     }
                 }
             }
-            .listSectionSpacing(0)
+            .listSectionSpacing(.compact)
+            .contentMargins(.top, 8, for: .scrollContent)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .presentationDetents([.height(360), .medium])
+            .presentationDetents([.height(300), .medium])
             .presentationDragIndicator(.visible)
             .confirmationDialog("Delete option?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {

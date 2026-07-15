@@ -523,8 +523,9 @@ struct TrackingFeatureView: View {
                     Button {
                         showTrackingSelection = true
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "line.3.horizontal")
                     }
+                    .accessibilityLabel("Manage Tracking")
                     .accessibilityIdentifier("tracking_manage_toolbar")
                 }
             }
@@ -560,6 +561,7 @@ private struct TrackingSelectionSheet: View {
     @State private var draftSelection: [String: Bool] = [:]
     @State private var inlineError: String?
     @State private var isSaving = false
+    @State private var searchText = ""
 
     var body: some View {
         NavigationStack {
@@ -571,12 +573,13 @@ private struct TrackingSelectionSheet: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
                 .accessibilityIdentifier("tracking_selection_kind_picker")
 
                 List {
                     if selectedRows.isEmpty {
-                        Text(selectedKind == .expense ? "No expense options" : "No incoming options")
+                        Text(emptyMessage)
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(selectedRows) { row in
@@ -594,9 +597,11 @@ private struct TrackingSelectionSheet: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .contentMargins(.top, 18, for: .scrollContent)
             }
             .navigationTitle("Tracking")
             .navigationBarTitleDisplayMode(.inline)
+            .trackingSelectionSearchable(text: $searchText)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -617,7 +622,49 @@ private struct TrackingSelectionSheet: View {
     }
 
     private var selectedRows: [TrackingSelectionOptionRow] {
-        selectedKind == .expense ? viewModel.expenseSelectionRows : viewModel.incomingSelectionRows
+        let rows = selectedKind == .expense ? viewModel.expenseSelectionRows : viewModel.incomingSelectionRows
+        return filteredRows(rows, matching: searchText)
+    }
+
+    private var emptyMessage: String {
+        if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return selectedKind == .expense ? "No matching categories" : "No matching income types"
+        }
+        return selectedKind == .expense ? "No expense options" : "No incoming options"
+    }
+
+    private func filteredRows(_ rows: [TrackingSelectionOptionRow], matching searchText: String) -> [TrackingSelectionOptionRow] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return rows }
+
+        let parentRows = rows.filter { $0.indentationLevel == 0 && !$0.kind.supportsParent }
+        let parentValues = Set(parentRows.map(\.value))
+        var matches: [TrackingSelectionOptionRow] = []
+
+        for parent in parentRows {
+            let children = rows.filter {
+                $0.indentationLevel > 0 && $0.parentValue == parent.value
+            }
+            if parent.value.localizedCaseInsensitiveContains(query) {
+                matches.append(parent)
+                matches.append(contentsOf: children)
+            } else {
+                let matchingChildren = children.filter {
+                    $0.value.localizedCaseInsensitiveContains(query)
+                }
+                if !matchingChildren.isEmpty {
+                    matches.append(parent)
+                    matches.append(contentsOf: matchingChildren)
+                }
+            }
+        }
+
+        matches.append(contentsOf: rows.filter {
+            $0.kind.supportsParent
+                && !parentValues.contains($0.parentValue ?? "")
+                && $0.value.localizedCaseInsensitiveContains(query)
+        })
+        return matches
     }
 
     private func binding(for row: TrackingSelectionOptionRow) -> Binding<Bool> {
@@ -645,6 +692,18 @@ private struct TrackingSelectionSheet: View {
             dismiss()
         } catch {
             inlineError = "Failed to update tracking."
+        }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func trackingSelectionSearchable(text: Binding<String>) -> some View {
+        if #available(iOS 26.0, *) {
+            searchable(text: text, prompt: "Categories and subcategories")
+                .searchToolbarBehavior(.minimize)
+        } else {
+            searchable(text: text, prompt: "Categories and subcategories")
         }
     }
 }
@@ -740,9 +799,19 @@ private struct TrackingTimelineRowCard: View {
             .frame(maxWidth: .infinity, alignment: .center)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                Text(row.label)
-                    .font(.headline)
-                    .accessibilityIdentifier("tracking_row_title_\(row.key)")
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(optionColor(from: row.colorHex) ?? .gray)
+                        .frame(width: 10, height: 10)
+                        .accessibilityHidden(true)
+                    Text(row.label)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                        .accessibilityIdentifier("tracking_row_title_\(row.key)")
+                }
                 TrackingPipelinePreview(segments: row.segments)
             }
             .padding(.bottom, 10)
@@ -754,7 +823,6 @@ private struct TrackingTimelineRowCard: View {
 
 private struct TrackingPipelinePreview: View {
     let segments: [TrackingTimelineSegment]
-    private let previewWidth: CGFloat = 276
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -783,7 +851,7 @@ private struct TrackingPipelinePreview: View {
                     }
                 }
             }
-            .frame(width: previewWidth)
+            .frame(maxWidth: .infinity)
         }
     }
 

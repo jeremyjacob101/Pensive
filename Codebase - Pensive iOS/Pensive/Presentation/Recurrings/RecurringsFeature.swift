@@ -6,6 +6,13 @@ enum RecurringKind: String, CaseIterable {
     case incoming
 }
 
+struct RecurringDetail: Identifiable {
+    let id: String
+    let label: String
+    let value: String
+    let subvalue: String?
+}
+
 struct RecurringItemViewData: Identifiable {
     let id: String
     let kind: RecurringKind
@@ -14,7 +21,9 @@ struct RecurringItemViewData: Identifiable {
     let amountLine: String
     let scheduleLine: String
     let dayOfMonth: Int
-    let details: [String]
+    let details: [RecurringDetail]
+    let accountName: String
+    let counterpartyName: String
     let accountColorHex: String?
     let categoryColorHex: String?
 }
@@ -253,9 +262,11 @@ final class RecurringsFeatureViewModel: ObservableObject {
                 status: row.status,
                 title: row.name,
                 amountLine: money(row.amount),
-                scheduleLine: "\(row.frequency) on day \(row.dayOfMonth)",
+                scheduleLine: "\(row.frequency.capitalized) on the \(ordinal(row.dayOfMonth))",
                 dayOfMonth: row.dayOfMonth,
                 details: details,
+                accountName: kind == .expense ? row.recurringExpenseAccount ?? "" : row.recurringIncomingAccount ?? "",
+                counterpartyName: kind == .expense ? row.recurringExpensePaidTo ?? "" : row.recurringIncomingPaidBy ?? "",
                 accountColorHex: accountColor(for: row, kind: kind),
                 categoryColorHex: categoryColor(for: row, kind: kind)
             )
@@ -282,27 +293,45 @@ final class RecurringsFeatureViewModel: ObservableObject {
         }
     }
 
-    private func detailsForRow(_ row: RecurringDTO, kind: RecurringKind) -> [String] {
+    private func detailsForRow(_ row: RecurringDTO, kind: RecurringKind) -> [RecurringDetail] {
         if kind == .expense {
-            return [
-                "Account: \(row.recurringExpenseAccount ?? "")",
-                "Category: \(row.recurringExpenseCategory ?? "")",
-                "Subcategory: \(row.recurringExpenseSubcategory ?? "")",
-                "Paid To: \(row.recurringExpensePaidTo ?? "")",
-                "Notes: \(row.notes ?? "")"
+            var details: [RecurringDetail] = [
+                .init(id: "category", label: "Category", value: row.recurringExpenseCategory ?? "", subvalue: row.recurringExpenseSubcategory)
             ]
+            if let notesDetail = notesDetail(for: row.notes) { details.append(notesDetail) }
+            return details
         }
-        return [
-            "Paid By: \(row.recurringIncomingPaidBy ?? "")",
-            "Type: \(row.recurringIncomingType ?? "")",
-            "Subtype: \(row.recurringIncomingSubtype ?? "")",
-            "Account: \(row.recurringIncomingAccount ?? "")",
-            "Notes: \(row.notes ?? "")"
+        var details: [RecurringDetail] = [
+            .init(id: "type", label: "Type", value: row.recurringIncomingType ?? "", subvalue: nil),
+            .init(id: "subtype", label: "Subtype", value: row.recurringIncomingSubtype ?? "", subvalue: nil)
         ]
+        if let notesDetail = notesDetail(for: row.notes) { details.append(notesDetail) }
+        return details
+    }
+
+    private func notesDetail(for notes: String?) -> RecurringDetail? {
+        guard let notes = notes?.trimmingCharacters(in: .whitespacesAndNewlines), !notes.isEmpty else { return nil }
+        return .init(id: "notes", label: "Notes", value: notes, subvalue: nil)
     }
 
     private func money(_ value: Double) -> String {
         formatter.string(from: NSNumber(value: value)) ?? String(format: "₪%.2f", value)
+    }
+
+    private func ordinal(_ n: Int) -> String {
+        let suffix: String
+        let mod100 = n % 100
+        if mod100 >= 11 && mod100 <= 13 {
+            suffix = "th"
+        } else {
+            switch n % 10 {
+            case 1: suffix = "st"
+            case 2: suffix = "nd"
+            case 3: suffix = "rd"
+            default: suffix = "th"
+            }
+        }
+        return "\(n)\(suffix)"
     }
 
     private func message(for error: Error) -> String {
