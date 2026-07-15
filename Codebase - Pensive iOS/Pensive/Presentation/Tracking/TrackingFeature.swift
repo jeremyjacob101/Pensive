@@ -596,6 +596,7 @@ private struct TrackingSelectionSheet: View {
                             .foregroundStyle(.red)
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .listStyle(.insetGrouped)
                 .contentMargins(.top, 18, for: .scrollContent)
             }

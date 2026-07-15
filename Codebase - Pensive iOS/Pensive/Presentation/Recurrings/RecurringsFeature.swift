@@ -61,6 +61,12 @@ final class RecurringsFeatureViewModel: ObservableObject {
     private(set) var recurrings: [RecurringDTO] = []
     private var userOptions: UserOptionsListResponse?
 
+    var accountOptions: [UserOptionRow] { userOptions?.account ?? [] }
+    var categoryOptions: [UserOptionRow] { userOptions?.category ?? [] }
+    var subcategoryOptions: [UserOptionRow] { userOptions?.subcategory ?? [] }
+    var incomeTypeOptions: [UserOptionRow] { userOptions?.incomeType ?? [] }
+    var incomeSubtypeOptions: [UserOptionRow] { userOptions?.incomeSubtype ?? [] }
+
     init(api: ConvexAPI) {
         self.api = api
         let formatter = NumberFormatter()
@@ -302,8 +308,7 @@ final class RecurringsFeatureViewModel: ObservableObject {
             return details
         }
         var details: [RecurringDetail] = [
-            .init(id: "type", label: "Type", value: row.recurringIncomingType ?? "", subvalue: nil),
-            .init(id: "subtype", label: "Subtype", value: row.recurringIncomingSubtype ?? "", subvalue: nil)
+            .init(id: "type", label: "Type", value: row.recurringIncomingType ?? "", subvalue: row.recurringIncomingSubtype)
         ]
         if let notesDetail = notesDetail(for: row.notes) { details.append(notesDetail) }
         return details

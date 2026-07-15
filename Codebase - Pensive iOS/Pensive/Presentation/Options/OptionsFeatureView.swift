@@ -86,6 +86,7 @@ struct OptionsFeatureView: View {
                             }
                         }
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .navigationTitle("Edit Account")
                     .navigationBarTitleDisplayMode(.inline)
                     .presentationDetents([.height(300)])

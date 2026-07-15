@@ -334,6 +334,7 @@ struct ExpenseEditorSheet: View {
                     )
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode == .create ? "New Expense" : "Edit Expense")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
@@ -511,6 +512,7 @@ struct IncomingEditorSheet: View {
                     )
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode == .create ? "New Incoming" : "Edit Incoming")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
@@ -673,6 +675,7 @@ struct PaybackLinksManagerView: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .overlay { if loading { ProgressView() } }
             .navigationTitle("Payback Links")
             .toolbar {

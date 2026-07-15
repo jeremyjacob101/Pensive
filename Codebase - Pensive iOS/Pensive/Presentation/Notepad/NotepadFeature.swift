@@ -483,6 +483,7 @@ struct NotepadFeatureView: View {
                         .frame(minHeight: 200)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("New Note")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -555,6 +556,7 @@ struct NotepadFeatureView: View {
                 .accessibilityIdentifier("notepad_new_table_actions")
             }
         }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     @ViewBuilder
@@ -578,6 +580,7 @@ struct NotepadFeatureView: View {
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .navigationTitle("Edit Note")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -647,6 +650,7 @@ struct NotepadFeatureView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Edit Table")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -913,4 +917,3 @@ private struct NotepadTablePreviewCell: View {
             )
     }
 }
-

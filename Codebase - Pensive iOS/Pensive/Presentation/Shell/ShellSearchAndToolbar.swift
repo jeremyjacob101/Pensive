@@ -64,6 +64,7 @@ struct SearchSheet: View {
                     DebouncedSearchField(text: $text, onDebouncedChange: onDebouncedChange)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Search")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -233,4 +234,3 @@ struct MultiSelectFilterSheet: View {
         }
     }
 }
-

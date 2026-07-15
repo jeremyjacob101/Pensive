@@ -69,6 +69,7 @@ struct FeatureRootView: View {
                 }
             }
         }
+                .scrollDismissesKeyboard(.interactively)
                 .listStyle(.insetGrouped)
                 .navigationTitle(tab.title)
                 .navigationDestination(for: ShellRoute.self) { route in
@@ -97,4 +98,3 @@ struct FeatureRootView: View {
         }
     }
 }
-

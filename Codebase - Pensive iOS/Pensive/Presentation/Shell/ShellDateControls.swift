@@ -330,8 +330,10 @@ struct DateRangePickerSheet: View {
                         ZStack(alignment: .trailing) {
                             DatePicker("", selection: $draftStartDate, displayedComponents: .date)
                                 .labelsHidden()
+                                .frame(minWidth: 180, alignment: .trailing)
                                 .opacity(0.02)
                             DateRangeValuePill(text: Self.customDateLabel(draftStartDate))
+                                .frame(minWidth: 180, alignment: .trailing)
                                 .allowsHitTesting(false)
                         }
                     }
@@ -342,8 +344,10 @@ struct DateRangePickerSheet: View {
                         ZStack(alignment: .trailing) {
                             DatePicker("", selection: $draftEndDate, in: draftStartDate..., displayedComponents: .date)
                                 .labelsHidden()
+                                .frame(minWidth: 180, alignment: .trailing)
                                 .opacity(0.02)
                             DateRangeValuePill(text: Self.customDateLabel(draftEndDate))
+                                .frame(minWidth: 180, alignment: .trailing)
                                 .allowsHitTesting(false)
                         }
                     }
@@ -449,6 +453,7 @@ private struct DateRangeValuePill: View {
     var body: some View {
         Text(text)
             .foregroundStyle(.primary)
+            .lineLimit(1)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(

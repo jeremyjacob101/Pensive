@@ -89,6 +89,7 @@ struct QuickAddSheet: View {
                         .accessibilityIdentifier("quick_add_inline_error")
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Quick Add")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

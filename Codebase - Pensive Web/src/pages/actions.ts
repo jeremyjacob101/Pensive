@@ -179,12 +179,22 @@ export async function handleAddRecurring(
   e.preventDefault();
   const formElement = e.currentTarget;
   const form = new FormData(formElement);
+  const kind =
+    String(form.get("kind") ?? "expense") === "incoming"
+      ? "incoming"
+      : "expense";
+  const dayOfMonth = Number(String(form.get("dayOfMonth") ?? "0")) || 0;
+  if (
+    kind === "expense" &&
+    dayOfMonth > 28 &&
+    !window.confirm(
+      `Day ${dayOfMonth} recurring expenses will not apply in months with fewer than ${dayOfMonth} days. Still create?`,
+    )
+  ) {
+    return;
+  }
   deps.setSaving(true);
   try {
-    const kind =
-      String(form.get("kind") ?? "expense") === "incoming"
-        ? "incoming"
-        : "expense";
     await deps.createRecurring({
       status:
         String(form.get("status") ?? "active") === "inactive"
@@ -194,7 +204,7 @@ export async function handleAddRecurring(
       name: String(form.get("name") ?? ""),
       amount: toAmount(String(form.get("amount") ?? "")),
       frequency: "Monthly",
-      dayOfMonth: Number(String(form.get("dayOfMonth") ?? "0")) || 0,
+      dayOfMonth,
       recurringExpenseAccount:
         kind === "expense"
           ? String(form.get("recurringExpenseAccount") ?? "")
@@ -427,9 +437,19 @@ export async function handleUpdateRecurring(
     setEditingRecurringId: Dispatch<SetStateAction<string | null>>;
   },
 ) {
+  const kind = deps.editValues.kind === "incoming" ? "incoming" : "expense";
+  const dayOfMonth = Number(deps.editValues.dayOfMonth ?? "0") || 0;
+  if (
+    kind === "expense" &&
+    dayOfMonth > 28 &&
+    !window.confirm(
+      `Day ${dayOfMonth} recurring expenses will not apply in months with fewer than ${dayOfMonth} days. Still save?`,
+    )
+  ) {
+    return;
+  }
   deps.setSaving(true);
   try {
-    const kind = deps.editValues.kind === "incoming" ? "incoming" : "expense";
     await deps.updateRecurring({
       id: row._id,
       status: deps.editValues.status === "inactive" ? "inactive" : "active",
@@ -437,7 +457,7 @@ export async function handleUpdateRecurring(
       name: deps.editValues.name ?? "",
       amount: toAmount(deps.editValues.amount ?? ""),
       frequency: row.frequency || "Monthly",
-      dayOfMonth: Number(deps.editValues.dayOfMonth ?? "0") || 0,
+      dayOfMonth,
       recurringExpenseAccount:
         kind === "expense"
           ? (deps.editValues.recurringExpenseAccount ?? "")

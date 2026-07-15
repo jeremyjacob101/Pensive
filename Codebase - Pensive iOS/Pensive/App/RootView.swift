@@ -51,62 +51,66 @@ private struct LoginView: View {
     @ObservedObject var viewModel: AuthViewModel
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Pensive")
-                .font(.largeTitle.weight(.semibold))
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("Pensive")
+                    .font(.largeTitle.weight(.semibold))
 
-            Text(viewModel.entryMode == .signIn ? "Sign in to continue" : "Create your account")
-                .foregroundStyle(.secondary)
+                Text(viewModel.entryMode == .signIn ? "Sign in to continue" : "Create your account")
+                    .foregroundStyle(.secondary)
 
-            Picker("Auth Mode", selection: $viewModel.entryMode) {
-                ForEach(AuthViewModel.EntryMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
+                Picker("Auth Mode", selection: $viewModel.entryMode) {
+                    ForEach(AuthViewModel.EntryMode.allCases) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
                 }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("auth_mode_picker")
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("auth_mode_picker")
 
-            TextField("Username", text: $viewModel.username)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.username)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("username_field")
-
-            SecureField("Password", text: $viewModel.password)
-                .textContentType(.password)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityIdentifier("password_field")
-
-            if viewModel.entryMode == .createAccount {
-                SecureField("Confirm Password", text: $viewModel.confirmPassword)
-                    .textContentType(.newPassword)
+                TextField("Username", text: $viewModel.username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textContentType(.username)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("confirm_password_field")
-            }
+                    .accessibilityIdentifier("username_field")
 
-            if let inlineError = viewModel.inlineError, !inlineError.isEmpty {
-                Text(inlineError)
-                    .foregroundStyle(.red)
-                    .font(.footnote)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier("auth_inline_error")
-            }
+                SecureField("Password", text: $viewModel.password)
+                    .textContentType(.password)
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("password_field")
 
-            Button {
-                viewModel.submitAuth()
-            } label: {
-                if viewModel.isLoading {
-                    ProgressView()
-                } else {
-                    Text(viewModel.entryMode == .signIn ? "Sign In" : "Create Account")
+                if viewModel.entryMode == .createAccount {
+                    SecureField("Confirm Password", text: $viewModel.confirmPassword)
+                        .textContentType(.newPassword)
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("confirm_password_field")
                 }
+
+                if let inlineError = viewModel.inlineError, !inlineError.isEmpty {
+                    Text(inlineError)
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("auth_inline_error")
+                }
+
+                Button {
+                    viewModel.submitAuth()
+                } label: {
+                    if viewModel.isLoading {
+                        ProgressView()
+                    } else {
+                        Text(viewModel.entryMode == .signIn ? "Sign In" : "Create Account")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isLoading)
+                .accessibilityIdentifier("auth_submit_button")
             }
+            .padding()
             .frame(maxWidth: .infinity)
-            .buttonStyle(.borderedProminent)
-            .disabled(viewModel.isLoading)
-            .accessibilityIdentifier("auth_submit_button")
         }
-        .padding()
+        .scrollDismissesKeyboard(.interactively)
     }
 }

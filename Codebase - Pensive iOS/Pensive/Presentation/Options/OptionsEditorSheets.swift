@@ -42,6 +42,7 @@ struct OptionCreateSheet: View {
                     )
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -197,6 +198,7 @@ struct OptionEditSheet: View {
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .listSectionSpacing(.compact)
             .contentMargins(.top, 8, for: .scrollContent)
             .navigationTitle(title)
