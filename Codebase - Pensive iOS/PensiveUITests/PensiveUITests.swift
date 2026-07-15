@@ -7,8 +7,14 @@ final class PensiveUITests: XCTestCase {
         app.launchEnvironment["UI_TEST_UNAUTHENTICATED"] = "1"
         app.launch()
 
-        XCTAssertTrue(app.otherElements["login_view"].waitForExistence(timeout: 10))
-        app.buttons["auth_submit_button"].tap()
+        XCTAssertTrue(element(id: "root_view", app: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(app.textFields["username_field"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.secureTextFields["password_field"].waitForExistence(timeout: 3))
+
+        let submitButton = app.buttons["auth_submit_button"]
+        XCTAssertTrue(submitButton.waitForExistence(timeout: 3))
+        XCTAssertTrue(submitButton.isEnabled)
+        submitButton.tap()
         XCTAssertTrue(app.staticTexts["Enter a username."].waitForExistence(timeout: 3))
 
         app.segmentedControls["auth_mode_picker"].buttons["Create Account"].tap()
@@ -28,6 +34,29 @@ final class PensiveUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["New Expense"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.textFields["Name"].exists)
         XCTAssertTrue(app.textFields["Amount"].exists)
+    }
+
+    func testAuthenticatedUserCanOpenIncomingBulkForm() {
+        let app = XCUIApplication()
+        configure(app)
+        app.launchEnvironment["UI_TEST_LEDGER_FIXTURE"] = "1"
+        app.launch()
+
+        openTab(named: "Incomings", app: app)
+        let addIncoming = app.buttons["ledger_add_toolbar"]
+        XCTAssertTrue(addIncoming.waitForExistence(timeout: 10))
+        addIncoming.tap()
+
+        XCTAssertTrue(app.navigationBars["New Incoming"].waitForExistence(timeout: 3))
+        app.swipeUp()
+        let bulkAdd = app.buttons["ledger_bulk_add"]
+        XCTAssertTrue(bulkAdd.waitForExistence(timeout: 3))
+        let entryCount = app.staticTexts["ledger_bulk_entry_count"]
+        XCTAssertEqual(entryCount.label, "Entries: 1")
+
+        bulkAdd.tap()
+        XCTAssertTrue(entryCount.waitForExistence(timeout: 3))
+        XCTAssertEqual(entryCount.label, "Entries: 2")
     }
 
     func testLaunchShowsRootView() {

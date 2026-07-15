@@ -65,13 +65,6 @@ private func shiftedMonthYear(_ month: MonthYear, by value: Int) -> MonthYear? {
     return LedgerScopeLogic.targetMonths(startDate: shifted, endDate: shifted).first
 }
 
-private func monthTitle(_ month: MonthYear) -> String {
-    guard let date = LedgerScopeLogic.parseISODate("\(month.rawValue)-01") else {
-        return month.rawValue
-    }
-    return date.formatted(.dateTime.month(.abbreviated))
-}
-
 struct MonthYearMultiSelect: View {
     let label: String
     @Binding var selection: [MonthYear]
@@ -107,7 +100,7 @@ struct MonthYearMultiSelect: View {
                 Text(label)
                 Spacer()
                 Text(normalizedSelection.count == 1
-                    ? monthTitle(normalizedSelection[0])
+                    ? normalizedSelection[0].abbreviatedLabel
                     : "\(normalizedSelection.count) selected")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -122,11 +115,8 @@ struct MonthYearMultiSelect: View {
                                 toggle(month)
                             } label: {
                                 VStack(spacing: 4) {
-                                    Text(monthTitle(month))
+                                    Text(month.abbreviatedLabel)
                                         .font(.subheadline.weight(.semibold))
-                                    Text(String(month.rawValue.prefix(4)))
-                                        .font(.caption)
-                                        .foregroundStyle(isSelected ? .primary : .secondary)
                                     if month == currentMonthYear() {
                                         Image(systemName: "circle.fill")
                                             .font(.system(size: 5))
@@ -148,7 +138,7 @@ struct MonthYearMultiSelect: View {
                             }
                             .buttonStyle(.plain)
                             .id(month.rawValue)
-                            .accessibilityLabel("\(monthTitle(month)) \(String(month.rawValue.prefix(4)))")
+                            .accessibilityLabel(month.abbreviatedLabel)
                             .accessibilityValue(isSelected ? "Selected" : "Not selected")
                         }
                     }
@@ -160,10 +150,6 @@ struct MonthYearMultiSelect: View {
                     proxy.scrollTo(currentMonthYear().rawValue, anchor: .center)
                 }
             }
-
-            Text("Tap any months to include this amount in. Months do not need to be consecutive.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
         .onAppear {
             if selection.isEmpty {
@@ -233,6 +219,32 @@ struct FormFieldRow<Content: View>: View {
             Spacer(minLength: 8)
             content
                 .multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+private struct BulkGroupSection: View {
+    let entryCount: Int
+    @Binding var selectedIndex: Int
+    let onAdd: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        Section("Bulk Group") {
+            Text("Entries: \(entryCount)")
+                .accessibilityIdentifier("ledger_bulk_entry_count")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Picker("Editing Entry", selection: $selectedIndex) {
+                ForEach(0..<entryCount, id: \.self) { index in
+                    Text("Entry \(index + 1)").tag(index)
+                }
+            }
+            Button("Add Another in Bulk Group", action: onAdd)
+                .accessibilityIdentifier("ledger_bulk_add")
+            if entryCount > 1 {
+                Button("Remove Current Entry", role: .destructive, action: onRemove)
+            }
         }
     }
 }
@@ -308,26 +320,18 @@ struct ExpenseEditorSheet: View {
                 }))
 
                 if mode == .create {
-                    Section("Bulk Group") {
-                        Text("Entries: \(drafts.count)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Picker("Editing Entry", selection: $selectedIndex) {
-                            ForEach(Array(drafts.indices), id: \.self) { index in
-                                Text("Entry \(index + 1)").tag(index)
-                            }
-                        }
-                        Button("Add Another in Bulk Group") {
+                    BulkGroupSection(
+                        entryCount: drafts.count,
+                        selectedIndex: $selectedIndex,
+                        onAdd: {
                             drafts.append(newExpenseDraft(template: drafts[selectedIndex]))
                             selectedIndex = drafts.count - 1
+                        },
+                        onRemove: {
+                            drafts.remove(at: selectedIndex)
+                            selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
                         }
-                        if drafts.count > 1 {
-                            Button("Remove Current Entry", role: .destructive) {
-                                drafts.remove(at: selectedIndex)
-                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
-                            }
-                        }
-                    }
+                    )
                 }
             }
             .navigationTitle(mode == .create ? "New Expense" : "Edit Expense")
@@ -440,29 +444,6 @@ struct IncomingEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if mode == .create {
-                    Section("Bulk Group") {
-                        Text("Entries: \(drafts.count)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Picker("Editing Entry", selection: $selectedIndex) {
-                            ForEach(Array(drafts.indices), id: \.self) { index in
-                                Text("Entry \(index + 1)").tag(index)
-                            }
-                        }
-                        Button("Add Another in Bulk Group") {
-                            drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
-                            selectedIndex = drafts.count - 1
-                        }
-                        if drafts.count > 1 {
-                            Button("Remove Current Entry", role: .destructive) {
-                                drafts.remove(at: selectedIndex)
-                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
-                            }
-                        }
-                    }
-                }
-
                 FormFieldRow(label: "Name") {
                     TextField("Name", text: binding(\.incoming))
                 }
@@ -516,26 +497,18 @@ struct IncomingEditorSheet: View {
                 }))
 
                 if mode == .create {
-                    Section("Bulk Group") {
-                        Text("Entries: \(drafts.count)")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Picker("Editing Entry", selection: $selectedIndex) {
-                            ForEach(Array(drafts.indices), id: \.self) { index in
-                                Text("Entry \(index + 1)").tag(index)
-                            }
-                        }
-                        Button("Add Another in Bulk Group") {
+                    BulkGroupSection(
+                        entryCount: drafts.count,
+                        selectedIndex: $selectedIndex,
+                        onAdd: {
                             drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
                             selectedIndex = drafts.count - 1
+                        },
+                        onRemove: {
+                            drafts.remove(at: selectedIndex)
+                            selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
                         }
-                        if drafts.count > 1 {
-                            Button("Remove Current Entry", role: .destructive) {
-                                drafts.remove(at: selectedIndex)
-                                selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
-                            }
-                        }
-                    }
+                    )
                 }
             }
             .navigationTitle(mode == .create ? "New Incoming" : "Edit Incoming")

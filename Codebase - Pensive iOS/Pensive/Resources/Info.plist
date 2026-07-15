@@ -12,6 +12,19 @@
 	<string>$(CONVEX_HTTP_ACTION_BASE_URL)</string>
 	<key>LOG_LEVEL</key>
 	<string>$(LOG_LEVEL)</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Pensive Option</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.pensive.option</string>
+		</dict>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

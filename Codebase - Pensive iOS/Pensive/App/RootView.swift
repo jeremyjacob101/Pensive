@@ -18,7 +18,6 @@ struct RootView: View {
 
             case .unauthenticated, .authenticating:
                 LoginView(viewModel: authViewModel)
-                    .accessibilityIdentifier("login_view")
 
             case .authenticated(let session):
                 AppShellView(userId: session.userId, api: container.api, onSignOut: authViewModel.signOut, onDeleteAccount: authViewModel.deleteAccount)

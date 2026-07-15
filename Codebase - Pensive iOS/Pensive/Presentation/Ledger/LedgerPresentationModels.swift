@@ -27,6 +27,15 @@ struct LedgerItemViewData: Identifiable {
     var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }
 }
 
+extension MonthYear {
+    var abbreviatedLabel: String {
+        guard let date = LedgerScopeLogic.parseISODate("\(rawValue)-01") else {
+            return rawValue
+        }
+        return "\(date.formatted(.dateTime.month(.abbreviated))) '\(rawValue.suffix(2))"
+    }
+}
+
 struct LedgerFilterOptionRow: Identifiable {
     let value: String
     let color: String?

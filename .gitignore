@@ -35,6 +35,7 @@ Codebase - Pensive iOS/Config/Local.xcconfig
 
 # Editor directories and files
 .vscode/*
+.vscode
 !.vscode/extensions.json
 **/.vscode/settings.json
 .idea

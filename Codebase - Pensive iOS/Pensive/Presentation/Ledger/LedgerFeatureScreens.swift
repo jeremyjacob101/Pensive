@@ -249,7 +249,9 @@ private struct LedgerScreen: View {
             ForEach(row.details, id: \.self) { detail in
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
-            Text("Month Years: \(row.monthYears.joined(separator: ", "))").font(.footnote)
+            let monthLabels = row.monthYears.compactMap(MonthYear.init).map(\.abbreviatedLabel)
+            Text("Applies to: \(monthLabels.isEmpty ? "—" : monthLabels.joined(separator: ", "))")
+                .font(.footnote)
 
             HStack {
                 Button("Add partner") { selectedPartnerAnchorID = LedgerRowID(id: row.id) }
