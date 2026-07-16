@@ -2,14 +2,7 @@ import { FormField } from "./EntryModal";
 
 type EffectiveAmountMode = "auto" | "manual";
 
-export function EffectiveAmountControls({
-  value,
-  mode,
-  onChange,
-  onModeChange,
-  inputName,
-  modeName,
-}: {
+export function EffectiveAmountControls({ value, mode, onChange, onModeChange, inputName, modeName }: {
   value: string;
   mode: EffectiveAmountMode;
   onChange: (value: string) => void;

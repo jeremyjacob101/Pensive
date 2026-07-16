@@ -236,7 +236,7 @@ struct DateRangePickerSheet: View {
     @Binding var endDate: Date
     var oldestMonth: MonthYear?
     var newestMonth: MonthYear?
-    var onApplyRange: ((Date, Date) -> Void)?
+    var onApplyRange: ((Date, Date, DateRangePickerMode) -> Void)?
 
     @State private var mode: DateRangePickerMode
     @State private var draftStartDate: Date
@@ -249,7 +249,8 @@ struct DateRangePickerSheet: View {
         endDate: Binding<Date>,
         oldestMonth: MonthYear? = nil,
         newestMonth: MonthYear? = nil,
-        onApplyRange: ((Date, Date) -> Void)? = nil
+        initialMode: DateRangePickerMode? = nil,
+        onApplyRange: ((Date, Date, DateRangePickerMode) -> Void)? = nil
     ) {
         _startDate = startDate
         _endDate = endDate
@@ -270,7 +271,7 @@ struct DateRangePickerSheet: View {
         let initialStartMonth = initialScope.isWholeMonthRange ? (initialMonths.first ?? currentMonth) : currentMonth
         let initialEndMonth = initialScope.isWholeMonthRange ? (initialMonths.last ?? initialStartMonth) : initialStartMonth
 
-        _mode = State(initialValue: .months)
+        _mode = State(initialValue: initialMode ?? (initialScope.isWholeMonthRange ? .months : .custom))
         _draftStartDate = State(initialValue: startDate.wrappedValue)
         _draftEndDate = State(initialValue: endDate.wrappedValue)
         _draftStartMonth = State(initialValue: initialStartMonth)
@@ -391,7 +392,7 @@ struct DateRangePickerSheet: View {
         }
 
         if let onApplyRange {
-            onApplyRange(nextStart, nextEnd)
+            onApplyRange(nextStart, nextEnd, mode)
         } else {
             startDate = nextStart
             endDate = nextEnd
@@ -442,7 +443,7 @@ struct DateRangePickerSheet: View {
     }()
 }
 
-private enum DateRangePickerMode: Hashable {
+enum DateRangePickerMode: Hashable {
     case months
     case custom
 }

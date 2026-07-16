@@ -1,6 +1,6 @@
 import { formatMonthValue, getMonthsBetween, normalizeMonthYears, shiftMonth, toggleMonthYearSelection } from "../helpers/dates";
-import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 const MONTH_NAMES = [
   "Jan",
@@ -123,121 +123,125 @@ export function MonthYearMultiSelect({ value, onChange, label = "Applies to", re
         />
       </summary>
       <fieldset className="month-multi-select" aria-describedby={describedBy}>
-      <div className="month-picker-title-row">
-        <legend id={labelId} className="month-picker-label">
-          {label}
-          {required ? <span aria-hidden="true"> *</span> : null}
-        </legend>
-        <button
-          type="button"
-          className="month-picker-clear"
-          onClick={() => onChange([])}
-          disabled={normalized.length === 0}
-        >
-          Clear
-        </button>
-      </div>
-
-      <div className="month-picker-calendar">
-        <div className="month-picker-year-row">
+        <div className="month-picker-title-row">
+          <legend id={labelId} className="month-picker-label">
+            {label}
+            {required ? <span aria-hidden="true"> *</span> : null}
+          </legend>
           <button
             type="button"
-            className="month-picker-year-button"
-            aria-label={`Show ${visibleYear - 1}`}
-            onClick={() => setVisibleYear((year) => year - 1)}
+            className="month-picker-clear"
+            onClick={() => onChange([])}
+            disabled={normalized.length === 0}
           >
-            <ChevronLeft aria-hidden="true" />
+            Clear
           </button>
-          <div className="month-picker-year" aria-live="polite">
-            {visibleYear}
+        </div>
+
+        <div className="month-picker-calendar">
+          <div className="month-picker-year-row">
+            <button
+              type="button"
+              className="month-picker-year-button"
+              aria-label={`Show ${visibleYear - 1}`}
+              onClick={() => setVisibleYear((year) => year - 1)}
+            >
+              <ChevronLeft aria-hidden="true" />
+            </button>
+            <div className="month-picker-year" aria-live="polite">
+              {visibleYear}
+            </div>
+            <button
+              type="button"
+              className="month-picker-year-button"
+              aria-label={`Show ${visibleYear + 1}`}
+              onClick={() => setVisibleYear((year) => year + 1)}
+            >
+              <ChevronRight aria-hidden="true" />
+            </button>
           </div>
-          <button
-            type="button"
-            className="month-picker-year-button"
-            aria-label={`Show ${visibleYear + 1}`}
-            onClick={() => setVisibleYear((year) => year + 1)}
+
+          <div
+            className="month-picker-grid"
+            role="grid"
+            aria-labelledby={labelId}
           >
-            <ChevronRight aria-hidden="true" />
-          </button>
+            {visibleMonths.map((month) => {
+              const isSelected = selectedSet.has(month.value);
+              const isGap =
+                !isSelected &&
+                !!rangeStart &&
+                month.value > rangeStart &&
+                month.value < rangeEnd;
+              const isCurrent = month.value === currentMonth;
+              const fullLabel = formatMonthValue(month.value);
+
+              return (
+                <button
+                  key={month.value}
+                  ref={(node) => {
+                    if (node) buttonRefs.current.set(month.value, node);
+                    else buttonRefs.current.delete(month.value);
+                  }}
+                  type="button"
+                  role="gridcell"
+                  className={`month-picker-month${isSelected ? " is-selected" : ""}${isGap ? " is-gap" : ""}${isCurrent ? " is-current" : ""}`}
+                  aria-label={`${fullLabel}${isSelected ? ", selected; activate to exclude" : ", not selected; activate to include"}`}
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    onChange(toggleMonthYearSelection(normalized, month.value))
+                  }
+                  onKeyDown={(event) => handleMonthKeyDown(event, month.value)}
+                >
+                  <span>{month.name}</span>
+                  {isSelected ? (
+                    <Check className="month-picker-check" aria-hidden="true" />
+                  ) : null}
+                  {isCurrent ? (
+                    <span
+                      className="month-picker-current-dot"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div
-          className="month-picker-grid"
-          role="grid"
-          aria-labelledby={labelId}
-        >
-          {visibleMonths.map((month) => {
-            const isSelected = selectedSet.has(month.value);
-            const isGap =
-              !isSelected &&
-              !!rangeStart &&
-              month.value > rangeStart &&
-              month.value < rangeEnd;
-            const isCurrent = month.value === currentMonth;
-            const fullLabel = formatMonthValue(month.value);
+        <div className="month-picker-footer">
+          <div
+            id={summaryId}
+            className="month-picker-summary"
+            aria-live="polite"
+          >
+            {selectionSummary}
+          </div>
+          <div id={helpId} className="month-picker-help">
+            Choose two endpoints to fill a range. Select any checked month to
+            exclude it.
+          </div>
+        </div>
 
-            return (
-              <button
-                key={month.value}
-                ref={(node) => {
-                  if (node) buttonRefs.current.set(month.value, node);
-                  else buttonRefs.current.delete(month.value);
-                }}
-                type="button"
-                role="gridcell"
-                className={`month-picker-month${isSelected ? " is-selected" : ""}${isGap ? " is-gap" : ""}${isCurrent ? " is-current" : ""}`}
-                aria-label={`${fullLabel}${isSelected ? ", selected; activate to exclude" : ", not selected; activate to include"}`}
-                aria-pressed={isSelected}
-                onClick={() =>
-                  onChange(toggleMonthYearSelection(normalized, month.value))
-                }
-                onKeyDown={(event) => handleMonthKeyDown(event, month.value)}
-              >
-                <span>{month.name}</span>
-                {isSelected ? (
-                  <Check className="month-picker-check" aria-hidden="true" />
-                ) : null}
-                {isCurrent ? (
-                  <span
-                    className="month-picker-current-dot"
-                    aria-hidden="true"
-                  />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="month-picker-footer">
-        <div id={summaryId} className="month-picker-summary" aria-live="polite">
-          {selectionSummary}
-        </div>
-        <div id={helpId} className="month-picker-help">
-          Choose two endpoints to fill a range. Select any checked month to
-          exclude it.
-        </div>
-      </div>
-
-      {required ? (
-        <input
-          className="month-picker-required-input"
-          value={normalized.length > 0 ? "selected" : ""}
-          onChange={() => {}}
-          onInvalid={(event) => {
-            event.preventDefault();
-            buttonRefs.current.get(`${visibleYear}-01`)?.focus();
-          }}
-          tabIndex={-1}
-          aria-hidden="true"
-          required
-        />
-      ) : null}
-      {required && normalized.length === 0 ? (
-        <div id={errorId} className="month-multi-select-error" role="alert">
-          Select at least one month.
-        </div>
-      ) : null}
+        {required ? (
+          <input
+            className="month-picker-required-input"
+            value={normalized.length > 0 ? "selected" : ""}
+            onChange={() => {}}
+            onInvalid={(event) => {
+              event.preventDefault();
+              buttonRefs.current.get(`${visibleYear}-01`)?.focus();
+            }}
+            tabIndex={-1}
+            aria-hidden="true"
+            required
+          />
+        ) : null}
+        {required && normalized.length === 0 ? (
+          <div id={errorId} className="month-multi-select-error" role="alert">
+            Select at least one month.
+          </div>
+        ) : null}
       </fieldset>
     </details>
   );

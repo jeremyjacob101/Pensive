@@ -73,8 +73,7 @@ function targetMonths(startDate: string, endDate: string) {
 
 function normalizedRowMonths(row: { date: string; monthYears?: string[] }) {
   const months = (row.monthYears ?? []).filter((month) =>
-    /^\d{4}-(0[1-9]|1[0-2])$/.test(month),
-  );
+    /^\d{4}-(0[1-9]|1[0-2])$/.test(month));
   if (months.length > 0) return [...new Set(months)].sort();
   const fallback = monthFromDate(row.date);
   return fallback ? [fallback] : [];

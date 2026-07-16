@@ -5,6 +5,7 @@ import type { SplitExpenseDraft, SplitIncomingDraft } from "../types/splitDrafts
 import { EMPTY_PAYBACK_DRAFT, type PaybackDraft } from "../types/paybackDraft";
 import { Layers3, PencilLine, Plus, Repeat2, Trash2 } from "lucide-react";
 import { getMonthFromIsoDate, getTodayIsoDate } from "../helpers/dates";
+import { EffectiveAmountControls } from "./EffectiveAmountControls";
 import type { FormType, UserOptions } from "../types/workspace";
 import { MonthYearMultiSelect } from "./MonthYearMultiSelect";
 import { randomId16, toAmount } from "../helpers/formatters";
@@ -19,7 +20,6 @@ import type { SyntheticEvent } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@pensive/convex-api";
 import { createPortal } from "react-dom";
-import { EffectiveAmountControls } from "./EffectiveAmountControls";
 
 export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, onSearchQueryChange, searchFieldOptions, selectedSearchFields, onSearchFieldsChange, visibleExpenseIds, visibleIncomingIds, visibleExpenseCategories, visibleIncomingTypes, onBulkPatchExpenses, onBulkPatchIncomings, onAddExpense, onAddIncoming, onAddRecurring, bulkCreateExpenses, bulkCreateIncomings, saving, userOptions }: {
   activeItem: MenuItemKey;
@@ -125,8 +125,9 @@ export function AddEntryPanel({ activeItem, formType, setFormType, searchQuery, 
   const [incomingAccount, setIncomingAccount] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseEffectiveAmount, setExpenseEffectiveAmount] = useState("");
-  const [expenseEffectiveAmountMode, setExpenseEffectiveAmountMode] =
-    useState<"auto" | "manual">("auto");
+  const [expenseEffectiveAmountMode, setExpenseEffectiveAmountMode] = useState<
+    "auto" | "manual"
+  >("auto");
   const [incomingAmount, setIncomingAmount] = useState("");
   const [incomingEffectiveAmount, setIncomingEffectiveAmount] = useState("");
   const [incomingEffectiveAmountMode, setIncomingEffectiveAmountMode] =

@@ -2,9 +2,9 @@ import { columnLabel, makeClientNoteId, makeClientTableId, normalizeCells, parse
 import { NOTEPAD_COL_WIDTHS_BY_TABLE_KEY, NOTEPAD_ROW_HEIGHTS_BY_TABLE_KEY } from "../keys/notepad";
 import { EntryModal, FormField, ModalActions } from "../components/EntryModal";
 import type { NotepadNote, NotepadTable } from "../types/notepad";
+import { Minus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { Minus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@pensive/convex-api";
 
@@ -300,7 +300,9 @@ export function Notepad() {
                     <button
                       type="button"
                       className="notepad-table-action-btn"
-                      aria-label={isEditing ? "Finish editing note" : "Edit note"}
+                      aria-label={
+                        isEditing ? "Finish editing note" : "Edit note"
+                      }
                       title={isEditing ? "Finish editing note" : "Edit note"}
                       onClick={() =>
                         setEditingNoteIds((current) => ({
@@ -318,7 +320,8 @@ export function Notepad() {
                       title="Delete note"
                       onClick={() => {
                         const titleTimer = noteTitleTimersRef.current[note.id];
-                        const contentTimer = noteContentTimersRef.current[note.id];
+                        const contentTimer =
+                          noteContentTimersRef.current[note.id];
                         if (titleTimer) window.clearTimeout(titleTimer);
                         if (contentTimer) window.clearTimeout(contentTimer);
                         delete noteTitleTimersRef.current[note.id];
@@ -356,7 +359,9 @@ export function Notepad() {
                             noteId: note.id,
                             content: nextContent,
                           }).catch(() => {
-                            setSaveError("Could not autosave one or more notes.");
+                            setSaveError(
+                              "Could not autosave one or more notes.",
+                            );
                           });
                         },
                         500,
@@ -366,7 +371,9 @@ export function Notepad() {
                     spellCheck={false}
                   />
                 ) : (
-                  <p className="notepad-note-content-readonly">{note.content}</p>
+                  <p className="notepad-note-content-readonly">
+                    {note.content}
+                  </p>
                 )}
               </article>
             );

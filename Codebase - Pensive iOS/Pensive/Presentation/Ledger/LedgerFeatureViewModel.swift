@@ -57,8 +57,8 @@ final class LedgerFeatureViewModel: ObservableObject {
         self.accountFilterKey = "\(filterKey).accounts"
         self.categoryFilterKey = "\(filterKey).categories"
         self.filterSelectionVersionKey = "\(filterKey).selection-version"
-        self.selectedAccountFilters = filterStore.load(for: accountFilterKey)
-        self.selectedCategoryFilters = filterStore.load(for: categoryFilterKey)
+        self.selectedAccountFilters = Self.normalizedAccountFilterValues(filterStore.load(for: accountFilterKey))
+        self.selectedCategoryFilters = Self.normalizedCategoryFilterValues(filterStore.load(for: categoryFilterKey))
 
         let today = Date()
         let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) ?? today
@@ -208,14 +208,16 @@ final class LedgerFeatureViewModel: ObservableObject {
     }
 
     func updateAccountFilters(_ values: Set<String>) {
-        selectedAccountFilters = values
-        filterStore.save(values, for: accountFilterKey)
+        let normalized = Self.normalizedAccountFilterValues(values)
+        selectedAccountFilters = normalized
+        filterStore.save(normalized, for: accountFilterKey)
         applyFiltersAndSearch()
     }
 
     func updateCategoryFilters(_ values: Set<String>) {
-        selectedCategoryFilters = values
-        filterStore.save(values, for: categoryFilterKey)
+        let normalized = Self.normalizedCategoryFilterValues(values)
+        selectedCategoryFilters = normalized
+        filterStore.save(normalized, for: categoryFilterKey)
         applyFiltersAndSearch()
     }
 
@@ -283,9 +285,9 @@ final class LedgerFeatureViewModel: ObservableObject {
         let rows: [Double]
         switch kind {
         case .expense:
-            rows = expenses.map { LedgerScopeLogic.proportionalContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
+            rows = expenses.map { LedgerScopeLogic.scopedContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
         case .incoming:
-            rows = incomings.map { LedgerScopeLogic.proportionalContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
+            rows = incomings.map { LedgerScopeLogic.scopedContribution(amount: $0.effectiveAmount, date: $0.date, monthYears: $0.monthYears, scope: scope) }
         }
         return rows.filter { $0.isFinite }.reduce(0, +)
     }
@@ -294,16 +296,17 @@ final class LedgerFeatureViewModel: ObservableObject {
         let fromData: Set<String>
         switch kind {
         case .expense:
-            fromData = Set(expenses.map(\.account).filter { !$0.isEmpty })
+            fromData = Self.normalizedAccountFilterValues(Set(expenses.map(\.account)))
         case .incoming:
-            fromData = Set(incomings.map(\.account).filter { !$0.isEmpty })
+            fromData = Self.normalizedAccountFilterValues(Set(incomings.map(\.account)))
         }
-        let fromOptions = Set((optionsByKind["account"] ?? []).map(\.value))
+        let fromOptions = Self.normalizedAccountFilterValues(Set((optionsByKind["account"] ?? []).map(\.value)))
         return Array(fromData.union(fromOptions)).sorted()
     }
 
     func accountColor(for value: String) -> String? {
-        optionsByKind["account"]?.first(where: { $0.value == value })?.color
+        let normalized = LedgerFiltering.normalizedAccount(value)
+        return optionsByKind["account"]?.first(where: { LedgerFiltering.normalizedAccount($0.value) == normalized })?.color
     }
 
     var categoryFilterRows: [LedgerFilterOptionRow] {
@@ -615,9 +618,9 @@ final class LedgerFeatureViewModel: ObservableObject {
     private var loadedAccountFilterValues: Set<String> {
         switch kind {
         case .expense:
-            return Set(expenses.map(\.account).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            return Self.normalizedAccountFilterValues(Set(expenses.map(\.account)))
         case .incoming:
-            return Set(incomings.map(\.account).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+            return Self.normalizedAccountFilterValues(Set(incomings.map(\.account)))
         }
     }
 
@@ -800,22 +803,17 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func normalizedScope(_ scope: DateScope, includeMonthYearOverlapOutsideDate: Bool? = nil) -> DateScope {
         let start = min(scope.startDate, scope.endDate)
         let end = max(scope.startDate, scope.endDate)
-        let candidate = DateScope(
-            startDate: start,
-            endDate: end,
-            includeMonthYearOverlapOutsideDate: scope.includeMonthYearOverlapOutsideDate
-        )
         return DateScope(
             startDate: start,
             endDate: end,
-            includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate ?? candidate.isWholeMonthRange
+            includeMonthYearOverlapOutsideDate: includeMonthYearOverlapOutsideDate ?? scope.includeMonthYearOverlapOutsideDate
         )
     }
 
     private func expenseRow(_ item: Expense) -> LedgerItemViewData {
         let status = LedgerScopeLogic.scopeStatus(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
-        let scopedRaw = LedgerScopeLogic.proportionalContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
-        let scopedEffective = LedgerScopeLogic.proportionalContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedRaw = LedgerScopeLogic.scopedContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedEffective = LedgerScopeLogic.scopedContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         return LedgerItemViewData(
             id: item.id,
@@ -837,8 +835,8 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private func incomingRow(_ item: Incoming) -> LedgerItemViewData {
         let status = LedgerScopeLogic.scopeStatus(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
-        let scopedRaw = LedgerScopeLogic.proportionalContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
-        let scopedEffective = LedgerScopeLogic.proportionalContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedRaw = LedgerScopeLogic.scopedContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let scopedEffective = LedgerScopeLogic.scopedContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         return LedgerItemViewData(
             id: item.id,
@@ -880,6 +878,31 @@ final class LedgerFeatureViewModel: ObservableObject {
     private func incomingUpdateDTO(from draft: IncomingEditorDraft, id: String) -> IncomingUpdateDTO {
         let create = incomingCreateDTO(from: draft)
         return IncomingUpdateDTO(id: id, incoming: create.incoming, paidBy: create.paidBy, incomeType: create.incomeType, incomeSubtype: create.incomeSubtype, account: create.account, amount: create.amount, effectiveAmount: create.effectiveAmount, effectiveAmountMode: create.effectiveAmountMode, date: create.date, monthYears: create.monthYears, notes: create.notes, comments: create.comments, incomingId: create.incomingId, baseIncomingId: create.baseIncomingId, subIncomingId: create.subIncomingId)
+    }
+
+    private static func normalizedAccountFilterValues(_ values: Set<String>) -> Set<String> {
+        Set(values.map(LedgerFiltering.normalizedAccount).filter { !$0.isEmpty })
+    }
+
+    private static func normalizedCategoryFilterValues(_ values: Set<String>) -> Set<String> {
+        Set(values.compactMap { rawValue in
+            let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+
+            // Migrate the old parent-only representation ("|Parent") without
+            // discarding the user's existing selection.
+            if value.hasPrefix("|") {
+                let parent = String(value.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+                return parent.isEmpty ? nil : parent
+            }
+
+            let parts = value.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+            guard parts.count == 2 else { return value }
+            return LedgerFiltering.categoryFilterKey(
+                parent: String(parts[0]),
+                child: String(parts[1])
+            )
+        })
     }
 
     private func money(_ value: Double) -> String {

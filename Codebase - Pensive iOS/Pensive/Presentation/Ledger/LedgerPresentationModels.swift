@@ -44,7 +44,10 @@ struct LedgerFilterOptionRow: Identifiable {
     let indentationLevel: Int
 
     var filterKey: String {
-        LedgerFiltering.categoryFilterKey(parent: parentValue ?? "", child: value)
+        if let parentValue {
+            return LedgerFiltering.categoryFilterKey(parent: parentValue, child: value)
+        }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var id: String { filterKey }
@@ -111,13 +114,116 @@ struct LedgerBreakdownSummary: Equatable {
     let slices: [LedgerBreakdownSlice]
 }
 
+struct BreakdownPageMonthTotals: Identifiable, Equatable {
+    let month: MonthYear
+    let incomings: Double
+    let expenses: Double
+
+    var id: MonthYear { month }
+    var savings: Double { incomings - expenses }
+}
+
+struct BreakdownPageSummary: Equatable {
+    let rows: [BreakdownPageMonthTotals]
+
+    var totalIncomings: Double { rows.reduce(0) { $0 + $1.incomings } }
+    var totalExpenses: Double { rows.reduce(0) { $0 + $1.expenses } }
+    var totalSavings: Double { rows.reduce(0) { $0 + $1.savings } }
+}
+
+enum BreakdownPageMath {
+    static func calculate(
+        expenses: [Expense],
+        incomings: [Incoming],
+        selectedExpenseAccounts: Set<String>,
+        selectedExpenseCategories: Set<String>,
+        selectedIncomingAccounts: Set<String>,
+        selectedIncomingTypes: Set<String>,
+        scope: DateScope
+    ) -> BreakdownPageSummary {
+        let months = LedgerScopeLogic.targetMonths(startDate: scope.startDate, endDate: scope.endDate)
+        let targetMonths = Set(months)
+        var expenseTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
+        var incomingTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
+
+        let expenseAccounts = normalizedAccounts(selectedExpenseAccounts)
+        let incomingAccounts = normalizedAccounts(selectedIncomingAccounts)
+        let expenseCategories = normalizedCategoryKeys(selectedExpenseCategories)
+        let incomingTypes = normalizedCategoryKeys(selectedIncomingTypes)
+
+        for row in expenses {
+            let account = normalizedAccount(row.account)
+            let category = LedgerFiltering.categoryFilterKey(parent: row.category, child: row.subcategory)
+            guard expenseAccounts.contains(account), expenseCategories.contains(category) else { continue }
+            add(
+                amount: row.effectiveAmount,
+                date: row.date,
+                monthYears: row.monthYears,
+                targetMonths: targetMonths,
+                totals: &expenseTotals
+            )
+        }
+
+        for row in incomings {
+            let account = normalizedAccount(row.account)
+            let type = LedgerFiltering.categoryFilterKey(parent: row.incomeType, child: row.incomeSubtype)
+            guard incomingAccounts.contains(account), incomingTypes.contains(type) else { continue }
+            add(
+                amount: row.effectiveAmount,
+                date: row.date,
+                monthYears: row.monthYears,
+                targetMonths: targetMonths,
+                totals: &incomingTotals
+            )
+        }
+
+        return BreakdownPageSummary(rows: months.map { month in
+            BreakdownPageMonthTotals(
+                month: month,
+                incomings: incomingTotals[month] ?? 0,
+                expenses: expenseTotals[month] ?? 0
+            )
+        })
+    }
+
+    private static func add(
+        amount: Double,
+        date: Date,
+        monthYears: [MonthYear],
+        targetMonths: Set<MonthYear>,
+        totals: inout [MonthYear: Double]
+    ) {
+        guard amount.isFinite else { return }
+        let rowMonths = LedgerScopeLogic.normalizedRowMonths(date: date, monthYears: monthYears)
+        guard !rowMonths.isEmpty else { return }
+        let perMonth = amount / Double(rowMonths.count)
+        for month in rowMonths where targetMonths.contains(month) {
+            totals[month, default: 0] += perMonth
+        }
+    }
+
+    private static func normalizedAccounts(_ values: Set<String>) -> Set<String> {
+        Set(values.map(normalizedAccount).filter { !$0.isEmpty })
+    }
+
+    private static func normalizedAccount(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizedCategoryKeys(_ values: Set<String>) -> Set<String> {
+        Set(values.map { value in
+            value.hasPrefix("|") ? String(value.dropFirst()) : value
+        })
+    }
+}
+
 enum LedgerBreakdownComputing {
     static func expenses(rows: [Expense], mode: LedgerFeatureViewModel.BreakdownMode, scope: DateScope, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
         let totalRaw = rows.reduce(0) { partial, row in
-            partial + LedgerScopeLogic.proportionalContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
+            partial + LedgerScopeLogic.scopedContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
         }
         let totalEffective = rows.reduce(0) { partial, row in
-            partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+            partial + LedgerScopeLogic.scopedContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
         }
         let grouped: [String: Double] = Dictionary(grouping: rows) { expense in
             switch mode {
@@ -131,7 +237,7 @@ enum LedgerBreakdownComputing {
             }
         }.mapValues { groupedRows in
             groupedRows.reduce(0) { partial, row in
-                partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+                partial + LedgerScopeLogic.scopedContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
             }
         }
         let slices = grouped
@@ -149,10 +255,10 @@ enum LedgerBreakdownComputing {
 
     static func incomings(rows: [Incoming], mode: LedgerFeatureViewModel.BreakdownMode, scope: DateScope, colorTokenForKey: (String, LedgerFeatureViewModel.BreakdownMode) -> String?) -> LedgerBreakdownSummary {
         let totalRaw = rows.reduce(0) { partial, row in
-            partial + LedgerScopeLogic.proportionalContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
+            partial + LedgerScopeLogic.scopedContribution(amount: row.amount, date: row.date, monthYears: row.monthYears, scope: scope)
         }
         let totalEffective = rows.reduce(0) { partial, row in
-            partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+            partial + LedgerScopeLogic.scopedContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
         }
         let grouped: [String: Double] = Dictionary(grouping: rows) { incoming in
             switch mode {
@@ -166,7 +272,7 @@ enum LedgerBreakdownComputing {
             }
         }.mapValues { groupedRows in
             groupedRows.reduce(0) { partial, row in
-                partial + LedgerScopeLogic.proportionalContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
+                partial + LedgerScopeLogic.scopedContribution(amount: row.effectiveAmount, date: row.date, monthYears: row.monthYears, scope: scope)
             }
         }
         let slices = grouped

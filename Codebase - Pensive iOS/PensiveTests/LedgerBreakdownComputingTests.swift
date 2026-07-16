@@ -9,10 +9,18 @@ final class LedgerBreakdownComputingTests: XCTestCase {
 
     func testLedgerFiltersApplyAccountAndCategoryAsSeparateFilters() {
         let rows = [
-            expense(id: "checking-food", account: "Checking", category: "Food", subcategory: "Groceries", amount: 10, effective: 10),
-            expense(id: "savings-food", account: "Savings", category: "Food", subcategory: "Groceries", amount: 20, effective: 20),
-            expense(id: "checking-rent", account: "Checking", category: "Rent", subcategory: nil, amount: 30, effective: 30),
-            expense(id: "checking-uncategorized", account: "Checking", category: "", subcategory: nil, amount: 40, effective: 40)
+            expense(
+                id: "checking-food", account: "Checking", category: "Food",
+                subcategory: "Groceries", amount: 10, effective: 10),
+            expense(
+                id: "savings-food", account: "Savings", category: "Food", subcategory: "Groceries",
+                amount: 20, effective: 20),
+            expense(
+                id: "checking-rent", account: "Checking", category: "Rent", subcategory: nil,
+                amount: 30, effective: 30),
+            expense(
+                id: "checking-uncategorized", account: "Checking", category: "", subcategory: nil,
+                amount: 40, effective: 40),
         ]
 
         let filtered = LedgerFiltering.filterExpenses(
@@ -22,7 +30,8 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             searchText: ""
         )
 
-        XCTAssertEqual(filtered.map(\.id), ["checking-food", "checking-rent", "checking-uncategorized"])
+        XCTAssertEqual(
+            filtered.map(\.id), ["checking-food", "checking-rent", "checking-uncategorized"])
 
         let deselectedCategory = LedgerFiltering.filterExpenses(
             rows,
@@ -39,12 +48,52 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             searchText: ""
         )
         XCTAssertTrue(deselectedAccount.isEmpty)
+
+        let whitespaceAccount = LedgerFiltering.filterExpenses(
+            [
+                expense(
+                    id: "spaced", account: " Checking ", category: "Food", subcategory: nil,
+                    amount: 10, effective: 10)
+            ],
+            deselectedAccounts: ["Checking"],
+            deselectedCategories: [],
+            searchText: ""
+        )
+        XCTAssertTrue(whitespaceAccount.isEmpty)
+    }
+
+    func testLedgerCategoryFilterKeysMatchParentAndChildRowKeys() {
+        let parent = LedgerFilterOptionRow(
+            value: "Food", color: nil, parentValue: nil, indentationLevel: 0)
+        let child = LedgerFilterOptionRow(
+            value: "Groceries", color: nil, parentValue: "Food", indentationLevel: 1)
+
+        XCTAssertEqual(parent.filterKey, "Food")
+        XCTAssertEqual(child.filterKey, "Food|Groceries")
+
+        let rows = [
+            expense(id: "parent", category: "Food", subcategory: nil, amount: 10, effective: 10),
+            expense(
+                id: "child", category: "Food", subcategory: "Groceries", amount: 20, effective: 20),
+        ]
+        let filtered = LedgerFiltering.filterExpenses(
+            rows,
+            deselectedAccounts: [],
+            deselectedCategories: [parent.filterKey],
+            searchText: ""
+        )
+
+        XCTAssertEqual(filtered.map(\.id), ["child"])
     }
 
     func testIncomingFiltersUseSubtypeKeysWithoutMatchingAnotherFilterDimension() {
         let rows = [
-            incoming(id: "salary", account: "Checking", type: "Salary", subtype: "Monthly", amount: 10, effective: 10),
-            incoming(id: "gift", account: "Savings", type: "Gift", subtype: nil, amount: 20, effective: 20)
+            incoming(
+                id: "salary", account: "Checking", type: "Salary", subtype: "Monthly", amount: 10,
+                effective: 10),
+            incoming(
+                id: "gift", account: "Savings", type: "Gift", subtype: nil, amount: 20,
+                effective: 20),
         ]
 
         let filtered = LedgerFiltering.filterIncomings(
@@ -59,12 +108,16 @@ final class LedgerBreakdownComputingTests: XCTestCase {
 
     func testExpenseCategoryBreakdownUsesEffectiveAmountTotals() {
         let rows = [
-            expense(id: "1", category: "Rent", subcategory: "Apartment", amount: 6000, effective: 5800),
-            expense(id: "2", category: "Food", subcategory: "Grocery", amount: 1500, effective: 1040.6),
-            expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300)
+            expense(
+                id: "1", category: "Rent", subcategory: "Apartment", amount: 6000, effective: 5800),
+            expense(
+                id: "2", category: "Food", subcategory: "Grocery", amount: 1500, effective: 1040.6),
+            expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300),
         ]
 
-        let summary = LedgerBreakdownComputing.expenses(rows: rows, mode: .category, scope: may2026Scope) { key, _ in
+        let summary = LedgerBreakdownComputing.expenses(
+            rows: rows, mode: .category, scope: may2026Scope
+        ) { key, _ in
             key == "Food" ? "#3366FF" : nil
         }
 
@@ -82,10 +135,12 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         let rows = [
             expense(id: "1", category: "Rent", subcategory: nil, amount: 6000, effective: 5800),
             expense(id: "2", category: "Food", subcategory: "", amount: 1500, effective: 1040.6),
-            expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300)
+            expense(id: "3", category: "Food", subcategory: "Dining", amount: 500, effective: 300),
         ]
 
-        let summary = LedgerBreakdownComputing.expenses(rows: rows, mode: .subcategory, scope: may2026Scope) { _, _ in nil }
+        let summary = LedgerBreakdownComputing.expenses(
+            rows: rows, mode: .subcategory, scope: may2026Scope
+        ) { _, _ in nil }
 
         XCTAssertEqual(summary.totalRaw, 8000, accuracy: 0.0001)
         XCTAssertEqual(summary.totalEffective, 7140.6, accuracy: 0.0001)
@@ -102,10 +157,12 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         let rows = [
             incoming(id: "a", type: "Salary", subtype: nil, amount: 10000, effective: 10000),
             incoming(id: "b", type: "Salary", subtype: "", amount: 3000, effective: 2800),
-            incoming(id: "c", type: "Gift", subtype: "Family", amount: 1000, effective: 1000)
+            incoming(id: "c", type: "Gift", subtype: "Family", amount: 1000, effective: 1000),
         ]
 
-        let summary = LedgerBreakdownComputing.incomings(rows: rows, mode: .subcategory, scope: may2026Scope) { _, _ in nil }
+        let summary = LedgerBreakdownComputing.incomings(
+            rows: rows, mode: .subcategory, scope: may2026Scope
+        ) { _, _ in nil }
 
         XCTAssertEqual(summary.totalRaw, 14000, accuracy: 0.0001)
         XCTAssertEqual(summary.totalEffective, 13800, accuracy: 0.0001)
@@ -116,79 +173,70 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(family?.amount ?? 0, 1000, accuracy: 0.0001)
     }
 
-    func testBreakdownPageMathAppliesSelectedAccountAndParentCategorySetsDirectly() {
-        let expenses = [
-            expense(id: "selected", account: "Checking", category: "Food", subcategory: nil, amount: 10, effective: 10),
-            expense(id: "wrong-account", account: "Savings", category: "Food", subcategory: nil, amount: 20, effective: 20),
-            expense(id: "wrong-category", account: "Checking", category: "Rent", subcategory: nil, amount: 30, effective: 30),
-            expense(id: "wrong-subcategory", account: "Checking", category: "Food", subcategory: "Groceries", amount: 40, effective: 40)
-        ]
-        let incomings = [
-            incoming(id: "selected", account: "Checking", type: "Salary", subtype: nil, amount: 100, effective: 100),
-            incoming(id: "wrong-account", account: "Savings", type: "Salary", subtype: nil, amount: 200, effective: 200),
-            incoming(id: "wrong-type", account: "Checking", type: "Gift", subtype: nil, amount: 300, effective: 300)
-        ]
-
-        let result = BreakdownPageMath.calculate(
-            expenses: expenses,
-            incomings: incomings,
-            selectedExpenseAccounts: ["Checking"],
-            selectedExpenseCategories: ["|Food"],
-            selectedIncomingAccounts: ["Checking"],
-            selectedIncomingTypes: ["|Salary"],
-            scope: may2026Scope
+    func testLedgerCustomDateRangeUsesFullAmountsAndNoMonthOverlapWarning() {
+        let row = expense(
+            id: "custom",
+            category: "Food",
+            subcategory: nil,
+            amount: 120,
+            effective: 90,
+            monthYears: ["2026-05", "2026-06"],
+            date: date(year: 2026, month: 6, day: 15)
+        )
+        let customScope = DateScope(
+            startDate: date(year: 2026, month: 6, day: 10),
+            endDate: date(year: 2026, month: 6, day: 20),
+            includeMonthYearOverlapOutsideDate: false
         )
 
-        XCTAssertEqual(result.totalExpenses, 10, accuracy: 0.0001)
-        XCTAssertEqual(result.totalIncomings, 100, accuracy: 0.0001)
-        XCTAssertEqual(result.totalSavings, 90, accuracy: 0.0001)
-        XCTAssertEqual(result.rows.first?.expenses ?? 0, 10, accuracy: 0.0001)
-        XCTAssertEqual(result.rows.first?.incomings ?? 0, 100, accuracy: 0.0001)
+        let summary = LedgerBreakdownComputing.expenses(
+            rows: [row],
+            mode: .category,
+            scope: customScope,
+            colorTokenForKey: { _, _ in nil }
+        )
+
+        XCTAssertEqual(summary.totalRaw, 120, accuracy: 0.0001)
+        XCTAssertEqual(summary.totalEffective, 90, accuracy: 0.0001)
+        XCTAssertEqual(summary.slices.first?.amount ?? 0, 90, accuracy: 0.0001)
+        XCTAssertEqual(
+            LedgerScopeLogic.scopeStatus(
+                date: row.date, monthYears: row.monthYears, scope: customScope),
+            .full
+        )
+        XCTAssertFalse(
+            LedgerScopeLogic.isPartialMatch(
+                date: row.date, monthYears: row.monthYears, scope: customScope))
     }
 
-    func testBreakdownPageMathMatchesWebMonthBucketsAndTrimmedAccounts() {
-        let expenses = [
-            expense(
-                id: "split",
-                account: " Checking ",
-                category: "Food",
-                subcategory: "Groceries",
-                amount: 90,
-                effective: 90,
-                monthYears: ["2026-05", "2026-06"]
-            )
-        ]
-        let incomings = [
-            incoming(
-                id: "date-fallback",
-                account: "Checking",
-                type: "Salary",
-                subtype: "Monthly",
-                amount: 100,
-                effective: 100,
-                monthYears: [],
-                date: date(year: 2026, month: 6, day: 15)
-            )
-        ]
-
-        let result = BreakdownPageMath.calculate(
-            expenses: expenses,
-            incomings: incomings,
-            selectedExpenseAccounts: ["Checking"],
-            selectedExpenseCategories: ["Food|Groceries"],
-            selectedIncomingAccounts: [" Checking "],
-            selectedIncomingTypes: ["Salary|Monthly"],
-            scope: mayThroughJune2026Scope
+    func testLedgerMonthRangeStillAllocatesEffectiveAmountAcrossAppliedMonths() {
+        let row = expense(
+            id: "monthly",
+            category: "Food",
+            subcategory: nil,
+            amount: 120,
+            effective: 90,
+            monthYears: ["2026-05", "2026-06"],
+            date: date(year: 2026, month: 6, day: 15)
+        )
+        let juneScope = DateScope(
+            startDate: date(year: 2026, month: 6, day: 1),
+            endDate: date(year: 2026, month: 6, day: 30),
+            includeMonthYearOverlapOutsideDate: true
         )
 
-        XCTAssertEqual(result.rows.map(\.month.rawValue), ["2026-05", "2026-06"])
-        XCTAssertEqual(result.rows[0].expenses, 45, accuracy: 0.0001)
-        XCTAssertEqual(result.rows[0].incomings, 0, accuracy: 0.0001)
-        XCTAssertEqual(result.rows[1].expenses, 45, accuracy: 0.0001)
-        XCTAssertEqual(result.rows[1].incomings, 100, accuracy: 0.0001)
-        XCTAssertEqual(result.totalExpenses, 90, accuracy: 0.0001)
-        XCTAssertEqual(result.totalIncomings, 100, accuracy: 0.0001)
-        XCTAssertEqual(result.totalSavings, 10, accuracy: 0.0001)
+        let summary = LedgerBreakdownComputing.expenses(
+            rows: [row],
+            mode: .category,
+            scope: juneScope,
+            colorTokenForKey: { _, _ in nil }
+        )
+
+        XCTAssertEqual(summary.totalRaw, 60, accuracy: 0.0001)
+        XCTAssertEqual(summary.totalEffective, 45, accuracy: 0.0001)
+        XCTAssertTrue(
+            LedgerScopeLogic.isPartialMatch(
+                date: row.date, monthYears: row.monthYears, scope: juneScope))
     }
 
     private func expense(
@@ -260,16 +308,10 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         )
     }
 
-    private var mayThroughJune2026Scope: DateScope {
-        DateScope(
-            startDate: date(year: 2026, month: 5, day: 1),
-            endDate: date(year: 2026, month: 6, day: 30),
-            includeMonthYearOverlapOutsideDate: true
-        )
-    }
-
     private func date(year: Int, month: Int, day: Int) -> Date {
-        DateComponents(calendar: Calendar(identifier: .gregorian), year: year, month: month, day: day).date!
+        DateComponents(
+            calendar: Calendar(identifier: .gregorian), year: year, month: month, day: day
+        ).date!
     }
 
     func testTrackingMonthRangeIsInclusiveAndOrdered() {
@@ -283,7 +325,7 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             months: months,
             paidMonths: ["2026-03", "2026-05"],
             currentMonth: "2026-05",
-            trailingBufferMonths: 1
+            trailingBufferMonths: 2
         )
 
         XCTAssertEqual(segments[0].state, .paid)
@@ -291,6 +333,19 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(segments[2].state, .paid)
         XCTAssertEqual(segments[3].state, .empty)
         XCTAssertEqual(segments[4].state, .empty)
+    }
+
+    func testTrackingPaidMonthsDoNotExtendTrailingCalendarBuffer() {
+        let segments = TrackingTimelineLogic.segments(
+            months: ["2026-03", "2026-04", "2026-05"],
+            paidMonths: ["2026-05"],
+            currentMonth: "2026-05",
+            trailingBufferMonths: 1
+        )
+
+        XCTAssertEqual(segments[0].state, .unpaid)
+        XCTAssertEqual(segments[1].state, .unpaid)
+        XCTAssertEqual(segments[2].state, .paid)
     }
 
     func testTrackingPersistenceStoreRoundTripsPerRowValues() {
@@ -326,14 +381,18 @@ final class LedgerBreakdownComputingTests: XCTestCase {
 
     func testNotepadSetCellEditsExpectedCellOnly() {
         let start = [["A", "B"], ["C", "D"]]
-        let changed = NotepadWorkspaceNormalization.setCell(cells: start, row: 1, col: 0, value: "X")
+        let changed = NotepadWorkspaceNormalization.setCell(
+            cells: start, row: 1, col: 0, value: "X")
         XCTAssertEqual(changed[0][0], "A")
         XCTAssertEqual(changed[1][0], "X")
         XCTAssertEqual(changed[1][1], "D")
     }
 
     func testOptionsMoveToSubtypeBuilderRejectsSelfMove() {
-        XCTAssertThrowsError(try OptionsMutationLogic.buildMoveToSubtype(kind: "category", sourceValue: "Rent", targetValue: "Rent")) { error in
+        XCTAssertThrowsError(
+            try OptionsMutationLogic.buildMoveToSubtype(
+                kind: "category", sourceValue: "Rent", targetValue: "Rent")
+        ) { error in
             guard let apiError = error as? APIError, case .validation(let message) = apiError else {
                 XCTFail("Expected validation error.")
                 return
@@ -343,7 +402,11 @@ final class LedgerBreakdownComputingTests: XCTestCase {
     }
 
     func testOptionsMoveSubtypeBuilderRejectsSameParentMove() {
-        XCTAssertThrowsError(try OptionsMutationLogic.buildMoveSubtype(kind: "subcategory", value: "Utilities", sourceParentValue: "Housing", targetParentValue: "Housing")) { error in
+        XCTAssertThrowsError(
+            try OptionsMutationLogic.buildMoveSubtype(
+                kind: "subcategory", value: "Utilities", sourceParentValue: "Housing",
+                targetParentValue: "Housing")
+        ) { error in
             guard let apiError = error as? APIError, case .validation(let message) = apiError else {
                 XCTFail("Expected validation error.")
                 return
@@ -353,7 +416,8 @@ final class LedgerBreakdownComputingTests: XCTestCase {
     }
 
     func testOptionsPromoteSubtypeBuilderReturnsRequest() throws {
-        let request = try OptionsMutationLogic.buildPromoteSubtype(kind: "subcategory", value: "Utilities", parentValue: "Housing")
+        let request = try OptionsMutationLogic.buildPromoteSubtype(
+            kind: "subcategory", value: "Utilities", parentValue: "Housing")
         XCTAssertEqual(request.kind, "subcategory")
         XCTAssertEqual(request.value, "Utilities")
         XCTAssertEqual(request.parentValue, "Housing")
@@ -369,7 +433,8 @@ final class LedgerBreakdownComputingTests: XCTestCase {
     }
 
     func testOptionDragItemProviderPublishesPayloadAndEndsWhenReleased() {
-        let payload = OptionDragPayload(kind: .subcategory, value: "Utilities", parentValue: "Housing")
+        let payload = OptionDragPayload(
+            kind: .subcategory, value: "Utilities", parentValue: "Housing")
         let dataLoaded = expectation(description: "Drag payload loaded")
         var didEnd = false
 
@@ -378,10 +443,16 @@ final class LedgerBreakdownComputingTests: XCTestCase {
                 didEnd = true
             }
 
-            XCTAssertTrue(provider.hasItemConformingToTypeIdentifier(OptionDragPayload.contentType.identifier))
-            provider.loadDataRepresentation(forTypeIdentifier: OptionDragPayload.contentType.identifier) { data, error in
+            XCTAssertTrue(
+                provider.hasItemConformingToTypeIdentifier(OptionDragPayload.contentType.identifier)
+            )
+            provider.loadDataRepresentation(
+                forTypeIdentifier: OptionDragPayload.contentType.identifier
+            ) { data, error in
                 XCTAssertNil(error)
-                let decoded = data.flatMap { try? JSONDecoder().decode(OptionDragPayload.self, from: $0) }
+                let decoded = data.flatMap {
+                    try? JSONDecoder().decode(OptionDragPayload.self, from: $0)
+                }
                 XCTAssertEqual(decoded, payload)
                 dataLoaded.fulfill()
             }

@@ -1,10 +1,10 @@
 import { DATE_STATE_KEY, EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY, INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_TYPE_DESELECTED_KEY } from "../keys/breakdown";
+import { formatMonthYearLabel, formatMonthYearShortLabel, formatRangeLabel, getMonthsBetween } from "../helpers/dates";
 import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
 import { MultiSelectFilterDropdown } from "../components/MultiSelectFilterDropdown";
-import { formatMonthYearLabel, formatMonthYearShortLabel, formatRangeLabel, getMonthsBetween } from "../helpers/dates";
 import { maxMonth, minMonth, parseDateState } from "../helpers/breakdown";
-import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
 import { fallbackCurrentMonth, validMonth } from "../helpers/monthScope";
+import { formatMoney, getEffectiveAmount } from "../helpers/formatters";
 import { useSingleMonthScope } from "../hooks/useSingleMonthScope";
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { MonthNavigator } from "../components/MonthNavigator";
@@ -714,7 +714,8 @@ export function Breakdown() {
               if (mode === "custom") {
                 resetToNewestMonth();
               }
-              const sorted = [...scope.targetMonths].sort((a, b) => a.localeCompare(b));
+              const sorted = [...scope.targetMonths].sort((a, b) =>
+                a.localeCompare(b));
               setDraftStartMonth(sorted[0] ?? currentMonth);
               setDraftEndMonth(sorted[sorted.length - 1] ?? currentMonth);
             }}
@@ -734,7 +735,7 @@ export function Breakdown() {
           </button>
         </div>
 
-        {(isCustomEditorOpen || mode === "custom") ? (
+        {isCustomEditorOpen || mode === "custom" ? (
           <div className="pie-chart-panel-dates">
             <label className="pie-date-field">
               From
@@ -756,7 +757,11 @@ export function Breakdown() {
               <button
                 type="button"
                 className="pie-apply-btn"
-                disabled={!draftCustomStart || !draftCustomEnd || draftCustomStart > draftCustomEnd}
+                disabled={
+                  !draftCustomStart ||
+                  !draftCustomEnd ||
+                  draftCustomStart > draftCustomEnd
+                }
                 onClick={() => {
                   applyCustomRange(draftCustomStart, draftCustomEnd);
                 }}
@@ -797,9 +802,18 @@ export function Breakdown() {
               <button
                 type="button"
                 className="scope-calendar-apply"
-                disabled={!draftStartMonth || !draftEndMonth || draftStartMonth > draftEndMonth}
+                disabled={
+                  !draftStartMonth ||
+                  !draftEndMonth ||
+                  draftStartMonth > draftEndMonth
+                }
                 onClick={() => {
-                  if (!draftStartMonth || !draftEndMonth || draftStartMonth > draftEndMonth) return;
+                  if (
+                    !draftStartMonth ||
+                    !draftEndMonth ||
+                    draftStartMonth > draftEndMonth
+                  )
+                    return;
                   applySelectedMonths(
                     getMonthsBetween(draftStartMonth, draftEndMonth),
                   );

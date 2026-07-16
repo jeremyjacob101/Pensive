@@ -163,12 +163,13 @@ private struct LedgerScreen: View {
                 endDate: $viewModel.scope.endDate,
                 oldestMonth: viewModel.oldestMonth,
                 newestMonth: viewModel.newestMonth,
-                onApplyRange: { startDate, endDate in
-                viewModel.setScope(DateScope(
-                    startDate: startDate,
-                    endDate: endDate,
-                    includeMonthYearOverlapOutsideDate: false
-                ))
+                initialMode: viewModel.scope.includeMonthYearOverlapOutsideDate ? .months : .custom,
+                onApplyRange: { startDate, endDate, mode in
+                    viewModel.setScope(DateScope(
+                        startDate: startDate,
+                        endDate: endDate,
+                        includeMonthYearOverlapOutsideDate: mode == .months
+                    ))
                 }
             )
         }

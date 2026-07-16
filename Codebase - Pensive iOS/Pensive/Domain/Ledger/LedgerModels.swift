@@ -119,6 +119,9 @@ enum LedgerScopeLogic {
     }
 
     static func scopeStatus(date: Date, monthYears: [MonthYear], scope: DateScope, calendar: Calendar = calendar) -> ScopeMatchStatus {
+        // Web custom ranges are paid-date ranges. The API has already limited these rows
+        // by date, so monthYears must not reclassify them as partial/outside matches.
+        guard scope.includeMonthYearOverlapOutsideDate else { return .full }
         let inDate = date >= startOfDay(scope.startDate, calendar: calendar) && date <= endOfDay(scope.endDate, calendar: calendar)
         let targetMonths = Set(targetMonths(startDate: scope.startDate, endDate: scope.endDate, calendar: calendar))
         let monthMatch = !targetMonths.isDisjoint(with: Set(monthYears))
@@ -150,12 +153,31 @@ enum LedgerScopeLogic {
         return (amount / Double(monthCount)) * Double(matchingCount)
     }
 
+    static func scopedContribution(
+        amount: Double,
+        date: Date,
+        monthYears: [MonthYear],
+        scope: DateScope,
+        calendar: Calendar = calendar
+    ) -> Double {
+        guard amount.isFinite else { return 0 }
+        guard scope.includeMonthYearOverlapOutsideDate else { return amount }
+        return proportionalContribution(
+            amount: amount,
+            date: date,
+            monthYears: monthYears,
+            scope: scope,
+            calendar: calendar
+        )
+    }
+
     static func isPartialMatch(
         date: Date,
         monthYears: [MonthYear],
         scope: DateScope,
         calendar: Calendar = calendar
     ) -> Bool {
+        guard scope.includeMonthYearOverlapOutsideDate else { return false }
         let target = Set(targetMonths(startDate: scope.startDate, endDate: scope.endDate, calendar: calendar))
         let rowMonths = normalizedRowMonths(date: date, monthYears: monthYears, calendar: calendar)
         let monthCount = max(1, rowMonths.count)

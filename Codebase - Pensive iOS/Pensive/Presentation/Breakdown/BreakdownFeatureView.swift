@@ -1,111 +1,5 @@
 import SwiftUI
 
-struct BreakdownPageMonthTotals: Identifiable, Equatable {
-    let month: MonthYear
-    let incomings: Double
-    let expenses: Double
-
-    var id: MonthYear { month }
-    var savings: Double { incomings - expenses }
-}
-
-struct BreakdownPageSummary: Equatable {
-    let rows: [BreakdownPageMonthTotals]
-
-    var totalIncomings: Double { rows.reduce(0) { $0 + $1.incomings } }
-    var totalExpenses: Double { rows.reduce(0) { $0 + $1.expenses } }
-    var totalSavings: Double { rows.reduce(0) { $0 + $1.savings } }
-}
-
-enum BreakdownPageMath {
-    static func calculate(
-        expenses: [Expense],
-        incomings: [Incoming],
-        selectedExpenseAccounts: Set<String>,
-        selectedExpenseCategories: Set<String>,
-        selectedIncomingAccounts: Set<String>,
-        selectedIncomingTypes: Set<String>,
-        scope: DateScope
-    ) -> BreakdownPageSummary {
-        let months = LedgerScopeLogic.targetMonths(startDate: scope.startDate, endDate: scope.endDate)
-        let targetMonths = Set(months)
-        var expenseTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
-        var incomingTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
-
-        let expenseAccounts = normalizedAccounts(selectedExpenseAccounts)
-        let incomingAccounts = normalizedAccounts(selectedIncomingAccounts)
-        let expenseCategories = normalizedCategoryKeys(selectedExpenseCategories)
-        let incomingTypes = normalizedCategoryKeys(selectedIncomingTypes)
-
-        for row in expenses {
-            let account = normalizedAccount(row.account)
-            let category = LedgerFiltering.categoryFilterKey(parent: row.category, child: row.subcategory)
-            guard expenseAccounts.contains(account), expenseCategories.contains(category) else { continue }
-            add(
-                amount: row.effectiveAmount,
-                date: row.date,
-                monthYears: row.monthYears,
-                targetMonths: targetMonths,
-                totals: &expenseTotals
-            )
-        }
-
-        for row in incomings {
-            let account = normalizedAccount(row.account)
-            let type = LedgerFiltering.categoryFilterKey(parent: row.incomeType, child: row.incomeSubtype)
-            guard incomingAccounts.contains(account), incomingTypes.contains(type) else { continue }
-            add(
-                amount: row.effectiveAmount,
-                date: row.date,
-                monthYears: row.monthYears,
-                targetMonths: targetMonths,
-                totals: &incomingTotals
-            )
-        }
-
-        return BreakdownPageSummary(rows: months.map { month in
-            BreakdownPageMonthTotals(
-                month: month,
-                incomings: incomingTotals[month] ?? 0,
-                expenses: expenseTotals[month] ?? 0
-            )
-        })
-    }
-
-    private static func add(
-        amount: Double,
-        date: Date,
-        monthYears: [MonthYear],
-        targetMonths: Set<MonthYear>,
-        totals: inout [MonthYear: Double]
-    ) {
-        guard amount.isFinite else { return }
-        let rowMonths = LedgerScopeLogic.normalizedRowMonths(date: date, monthYears: monthYears)
-        guard !rowMonths.isEmpty else { return }
-        let perMonth = amount / Double(rowMonths.count)
-        for month in rowMonths where targetMonths.contains(month) {
-            totals[month, default: 0] += perMonth
-        }
-    }
-
-    private static func normalizedAccounts(_ values: Set<String>) -> Set<String> {
-        Set(values.map(normalizedAccount).filter { !$0.isEmpty })
-    }
-
-    private static func normalizedAccount(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func normalizedCategoryKeys(_ values: Set<String>) -> Set<String> {
-        Set(values.map { value in
-            // Parent-only LedgerFilterOptionRow values currently arrive as "|Parent".
-            // Breakdown compares selected values directly, like web, so normalize that
-            // UI representation to the row key without changing shared ledger behavior.
-            value.hasPrefix("|") ? String(value.dropFirst()) : value
-        })
-    }
-}
-
 private struct BreakdownMetricCard: View {
     let title: String
     let total: String
@@ -433,7 +327,7 @@ struct BreakdownFeatureView: View {
                 endDate: $rangeEndDate,
                 oldestMonth: oldestAvailableMonth,
                 newestMonth: newestAvailableMonth,
-                onApplyRange: { startDate, endDate in
+                onApplyRange: { startDate, endDate, _ in
                     let scope = DateScope(startDate: startDate, endDate: endDate, includeMonthYearOverlapOutsideDate: false)
                     setScopeOnBoth(scope)
                     rangeStartDate = startDate

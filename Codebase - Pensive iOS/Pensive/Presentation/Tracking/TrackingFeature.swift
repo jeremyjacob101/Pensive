@@ -94,13 +94,9 @@ enum TrackingTimelineLogic {
             return months.map { .init(id: $0, month: $0, state: paidMonths.contains($0) ? .paid : .unpaid) }
         }
 
-        let recentUnpaidBufferMonths: Set<String> = {
-            let eligible = months.compactMap { month -> (String, Date)? in
-                guard !paidMonths.contains(month), let date = monthDate(month), date <= current else { return nil }
-                return (month, date)
-            }
-            let sorted = eligible.sorted { $0.1 > $1.1 }
-            return Set(sorted.prefix(max(0, trailingBufferMonths)).map(\.0))
+        let bufferStart: Date? = {
+            guard trailingBufferMonths > 0 else { return nil }
+            return calendar.date(byAdding: .month, value: -(trailingBufferMonths - 1), to: current)
         }()
 
         return months.map { month in
@@ -110,7 +106,7 @@ enum TrackingTimelineLogic {
             } else if let monthDate = monthDate(month) {
                 if monthDate > current {
                     state = .empty
-                } else if recentUnpaidBufferMonths.contains(month) {
+                } else if let bufferStart, monthDate >= bufferStart {
                     state = .buffer
                 } else {
                     state = .unpaid
