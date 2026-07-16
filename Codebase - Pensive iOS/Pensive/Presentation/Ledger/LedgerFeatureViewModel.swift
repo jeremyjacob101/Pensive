@@ -32,6 +32,11 @@ final class LedgerFeatureViewModel: ObservableObject {
     private var scopeRefreshTask: Task<Void, Never>?
     private var activeRefreshID = UUID()
 
+    // Breakdown owns its page math, but uses the rows already loaded for its two ledgers.
+    // These accessors do not alter the shared Expenses/Incomings filtering or totals.
+    var breakdownExpenses: [Expense] { expenses }
+    var breakdownIncomings: [Incoming] { incomings }
+
     enum BreakdownMode: String, CaseIterable {
         case category
         case subcategory

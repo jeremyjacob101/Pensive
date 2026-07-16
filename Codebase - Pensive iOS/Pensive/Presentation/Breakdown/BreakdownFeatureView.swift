@@ -1,5 +1,111 @@
 import SwiftUI
 
+struct BreakdownPageMonthTotals: Identifiable, Equatable {
+    let month: MonthYear
+    let incomings: Double
+    let expenses: Double
+
+    var id: MonthYear { month }
+    var savings: Double { incomings - expenses }
+}
+
+struct BreakdownPageSummary: Equatable {
+    let rows: [BreakdownPageMonthTotals]
+
+    var totalIncomings: Double { rows.reduce(0) { $0 + $1.incomings } }
+    var totalExpenses: Double { rows.reduce(0) { $0 + $1.expenses } }
+    var totalSavings: Double { rows.reduce(0) { $0 + $1.savings } }
+}
+
+enum BreakdownPageMath {
+    static func calculate(
+        expenses: [Expense],
+        incomings: [Incoming],
+        selectedExpenseAccounts: Set<String>,
+        selectedExpenseCategories: Set<String>,
+        selectedIncomingAccounts: Set<String>,
+        selectedIncomingTypes: Set<String>,
+        scope: DateScope
+    ) -> BreakdownPageSummary {
+        let months = LedgerScopeLogic.targetMonths(startDate: scope.startDate, endDate: scope.endDate)
+        let targetMonths = Set(months)
+        var expenseTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
+        var incomingTotals = Dictionary(uniqueKeysWithValues: months.map { ($0, 0.0) })
+
+        let expenseAccounts = normalizedAccounts(selectedExpenseAccounts)
+        let incomingAccounts = normalizedAccounts(selectedIncomingAccounts)
+        let expenseCategories = normalizedCategoryKeys(selectedExpenseCategories)
+        let incomingTypes = normalizedCategoryKeys(selectedIncomingTypes)
+
+        for row in expenses {
+            let account = normalizedAccount(row.account)
+            let category = LedgerFiltering.categoryFilterKey(parent: row.category, child: row.subcategory)
+            guard expenseAccounts.contains(account), expenseCategories.contains(category) else { continue }
+            add(
+                amount: row.effectiveAmount,
+                date: row.date,
+                monthYears: row.monthYears,
+                targetMonths: targetMonths,
+                totals: &expenseTotals
+            )
+        }
+
+        for row in incomings {
+            let account = normalizedAccount(row.account)
+            let type = LedgerFiltering.categoryFilterKey(parent: row.incomeType, child: row.incomeSubtype)
+            guard incomingAccounts.contains(account), incomingTypes.contains(type) else { continue }
+            add(
+                amount: row.effectiveAmount,
+                date: row.date,
+                monthYears: row.monthYears,
+                targetMonths: targetMonths,
+                totals: &incomingTotals
+            )
+        }
+
+        return BreakdownPageSummary(rows: months.map { month in
+            BreakdownPageMonthTotals(
+                month: month,
+                incomings: incomingTotals[month] ?? 0,
+                expenses: expenseTotals[month] ?? 0
+            )
+        })
+    }
+
+    private static func add(
+        amount: Double,
+        date: Date,
+        monthYears: [MonthYear],
+        targetMonths: Set<MonthYear>,
+        totals: inout [MonthYear: Double]
+    ) {
+        guard amount.isFinite else { return }
+        let rowMonths = LedgerScopeLogic.normalizedRowMonths(date: date, monthYears: monthYears)
+        guard !rowMonths.isEmpty else { return }
+        let perMonth = amount / Double(rowMonths.count)
+        for month in rowMonths where targetMonths.contains(month) {
+            totals[month, default: 0] += perMonth
+        }
+    }
+
+    private static func normalizedAccounts(_ values: Set<String>) -> Set<String> {
+        Set(values.map(normalizedAccount).filter { !$0.isEmpty })
+    }
+
+    private static func normalizedAccount(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func normalizedCategoryKeys(_ values: Set<String>) -> Set<String> {
+        Set(values.map { value in
+            // Parent-only LedgerFilterOptionRow values currently arrive as "|Parent".
+            // Breakdown compares selected values directly, like web, so normalize that
+            // UI representation to the row key without changing shared ledger behavior.
+            value.hasPrefix("|") ? String(value.dropFirst()) : value
+        })
+    }
+}
+
 private struct BreakdownMetricCard: View {
     let title: String
     let total: String
@@ -68,7 +174,7 @@ private struct BreakdownFilterSheet: View {
                             .disabled(noAccountsSelected)
                         }
 
-                        ForEach(activeVM.accountFilterChoices, id: \.self) { account in
+                        ForEach(accountValues, id: \.self) { account in
                             LedgerAccountFilterRow(
                                 value: account,
                                 colorHex: activeVM.accountColor(for: account),
@@ -126,30 +232,39 @@ private struct BreakdownFilterSheet: View {
     }
 
     private var selectedValues: Set<String> {
-        selectedTab == .account ? activeVM.selectedAccountFilters : activeVM.selectedCategoryFilters
+        if selectedTab == .account {
+            return Set(activeVM.selectedAccountFilters.map(normalizedAccount).filter { !$0.isEmpty })
+        }
+        return activeVM.selectedCategoryFilters
     }
 
     private func updateSelectedValues(_ values: Set<String>) {
         if selectedTab == .account {
-            activeVM.updateAccountFilters(values)
+            activeVM.updateAccountFilters(Set(values.map(normalizedAccount).filter { !$0.isEmpty }))
         } else {
             activeVM.updateCategoryFilters(values)
         }
     }
 
+    private var accountValues: [String] {
+        Array(Set(activeVM.accountFilterChoices.map(normalizedAccount).filter { !$0.isEmpty })).sorted()
+    }
+
+    private func normalizedAccount(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var allAccountsSelected: Bool {
-        let accountValues = Set(activeVM.accountFilterChoices)
-        return activeVM.selectedAccountFilters.isSuperset(of: accountValues)
+        selectedValues.isSuperset(of: Set(accountValues))
     }
 
     private var noAccountsSelected: Bool {
-        let accountValues = Set(activeVM.accountFilterChoices)
-        return activeVM.selectedAccountFilters.isDisjoint(with: accountValues)
+        selectedValues.isDisjoint(with: Set(accountValues))
     }
 
     private func updateAccountSelection(selectAll: Bool) {
-        var next = activeVM.selectedAccountFilters
-        let values = Set(activeVM.accountFilterChoices)
+        var next = selectedValues
+        let values = Set(accountValues)
         if selectAll {
             next.formUnion(values)
         } else {
@@ -209,6 +324,15 @@ struct BreakdownFeatureView: View {
 
     var body: some View {
         let isLoading = expenseVM.isScopeLoading || incomingVM.isScopeLoading
+        let breakdown = BreakdownPageMath.calculate(
+            expenses: expenseVM.breakdownExpenses,
+            incomings: incomingVM.breakdownIncomings,
+            selectedExpenseAccounts: expenseVM.selectedAccountFilters,
+            selectedExpenseCategories: expenseVM.selectedCategoryFilters,
+            selectedIncomingAccounts: incomingVM.selectedAccountFilters,
+            selectedIncomingTypes: incomingVM.selectedCategoryFilters,
+            scope: expenseVM.scope
+        )
         let loadingState: ViewLoadState = {
             if case .loading = expenseVM.state { return .loading }
             if case .loading = incomingVM.state { return .loading }
@@ -230,8 +354,8 @@ struct BreakdownFeatureView: View {
 
                     BreakdownMetricCard(
                         title: "TOTAL INCOMINGS",
-                        total: money(incomingVM.filteredTotalEffective),
-                        perMonth: monthly(value: incomingVM.filteredTotalEffective),
+                        total: money(breakdown.totalIncomings),
+                        perMonth: monthly(value: breakdown.totalIncomings, monthCount: breakdown.rows.count),
                         tint: .green
                     )
                     .listRowInsets(EdgeInsets(top: 8, leading: 14, bottom: 4, trailing: 14))
@@ -240,8 +364,8 @@ struct BreakdownFeatureView: View {
 
                     BreakdownMetricCard(
                         title: "TOTAL EXPENSES",
-                        total: money(expenseVM.filteredTotalEffective),
-                        perMonth: monthly(value: expenseVM.filteredTotalEffective),
+                        total: money(breakdown.totalExpenses),
+                        perMonth: monthly(value: breakdown.totalExpenses, monthCount: breakdown.rows.count),
                         tint: .red
                     )
                     .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 4, trailing: 14))
@@ -250,8 +374,8 @@ struct BreakdownFeatureView: View {
 
                     BreakdownMetricCard(
                         title: "TOTAL SAVINGS",
-                        total: money(incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
-                        perMonth: monthly(value: incomingVM.filteredTotalEffective - expenseVM.filteredTotalEffective),
+                        total: money(breakdown.totalSavings),
+                        perMonth: monthly(value: breakdown.totalSavings, monthCount: breakdown.rows.count),
                         tint: .blue
                     )
                     .listRowInsets(EdgeInsets(top: 4, leading: 14, bottom: 8, trailing: 14))
@@ -268,30 +392,26 @@ struct BreakdownFeatureView: View {
                 }
                 .animation(.easeInOut(duration: 0.18), value: isLoading)
 
-                if !expenseVM.monthlyFilteredTotals.isEmpty || !incomingVM.monthlyFilteredTotals.isEmpty {
+                if !breakdown.rows.isEmpty {
                     Section("Per Month") {
-                        let scopeMonths = LedgerScopeLogic.targetMonths(startDate: expenseVM.scope.startDate, endDate: expenseVM.scope.endDate)
-                        ForEach(scopeMonths, id: \.self) { month in
-                            let incomingTotal = incomingVM.monthlyFilteredTotals.first(where: { $0.month == month })?.total ?? 0
-                            let expenseTotal = expenseVM.monthlyFilteredTotals.first(where: { $0.month == month })?.total ?? 0
-                            let net = incomingTotal - expenseTotal
+                        ForEach(breakdown.rows) { row in
                             VStack(alignment: .leading, spacing: 6) {
-                                Text(DateScope.monthLabel(month)).font(.headline)
+                                Text(DateScope.monthLabel(row.month)).font(.headline)
                                 HStack(alignment: .top) {
                                     VStack(alignment: .leading) {
                                         Text("Incomings").font(.caption).foregroundStyle(.secondary)
-                                        Text(money(incomingTotal)).font(.footnote.weight(.bold))
+                                        Text(money(row.incomings)).font(.footnote.weight(.bold))
                                     }
                                     Spacer()
                                     VStack(alignment: .leading) {
                                         Text("Expenses").font(.caption).foregroundStyle(.secondary)
-                                        Text(money(expenseTotal)).font(.footnote.weight(.bold))
+                                        Text(money(row.expenses)).font(.footnote.weight(.bold))
                                     }
                                     Spacer()
                                     VStack(alignment: .leading) {
                                         Text("Savings").font(.caption).foregroundStyle(.secondary)
-                                        Text(money(net)).font(.footnote.weight(.bold))
-                                            .foregroundStyle(net >= 0 ? .green : .red)
+                                        Text(money(row.savings)).font(.footnote.weight(.bold))
+                                            .foregroundStyle(row.savings >= 0 ? .green : .red)
                                     }
                                 }
                             }
@@ -331,15 +451,11 @@ struct BreakdownFeatureView: View {
         formatter.string(from: NSNumber(value: value)) ?? "₪\(value)"
     }
 
-    private func monthly(value: Double) -> String {
+    private func monthly(value: Double, monthCount: Int) -> String {
         // The web breakdown averages across every calendar month touched by the range,
         // including custom ranges that start or end mid-month.
-        let months = LedgerScopeLogic.targetMonths(
-            startDate: expenseVM.scope.startDate,
-            endDate: expenseVM.scope.endDate
-        ).count
-        guard months > 0 else { return money(value) }
-        return money(value / Double(months))
+        guard monthCount > 0 else { return money(value) }
+        return money(value / Double(monthCount))
     }
 
     private func shiftScopeByMonth(_ value: Int) {

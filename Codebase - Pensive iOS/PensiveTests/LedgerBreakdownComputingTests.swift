@@ -116,7 +116,91 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         XCTAssertEqual(family?.amount ?? 0, 1000, accuracy: 0.0001)
     }
 
-    private func expense(id: String, account: String = "Checking", category: String, subcategory: String?, amount: Double, effective: Double) -> Expense {
+    func testBreakdownPageMathAppliesSelectedAccountAndParentCategorySetsDirectly() {
+        let expenses = [
+            expense(id: "selected", account: "Checking", category: "Food", subcategory: nil, amount: 10, effective: 10),
+            expense(id: "wrong-account", account: "Savings", category: "Food", subcategory: nil, amount: 20, effective: 20),
+            expense(id: "wrong-category", account: "Checking", category: "Rent", subcategory: nil, amount: 30, effective: 30),
+            expense(id: "wrong-subcategory", account: "Checking", category: "Food", subcategory: "Groceries", amount: 40, effective: 40)
+        ]
+        let incomings = [
+            incoming(id: "selected", account: "Checking", type: "Salary", subtype: nil, amount: 100, effective: 100),
+            incoming(id: "wrong-account", account: "Savings", type: "Salary", subtype: nil, amount: 200, effective: 200),
+            incoming(id: "wrong-type", account: "Checking", type: "Gift", subtype: nil, amount: 300, effective: 300)
+        ]
+
+        let result = BreakdownPageMath.calculate(
+            expenses: expenses,
+            incomings: incomings,
+            selectedExpenseAccounts: ["Checking"],
+            selectedExpenseCategories: ["|Food"],
+            selectedIncomingAccounts: ["Checking"],
+            selectedIncomingTypes: ["|Salary"],
+            scope: may2026Scope
+        )
+
+        XCTAssertEqual(result.totalExpenses, 10, accuracy: 0.0001)
+        XCTAssertEqual(result.totalIncomings, 100, accuracy: 0.0001)
+        XCTAssertEqual(result.totalSavings, 90, accuracy: 0.0001)
+        XCTAssertEqual(result.rows.first?.expenses ?? 0, 10, accuracy: 0.0001)
+        XCTAssertEqual(result.rows.first?.incomings ?? 0, 100, accuracy: 0.0001)
+    }
+
+    func testBreakdownPageMathMatchesWebMonthBucketsAndTrimmedAccounts() {
+        let expenses = [
+            expense(
+                id: "split",
+                account: " Checking ",
+                category: "Food",
+                subcategory: "Groceries",
+                amount: 90,
+                effective: 90,
+                monthYears: ["2026-05", "2026-06"]
+            )
+        ]
+        let incomings = [
+            incoming(
+                id: "date-fallback",
+                account: "Checking",
+                type: "Salary",
+                subtype: "Monthly",
+                amount: 100,
+                effective: 100,
+                monthYears: [],
+                date: date(year: 2026, month: 6, day: 15)
+            )
+        ]
+
+        let result = BreakdownPageMath.calculate(
+            expenses: expenses,
+            incomings: incomings,
+            selectedExpenseAccounts: ["Checking"],
+            selectedExpenseCategories: ["Food|Groceries"],
+            selectedIncomingAccounts: [" Checking "],
+            selectedIncomingTypes: ["Salary|Monthly"],
+            scope: mayThroughJune2026Scope
+        )
+
+        XCTAssertEqual(result.rows.map(\.month.rawValue), ["2026-05", "2026-06"])
+        XCTAssertEqual(result.rows[0].expenses, 45, accuracy: 0.0001)
+        XCTAssertEqual(result.rows[0].incomings, 0, accuracy: 0.0001)
+        XCTAssertEqual(result.rows[1].expenses, 45, accuracy: 0.0001)
+        XCTAssertEqual(result.rows[1].incomings, 100, accuracy: 0.0001)
+        XCTAssertEqual(result.totalExpenses, 90, accuracy: 0.0001)
+        XCTAssertEqual(result.totalIncomings, 100, accuracy: 0.0001)
+        XCTAssertEqual(result.totalSavings, 10, accuracy: 0.0001)
+    }
+
+    private func expense(
+        id: String,
+        account: String = "Checking",
+        category: String,
+        subcategory: String?,
+        amount: Double,
+        effective: Double,
+        monthYears: [String] = ["2026-05"],
+        date: Date? = nil
+    ) -> Expense {
         Expense(
             id: id,
             name: "Expense \(id)",
@@ -126,8 +210,8 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             amount: amount,
             effectiveAmount: effective,
             effectiveAmountMode: .auto,
-            monthYears: [MonthYear("2026-05")!],
-            date: Date(timeIntervalSince1970: 0),
+            monthYears: monthYears.compactMap(MonthYear.init),
+            date: date ?? self.date(year: 2026, month: 5, day: 15),
             paidTo: "Vendor",
             notes: nil,
             comments: nil,
@@ -138,7 +222,16 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         )
     }
 
-    private func incoming(id: String, account: String = "Checking", type: String, subtype: String?, amount: Double, effective: Double) -> Incoming {
+    private func incoming(
+        id: String,
+        account: String = "Checking",
+        type: String,
+        subtype: String?,
+        amount: Double,
+        effective: Double,
+        monthYears: [String] = ["2026-05"],
+        date: Date? = nil
+    ) -> Incoming {
         Incoming(
             id: id,
             name: "Incoming \(id)",
@@ -149,8 +242,8 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             amount: amount,
             effectiveAmount: effective,
             effectiveAmountMode: .auto,
-            monthYears: [MonthYear("2026-05")!],
-            date: Date(timeIntervalSince1970: 0),
+            monthYears: monthYears.compactMap(MonthYear.init),
+            date: date ?? self.date(year: 2026, month: 5, day: 15),
             notes: nil,
             comments: nil,
             incomingId: id,
@@ -163,6 +256,14 @@ final class LedgerBreakdownComputingTests: XCTestCase {
         DateScope(
             startDate: date(year: 2026, month: 5, day: 1),
             endDate: date(year: 2026, month: 5, day: 31),
+            includeMonthYearOverlapOutsideDate: true
+        )
+    }
+
+    private var mayThroughJune2026Scope: DateScope {
+        DateScope(
+            startDate: date(year: 2026, month: 5, day: 1),
+            endDate: date(year: 2026, month: 6, day: 30),
             includeMonthYearOverlapOutsideDate: true
         )
     }
