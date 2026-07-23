@@ -79,6 +79,7 @@ struct LedgerFilterSheet: View {
                 }
             }
             .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }

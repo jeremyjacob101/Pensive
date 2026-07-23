@@ -355,6 +355,7 @@ struct DateRangePickerSheet: View {
                 }
             }
             .navigationTitle("Date Range")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }

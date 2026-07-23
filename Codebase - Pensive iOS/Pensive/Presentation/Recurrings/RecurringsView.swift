@@ -367,6 +367,7 @@ private struct RecurringEditorSheet: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode == .create ? "New Recurring" : "Edit Recurring")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {

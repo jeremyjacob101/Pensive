@@ -137,6 +137,7 @@ private struct BreakdownFilterSheet: View {
                 }
             }
             .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }

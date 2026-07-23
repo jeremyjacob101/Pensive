@@ -231,6 +231,13 @@ private struct LedgerScreen: View {
         DisclosureGroup {
             accountCounterpartyRow(row)
 
+            ForEach(row.details, id: \.self) { detail in
+                Text(detail).font(.footnote).foregroundStyle(.secondary)
+            }
+            let monthLabels = row.monthYears.compactMap(MonthYear.init).map(\.abbreviatedLabel)
+            Text("Applies to: \(monthLabels.isEmpty ? "—" : monthLabels.joined(separator: ", "))")
+                .font(.footnote)
+
             HStack {
                 Spacer()
                 Button {
@@ -250,30 +257,7 @@ private struct LedgerScreen: View {
                 .tint(.red)
                 .accessibilityIdentifier("ledger_delete_\(row.id)")
             }
-
-            ForEach(row.details, id: \.self) { detail in
-                Text(detail).font(.footnote).foregroundStyle(.secondary)
-            }
-            let monthLabels = row.monthYears.compactMap(MonthYear.init).map(\.abbreviatedLabel)
-            Text("Applies to: \(monthLabels.isEmpty ? "—" : monthLabels.joined(separator: ", "))")
-                .font(.footnote)
-
-            HStack {
-                Button("Add partner") { selectedPartnerAnchorID = LedgerRowID(id: row.id) }
-                Button("Unlink partner") { viewModel.unlinkPartner(id: row.id) }
-            }
-
-            if viewModel.kind == .expense {
-                Button("Rename base group") { viewModel.renameExpenseBaseGroup(baseID: row.id, label: row.title) }
-                Button("Remove base group", role: .destructive) { viewModel.removeExpenseBaseGroup(baseID: row.id) }
-            }
-
-            Button("Manage Payback Links") {
-                selectedPaybackLinksTarget = PaybackLinksSheetTarget(
-                    target: viewModel.kind == .expense ? .expense(row.id) : .incoming(row.id)
-                )
-            }
-
+            .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] + 16 }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {

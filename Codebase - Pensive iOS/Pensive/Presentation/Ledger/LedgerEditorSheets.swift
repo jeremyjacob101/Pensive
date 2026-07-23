@@ -67,10 +67,12 @@ private func shiftedMonthYear(_ month: MonthYear, by value: Int) -> MonthYear? {
 
 struct MonthYearMultiSelect: View {
     let label: String
+    let showHeader: Bool
     @Binding var selection: [MonthYear]
 
-    init(label: String = "Applies to months", selection: Binding<[MonthYear]>) {
+    init(label: String = "Applies to months", showHeader: Bool = true, selection: Binding<[MonthYear]>) {
         self.label = label
+        self.showHeader = showHeader
         _selection = selection
     }
 
@@ -96,14 +98,16 @@ struct MonthYearMultiSelect: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(label)
-                Spacer()
-                Text(normalizedSelection.count == 1
-                    ? normalizedSelection[0].abbreviatedLabel
-                    : "\(normalizedSelection.count) selected")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+            if showHeader {
+                HStack {
+                    Text(label)
+                    Spacer()
+                    Text(normalizedSelection.count == 1
+                        ? normalizedSelection[0].abbreviatedLabel
+                        : "\(normalizedSelection.count) selected")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             ScrollViewReader { proxy in
@@ -114,18 +118,18 @@ struct MonthYearMultiSelect: View {
                             Button {
                                 toggle(month)
                             } label: {
-                                VStack(spacing: 4) {
-                                    Text(month.abbreviatedLabel)
-                                        .font(.subheadline.weight(.semibold))
-                                    if month == currentMonthYear() {
-                                        Image(systemName: "circle.fill")
-                                            .font(.system(size: 5))
-                                            .accessibilityLabel("Current month")
-                                    } else {
-                                        Color.clear.frame(height: 5)
+                                    VStack(spacing: 2) {
+                                        Text(month.abbreviatedLabel)
+                                            .font(.subheadline.weight(.semibold))
+                                        if month == currentMonthYear() {
+                                            Image(systemName: "circle.fill")
+                                                .font(.system(size: 4))
+                                                .accessibilityLabel("Current month")
+                                        } else {
+                                            Color.clear.frame(height: 4)
+                                        }
                                     }
-                                }
-                                .frame(width: 66, height: 62)
+                                    .frame(width: 66, height: 44)
                                 .foregroundStyle(isSelected ? Color.accentColor : .primary)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
@@ -145,7 +149,7 @@ struct MonthYearMultiSelect: View {
                     .padding(.horizontal, 4)
                     .padding(.vertical, 4)
                 }
-                .frame(height: 78)
+                .frame(height: 60)
                 .onAppear {
                     proxy.scrollTo(currentMonthYear().rawValue, anchor: .center)
                 }
@@ -226,25 +230,80 @@ struct FormFieldRow<Content: View>: View {
 private struct BulkGroupSection: View {
     let entryCount: Int
     @Binding var selectedIndex: Int
+    let singledOutIndices: Set<Int>
     let onAdd: () -> Void
-    let onRemove: () -> Void
+    let onRemoveEntry: (Int) -> Void
+    let onToggleSingle: (Int) -> Void
+
+    private var bulkIndices: [Int] {
+        (0..<entryCount).filter { !singledOutIndices.contains($0) }
+    }
+
+    private var singleIndices: [Int] {
+        (0..<entryCount).filter { singledOutIndices.contains($0) }
+    }
 
     var body: some View {
-        Section("Bulk Group") {
-            Text("Entries: \(entryCount)")
-                .accessibilityIdentifier("ledger_bulk_entry_count")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Picker("Editing Entry", selection: $selectedIndex) {
-                ForEach(0..<entryCount, id: \.self) { index in
-                    Text("Entry \(index + 1)").tag(index)
+        Section {
+            ForEach(bulkIndices, id: \.self) { index in
+                entryRow(index)
+            }
+        } header: {
+            HStack {
+                Text("Bulk Group")
+                Spacer()
+                Button { onAdd() } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add entry")
+            }
+        }
+
+        if !singleIndices.isEmpty {
+            Section("Single Entries") {
+                ForEach(singleIndices, id: \.self) { index in
+                    entryRow(index)
                 }
             }
-            Button("Add Another in Bulk Group", action: onAdd)
-                .accessibilityIdentifier("ledger_bulk_add")
-            if entryCount > 1 {
-                Button("Remove Current Entry", role: .destructive, action: onRemove)
+        }
+    }
+
+    private func entryRow(_ index: Int) -> some View {
+        HStack {
+            Text("Entry \(index + 1)")
+                .foregroundStyle(index == selectedIndex ? Color.accentColor : .primary)
+            Spacer()
+            if index == selectedIndex {
+                Image(systemName: "checkmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
             }
+            if entryCount > 1 {
+                Button {
+                    onToggleSingle(index)
+                } label: {
+                    Image(systemName: singledOutIndices.contains(index)
+                        ? "square.stack.3d.down.right"
+                        : "square.stack.3d.down.right.fill")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(singledOutIndices.contains(index) ? "Move to bulk" : "Move to single")
+                Button(role: .destructive) {
+                    onRemoveEntry(index)
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove entry \(index + 1)")
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedIndex = index
         }
     }
 }
@@ -254,6 +313,7 @@ struct ExpenseEditorSheet: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
     @State private var drafts: [ExpenseEditorDraft]
     @State private var selectedIndex = 0
+    @State private var singledOutIndices: Set<Int> = []
     @State private var isSaving = false
     @State private var saveError: String?
     let mode: EditorMode
@@ -309,8 +369,16 @@ struct ExpenseEditorSheet: View {
                     .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
-                Section("Applies to") {
-                    MonthYearMultiSelect(selection: binding(\.monthYears))
+                Section {
+                    MonthYearMultiSelect(showHeader: false, selection: binding(\.monthYears))
+                } header: {
+                    HStack {
+                        Text("Applies to")
+                        Spacer()
+                        Text(monthSummaryLabel(currentDraft.monthYears))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
                     updateCurrent { $0.notes = value.isEmpty ? nil : value }
@@ -319,23 +387,35 @@ struct ExpenseEditorSheet: View {
                     updateCurrent { $0.comments = value.isEmpty ? nil : value }
                 }))
 
-                if mode == .create {
-                    BulkGroupSection(
-                        entryCount: drafts.count,
-                        selectedIndex: $selectedIndex,
-                        onAdd: {
-                            drafts.append(newExpenseDraft(template: drafts[selectedIndex]))
-                            selectedIndex = drafts.count - 1
-                        },
-                        onRemove: {
-                            drafts.remove(at: selectedIndex)
-                            selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                BulkGroupSection(
+                    entryCount: drafts.count,
+                    selectedIndex: $selectedIndex,
+                    singledOutIndices: singledOutIndices,
+                    onAdd: {
+                        drafts.append(newExpenseDraft(template: drafts[selectedIndex]))
+                        selectedIndex = drafts.count - 1
+                    },
+                    onRemoveEntry: { index in
+                        if singledOutIndices.contains(index) {
+                            singledOutIndices.remove(index)
                         }
-                    )
-                }
+                        let i = drafts.index(drafts.startIndex, offsetBy: index)
+                        drafts.remove(at: i)
+                        selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                        singledOutIndices = Set(singledOutIndices.map { $0 > index ? $0 - 1 : $0 }.filter { $0 < drafts.count })
+                    },
+                    onToggleSingle: { index in
+                        if singledOutIndices.contains(index) {
+                            singledOutIndices.remove(index)
+                        } else {
+                            singledOutIndices.insert(index)
+                        }
+                    }
+                )
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode == .create ? "New Expense" : "Edit Expense")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -367,23 +447,52 @@ struct ExpenseEditorSheet: View {
         isSaving = true
         defer { isSaving = false }
         let didSave: Bool
-        if drafts.count == 1 {
+
+        let singleIndices = singledOutIndices.sorted()
+        let bulkIndices = Set(0..<drafts.count).subtracting(singledOutIndices).sorted()
+
+        if bulkIndices.isEmpty && singleIndices.count == 1 {
             didSave = mode == .create
-                ? await viewModel.createExpense(drafts[0])
-                : await viewModel.updateExpense(currentDraft)
+                ? await viewModel.createExpense(drafts[singleIndices[0]])
+                : await viewModel.updateExpense(drafts[singleIndices[0]])
+        } else if singleIndices.isEmpty && bulkIndices.count == 1 {
+            didSave = mode == .create
+                ? await viewModel.createExpense(drafts[bulkIndices[0]])
+                : await viewModel.updateExpense(drafts[bulkIndices[0]])
         } else {
-            let baseExpenseId = UUID().uuidString
-            let groupLabel = drafts[0].expense
-            let rows = drafts.map { draft -> ExpenseEditorDraft in
-                var next = draft
-                next.baseExpenseId = baseExpenseId
-                next.baseExpenseLabel = groupLabel
-                next.subExpenseId = UUID().uuidString
-                if next.expenseId.isEmpty { next.expenseId = UUID().uuidString }
-                return next
+            var success = true
+
+            for i in singleIndices {
+                success = mode == .create
+                    ? await viewModel.createExpense(drafts[i])
+                    : await viewModel.updateExpense(drafts[i])
+                if !success { break }
             }
-            didSave = await viewModel.bulkCreateExpenses(rows)
+
+            if success, !bulkIndices.isEmpty {
+                let bulkDrafts = bulkIndices.map { drafts[$0] }
+                if bulkDrafts.count == 1 {
+                    success = mode == .create
+                        ? await viewModel.createExpense(bulkDrafts[0])
+                        : await viewModel.updateExpense(bulkDrafts[0])
+                } else {
+                    let baseExpenseId = UUID().uuidString
+                    let groupLabel = bulkDrafts[0].expense
+                    let rows = bulkDrafts.map { draft -> ExpenseEditorDraft in
+                        var next = draft
+                        next.baseExpenseId = baseExpenseId
+                        next.baseExpenseLabel = groupLabel
+                        next.subExpenseId = UUID().uuidString
+                        if next.expenseId.isEmpty { next.expenseId = UUID().uuidString }
+                        return next
+                    }
+                    success = await viewModel.bulkCreateExpenses(rows)
+                }
+            }
+
+            didSave = success
         }
+
         if didSave {
             dismiss()
         } else {
@@ -432,6 +541,7 @@ struct IncomingEditorSheet: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
     @State private var drafts: [IncomingEditorDraft]
     @State private var selectedIndex = 0
+    @State private var singledOutIndices: Set<Int> = []
     @State private var isSaving = false
     @State private var saveError: String?
     let mode: EditorMode
@@ -487,8 +597,16 @@ struct IncomingEditorSheet: View {
                     .keyboardType(.decimalPad)
                 }
                 DatePicker("Date", selection: binding(\.date), displayedComponents: .date)
-                Section("Applies to") {
-                    MonthYearMultiSelect(selection: binding(\.monthYears))
+                Section {
+                    MonthYearMultiSelect(showHeader: false, selection: binding(\.monthYears))
+                } header: {
+                    HStack {
+                        Text("Applies to")
+                        Spacer()
+                        Text(monthSummaryLabel(currentDraft.monthYears))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 TextField("Notes", text: Binding(get: { currentDraft.notes ?? "" }, set: { value in
                     updateCurrent { $0.notes = value.isEmpty ? nil : value }
@@ -497,23 +615,34 @@ struct IncomingEditorSheet: View {
                     updateCurrent { $0.comments = value.isEmpty ? nil : value }
                 }))
 
-                if mode == .create {
-                    BulkGroupSection(
-                        entryCount: drafts.count,
-                        selectedIndex: $selectedIndex,
-                        onAdd: {
-                            drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
-                            selectedIndex = drafts.count - 1
-                        },
-                        onRemove: {
-                            drafts.remove(at: selectedIndex)
-                            selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                BulkGroupSection(
+                    entryCount: drafts.count,
+                    selectedIndex: $selectedIndex,
+                    singledOutIndices: singledOutIndices,
+                    onAdd: {
+                        drafts.append(newIncomingDraft(template: drafts[selectedIndex]))
+                        selectedIndex = drafts.count - 1
+                    },
+                    onRemoveEntry: { index in
+                        if singledOutIndices.contains(index) {
+                            singledOutIndices.remove(index)
                         }
-                    )
-                }
+                        drafts.remove(at: index)
+                        selectedIndex = min(selectedIndex, max(0, drafts.count - 1))
+                        singledOutIndices = Set(singledOutIndices.map { $0 > index ? $0 - 1 : $0 }.filter { $0 < drafts.count })
+                    },
+                    onToggleSingle: { index in
+                        if singledOutIndices.contains(index) {
+                            singledOutIndices.remove(index)
+                        } else {
+                            singledOutIndices.insert(index)
+                        }
+                    }
+                )
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(mode == .create ? "New Incoming" : "Edit Incoming")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -545,21 +674,50 @@ struct IncomingEditorSheet: View {
         isSaving = true
         defer { isSaving = false }
         let didSave: Bool
-        if drafts.count == 1 {
+
+        let singleIndices = singledOutIndices.sorted()
+        let bulkIndices = Set(0..<drafts.count).subtracting(singledOutIndices).sorted()
+
+        if bulkIndices.isEmpty && singleIndices.count == 1 {
             didSave = mode == .create
-                ? await viewModel.createIncoming(drafts[0])
-                : await viewModel.updateIncoming(currentDraft)
+                ? await viewModel.createIncoming(drafts[singleIndices[0]])
+                : await viewModel.updateIncoming(drafts[singleIndices[0]])
+        } else if singleIndices.isEmpty && bulkIndices.count == 1 {
+            didSave = mode == .create
+                ? await viewModel.createIncoming(drafts[bulkIndices[0]])
+                : await viewModel.updateIncoming(drafts[bulkIndices[0]])
         } else {
-            let baseIncomingId = UUID().uuidString
-            let rows = drafts.map { draft -> IncomingEditorDraft in
-                var next = draft
-                next.baseIncomingId = baseIncomingId
-                next.subIncomingId = UUID().uuidString
-                if next.incomingId.isEmpty { next.incomingId = UUID().uuidString }
-                return next
+            var success = true
+
+            for i in singleIndices {
+                success = mode == .create
+                    ? await viewModel.createIncoming(drafts[i])
+                    : await viewModel.updateIncoming(drafts[i])
+                if !success { break }
             }
-            didSave = await viewModel.bulkCreateIncomings(rows)
+
+            if success, !bulkIndices.isEmpty {
+                let bulkDrafts = bulkIndices.map { drafts[$0] }
+                if bulkDrafts.count == 1 {
+                    success = mode == .create
+                        ? await viewModel.createIncoming(bulkDrafts[0])
+                        : await viewModel.updateIncoming(bulkDrafts[0])
+                } else {
+                    let baseIncomingId = UUID().uuidString
+                    let rows = bulkDrafts.map { draft -> IncomingEditorDraft in
+                        var next = draft
+                        next.baseIncomingId = baseIncomingId
+                        next.subIncomingId = UUID().uuidString
+                        if next.incomingId.isEmpty { next.incomingId = UUID().uuidString }
+                        return next
+                    }
+                    success = await viewModel.bulkCreateIncomings(rows)
+                }
+            }
+
+            didSave = success
         }
+
         if didSave {
             dismiss()
         } else {
@@ -703,4 +861,16 @@ struct PaybackLinksManagerView: View {
 
 struct LedgerRowID: Identifiable {
     let id: String
+}
+
+private func monthSummaryLabel(_ months: [MonthYear]) -> String {
+    let sorted = months.sorted()
+    guard let first = sorted.first, let last = sorted.last else { return "—" }
+    guard first != last else { return first.abbreviatedLabel }
+    let total = LedgerScopeLogic.targetMonths(startDate: LedgerScopeLogic.monthBounds(for: first)!.start, endDate: LedgerScopeLogic.monthBounds(for: last)!.start).count
+    let label = "\(first.abbreviatedLabel) – \(last.abbreviatedLabel)"
+    if sorted.count < total {
+        return "\(label) (\(sorted.count) of \(total))"
+    }
+    return label
 }
