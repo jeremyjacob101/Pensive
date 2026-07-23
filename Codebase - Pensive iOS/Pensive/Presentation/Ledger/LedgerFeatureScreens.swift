@@ -229,11 +229,14 @@ private struct LedgerScreen: View {
     @ViewBuilder
     private func ledgerRow(_ row: LedgerItemViewData) -> some View {
         DisclosureGroup {
+            accountCounterpartyRow(row)
+
             HStack {
+                Spacer()
                 Button {
                     editingID = LedgerRowID(id: row.id)
                 } label: {
-                    Label("Edit", systemImage: "pencil")
+                    Text("Edit")
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("ledger_edit_\(row.id)")
@@ -241,9 +244,10 @@ private struct LedgerScreen: View {
                 Button(role: .destructive) {
                     deleteID = row.id
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Text("Delete")
                 }
                 .buttonStyle(.bordered)
+                .tint(.red)
                 .accessibilityIdentifier("ledger_delete_\(row.id)")
             }
 
@@ -273,11 +277,6 @@ private struct LedgerScreen: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Image(systemName: "creditcard.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
-                        .accessibilityHidden(true)
-
                     Text(row.title)
                         .font(.headline)
 
@@ -289,6 +288,8 @@ private struct LedgerScreen: View {
                                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                         }
                         .accessibilityHidden(true)
+
+                    Spacer()
                 }
                 Text(row.effectiveAmountLine).font(.subheadline.weight(.medium))
                 Text(row.dateLine).font(.footnote).foregroundStyle(.secondary)
@@ -298,6 +299,46 @@ private struct LedgerScreen: View {
             Button("Edit") { editingID = LedgerRowID(id: row.id) }.tint(.blue)
             Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
+    }
+
+    private func accountCounterpartyRow(_ row: LedgerItemViewData) -> some View {
+        VStack(spacing: 6) {
+            if viewModel.kind == .expense {
+                accountRow(row)
+                directionArrow()
+                counterpartyRow(row)
+            } else {
+                counterpartyRow(row)
+                directionArrow()
+                accountRow(row)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func accountRow(_ row: LedgerItemViewData) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "creditcard.fill")
+                .foregroundStyle(color(from: row.accountColorHex) ?? Color.secondary)
+            Text(row.accountName)
+        }
+    }
+
+    private func counterpartyRow(_ row: LedgerItemViewData) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "person.crop.circle")
+                .accessibilityHidden(true)
+            Text(row.counterpartyName)
+        }
+    }
+
+    private func directionArrow() -> some View {
+        Image(systemName: "arrow.down")
+            .font(.caption.weight(.semibold))
+            .accessibilityHidden(true)
     }
 
     private func color(from hex: String?) -> Color? {

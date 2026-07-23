@@ -23,6 +23,8 @@ struct LedgerItemViewData: Identifiable {
     let categoryColorHex: String?
     let effectiveAmountLine: String
     let dateLine: String
+    let accountName: String
+    let counterpartyName: String
 
     var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }
 }

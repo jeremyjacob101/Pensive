@@ -99,10 +99,19 @@ struct RecurringsFeatureView: View {
     private func recurringRow(_ row: RecurringItemViewData) -> some View {
         DisclosureGroup {
             recurringAccountCounterpartyRow(row)
-            .listRowSeparator(.hidden)
 
                 ForEach(row.details) { detail in
                     HStack(spacing: 4) {
+                        if detail.id == "category" || detail.id == "type" {
+                            Circle()
+                                .fill(color(from: row.categoryColorHex) ?? Color.secondary)
+                                .frame(width: 8, height: 8)
+                                .overlay {
+                                    Circle()
+                                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                                }
+                                .accessibilityHidden(true)
+                        }
                         Text(detail.id == "notes" ? detail.value : "\(detail.label): \(detail.value)")
 
                     if let subvalue = detail.subvalue, !subvalue.isEmpty {
@@ -143,6 +152,10 @@ struct RecurringsFeatureView: View {
                 .foregroundStyle(.secondary)
             }
             .opacity(row.status.lowercased() == "active" ? 1 : 0.4)
+        }
+        .swipeActions {
+            Button("Edit") { editingID = RowID(id: row.id) }.tint(.blue)
+            Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
     }
 
@@ -187,52 +200,35 @@ struct RecurringsFeatureView: View {
     }
 
     private func recurringActionRow(_ row: RecurringItemViewData) -> some View {
-        GeometryReader { proxy in
-            let centerY = proxy.size.height / 2
-            let toggleWidth: CGFloat = 51
-            let toggleCenterX = proxy.size.width / 2
-            let trashCenterX = proxy.size.width - 22
-            let toggleTrailingX = toggleCenterX + toggleWidth / 2
-            let trashLeadingX = trashCenterX - 22
-            let pencilCenterX = (toggleTrailingX + trashLeadingX) / 2 + 12
-
-            ZStack {
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { row.status.lowercased() == "active" },
-                        set: { _ in viewModel.toggleStatus(id: row.id, currentStatus: row.status) }
-                    )
+        HStack {
+            Spacer()
+            Toggle(
+                "Active",
+                isOn: Binding(
+                    get: { row.status.lowercased() == "active" },
+                    set: { _ in viewModel.toggleStatus(id: row.id, currentStatus: row.status) }
                 )
-                .labelsHidden()
-                .frame(width: toggleWidth)
-                .disabled(viewModel.statusInFlightIDs.contains(row.id))
-                .accessibilityLabel("Active")
-                .position(x: toggleCenterX, y: centerY)
+            )
+            .labelsHidden()
+            .tint(.green)
+            .padding(.trailing, 4)
+            .disabled(viewModel.statusInFlightIDs.contains(row.id))
 
-                Button {
-                    editingID = RowID(id: row.id)
-                } label: {
-                    Image(systemName: "pencil")
-                        .foregroundStyle(.blue)
-                }
-                .frame(width: 44, height: 44)
-                .accessibilityLabel("Edit")
-                .position(x: pencilCenterX, y: centerY)
-
-                Button(role: .destructive) {
-                    deleteID = row.id
-                } label: {
-                    Image(systemName: "trash")
-                        .foregroundStyle(.red)
-                }
-                .frame(width: 44, height: 44)
-                .accessibilityLabel("Delete")
-                .position(x: trashCenterX, y: centerY)
+            Button {
+                editingID = RowID(id: row.id)
+            } label: {
+                Text("Edit")
             }
+            .buttonStyle(.bordered)
+
+            Button(role: .destructive) {
+                deleteID = row.id
+            } label: {
+                Text("Delete")
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
         }
-        .frame(height: 44)
-        .buttonStyle(.borderless)
     }
 
     private func color(from hex: String?) -> Color? {
