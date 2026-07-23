@@ -28,6 +28,23 @@ private struct BreakdownMetricCard: View {
 }
 
 private struct BreakdownFilterSheet: View {
+    private struct SelectionState {
+        let availableValues: Set<String>
+        let selectedValues: Set<String>
+
+        private var selectedAvailableValues: Set<String> {
+            selectedValues.intersection(availableValues)
+        }
+
+        var canSelectAll: Bool {
+            !availableValues.isEmpty && selectedAvailableValues.count < availableValues.count
+        }
+
+        var canDeselectAll: Bool {
+            !selectedAvailableValues.isEmpty
+        }
+    }
+
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var expenseVM: LedgerFeatureViewModel
     @ObservedObject var incomingVM: LedgerFeatureViewModel
@@ -57,15 +74,25 @@ private struct BreakdownFilterSheet: View {
                 if selectedTab == .account {
                     Section {
                         HStack {
-                            Button("Select All") {
-                                updateAccountSelection(selectAll: true)
+                            if accountSelectionState.canSelectAll {
+                                Button("Select All") {
+                                    updateAccountSelection(selectAll: true)
+                                }
+                                .buttonStyle(.borderless)
+                            } else {
+                                Text("Select All")
+                                    .foregroundStyle(.secondary)
                             }
-                            .disabled(allAccountsSelected)
                             Spacer()
-                            Button("Deselect All") {
-                                updateAccountSelection(selectAll: false)
+                            if accountSelectionState.canDeselectAll {
+                                Button("Deselect All") {
+                                    updateAccountSelection(selectAll: false)
+                                }
+                                .buttonStyle(.borderless)
+                            } else {
+                                Text("Deselect All")
+                                    .foregroundStyle(.secondary)
                             }
-                            .disabled(noAccountsSelected)
                         }
 
                         ForEach(accountValues, id: \.self) { account in
@@ -79,15 +106,25 @@ private struct BreakdownFilterSheet: View {
                 } else {
                     Section {
                         HStack {
-                            Button("Select All") {
-                                updateCategorySelection(selectAll: true)
+                            if categorySelectionState.canSelectAll {
+                                Button("Select All") {
+                                    updateCategorySelection(selectAll: true)
+                                }
+                                .buttonStyle(.borderless)
+                            } else {
+                                Text("Select All")
+                                    .foregroundStyle(.secondary)
                             }
-                            .disabled(allCategoriesSelected)
                             Spacer()
-                            Button("Deselect All") {
-                                updateCategorySelection(selectAll: false)
+                            if categorySelectionState.canDeselectAll {
+                                Button("Deselect All") {
+                                    updateCategorySelection(selectAll: false)
+                                }
+                                .buttonStyle(.borderless)
+                            } else {
+                                Text("Deselect All")
+                                    .foregroundStyle(.secondary)
                             }
-                            .disabled(noCategoriesSelected)
                         }
 
                         ForEach(activeVM.categoryFilterRows) { row in
@@ -114,12 +151,12 @@ private struct BreakdownFilterSheet: View {
     private func isSelectedBinding(for value: String) -> Binding<Bool> {
         Binding {
             selectedValues.contains(value)
-        } set: { isSelected in
+        } set: { _ in
             var next = selectedValues
-            if isSelected {
-                next.insert(value)
-            } else {
+            if next.contains(value) {
                 next.remove(value)
+            } else {
+                next.insert(value)
             }
             updateSelectedValues(next)
         }
@@ -148,12 +185,8 @@ private struct BreakdownFilterSheet: View {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var allAccountsSelected: Bool {
-        selectedValues.isSuperset(of: Set(accountValues))
-    }
-
-    private var noAccountsSelected: Bool {
-        selectedValues.isDisjoint(with: Set(accountValues))
+    private var accountSelectionState: SelectionState {
+        SelectionState(availableValues: Set(accountValues), selectedValues: selectedValues)
     }
 
     private func updateAccountSelection(selectAll: Bool) {
@@ -167,14 +200,11 @@ private struct BreakdownFilterSheet: View {
         activeVM.updateAccountFilters(next)
     }
 
-    private var allCategoriesSelected: Bool {
-        let categoryValues = Set(activeVM.categoryFilterRows.map(\.filterKey))
-        return activeVM.selectedCategoryFilters.isSuperset(of: categoryValues)
-    }
-
-    private var noCategoriesSelected: Bool {
-        let categoryValues = Set(activeVM.categoryFilterRows.map(\.filterKey))
-        return activeVM.selectedCategoryFilters.isDisjoint(with: categoryValues)
+    private var categorySelectionState: SelectionState {
+        SelectionState(
+            availableValues: Set(activeVM.categoryFilterRows.map(\.filterKey)),
+            selectedValues: activeVM.selectedCategoryFilters
+        )
     }
 
     private func updateCategorySelection(selectAll: Bool) {
