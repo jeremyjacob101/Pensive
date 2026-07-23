@@ -829,9 +829,20 @@ final class LedgerFeatureViewModel: ObservableObject {
             accountColorHex: accountColor(for: item.account),
             categoryColorHex: optionsByKind["category"]?.first(where: { $0.value == item.category })?.color,
             effectiveAmountLine: money(scopedEffective),
-            dateLine: date(item.date),
+            rawAmountSuffix: scopedRaw != scopedEffective ? "(\(money(scopedRaw)))" : nil,
+            totalRawBracket: LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count > 1 ? "[\(money(item.amount))]" : nil,
+            dateLine: {
+                let d = date(item.date)
+                let dateMonth = MonthYear(String(LedgerScopeLogic.isoDate(item.date).prefix(7)))
+                if item.monthYears.count == 1, item.monthYears.first == dateMonth {
+                    return d
+                }
+                guard let m = monthSummary(item.monthYears) else { return d }
+                return "\(d) · \(m)"
+            }(),
             accountName: item.account,
-            counterpartyName: item.paidTo
+            counterpartyName: item.paidTo,
+            isNetZero: item.effectiveAmount == 0
         )
     }
 
@@ -854,9 +865,20 @@ final class LedgerFeatureViewModel: ObservableObject {
             accountColorHex: accountColor(for: item.account),
             categoryColorHex: optionsByKind["incomeType"]?.first(where: { $0.value == item.incomeType })?.color,
             effectiveAmountLine: money(scopedEffective),
-            dateLine: date(item.date),
+            rawAmountSuffix: scopedRaw != scopedEffective ? "(\(money(scopedRaw)))" : nil,
+            totalRawBracket: LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count > 1 ? "[\(money(item.amount))]" : nil,
+            dateLine: {
+                let d = date(item.date)
+                let dateMonth = MonthYear(String(LedgerScopeLogic.isoDate(item.date).prefix(7)))
+                if item.monthYears.count == 1, item.monthYears.first == dateMonth {
+                    return d
+                }
+                guard let m = monthSummary(item.monthYears) else { return d }
+                return "\(d) · \(m)"
+            }(),
             accountName: item.account,
-            counterpartyName: item.paidBy
+            counterpartyName: item.paidBy,
+            isNetZero: item.effectiveAmount == 0
         )
     }
 
@@ -915,6 +937,18 @@ final class LedgerFeatureViewModel: ObservableObject {
 
     private func date(_ value: Date) -> String {
         value.formatted(date: .abbreviated, time: .omitted)
+    }
+
+    private func monthSummary(_ months: [MonthYear]) -> String? {
+        let sorted = months.sorted()
+        guard let first = sorted.first, let last = sorted.last else { return nil }
+        guard first != last else { return first.abbreviatedLabel }
+        let total = LedgerScopeLogic.targetMonths(startDate: LedgerScopeLogic.monthBounds(for: first)!.start, endDate: LedgerScopeLogic.monthBounds(for: last)!.start).count
+        let label = "\(first.abbreviatedLabel) – \(last.abbreviatedLabel)"
+        if months.count < total {
+            return "\(label) (\(months.count) of \(total))"
+        }
+        return label
     }
 
     private func message(for error: Error) -> String {

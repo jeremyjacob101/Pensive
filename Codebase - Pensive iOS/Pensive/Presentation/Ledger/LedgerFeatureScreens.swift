@@ -59,6 +59,7 @@ private struct LedgerScreen: View {
     @State private var selectedPaybackLinksTarget: PaybackLinksSheetTarget?
     @State private var showAppliedThisMonthPaidDifferent = false
     @State private var showPaidThisMonthAppliedDifferent = false
+    @State private var showNetZero = false
 
     var body: some View {
         LoadStateView(state: viewModel.state, retry: { Task { await viewModel.refresh() } }) {
@@ -88,45 +89,64 @@ private struct LedgerScreen: View {
                         .listRowBackground(Color.clear)
                 }
 
-                if !appliedThisMonthPaidDifferentRows.isEmpty {
+                if !appliedThisMonthPaidDifferentRows.isEmpty || !paidThisMonthAppliedDifferentRows.isEmpty || !netZeroRows.isEmpty {
                     Section {
-                        DisclosureGroup(
-                            isExpanded: $showAppliedThisMonthPaidDifferent,
-                            content: {
-                                ForEach(appliedThisMonthPaidDifferentRows, id: \.listIdentity) { row in
-                                    ledgerRow(row)
+                        if !appliedThisMonthPaidDifferentRows.isEmpty {
+                            DisclosureGroup(
+                                isExpanded: $showAppliedThisMonthPaidDifferent,
+                                content: {
+                                    ForEach(appliedThisMonthPaidDifferentRows, id: \.listIdentity) { row in
+                                        ledgerRow(row)
+                                    }
+                                },
+                                label: {
+                                    HStack {
+                                        Text("Paid Elsewhere")
+                                        Spacer()
+                                        Text("(\(appliedThisMonthPaidDifferentRows.count))")
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                            },
-                            label: {
-                                HStack {
-                                    Text("Paid Elsewhere")
-                                    Spacer()
-                                    Text("(\(appliedThisMonthPaidDifferentRows.count))")
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        )
-                    }
-                }
+                            )
+                        }
 
-                if !paidThisMonthAppliedDifferentRows.isEmpty {
-                    Section {
-                        DisclosureGroup(
-                            isExpanded: $showPaidThisMonthAppliedDifferent,
-                            content: {
-                                ForEach(paidThisMonthAppliedDifferentRows, id: \.listIdentity) { row in
-                                    ledgerRow(row)
+                        if !paidThisMonthAppliedDifferentRows.isEmpty {
+                            DisclosureGroup(
+                                isExpanded: $showPaidThisMonthAppliedDifferent,
+                                content: {
+                                    ForEach(paidThisMonthAppliedDifferentRows, id: \.listIdentity) { row in
+                                        ledgerRow(row)
+                                    }
+                                },
+                                label: {
+                                    HStack {
+                                        Text("Applied Elsewhere")
+                                        Spacer()
+                                        Text("(\(paidThisMonthAppliedDifferentRows.count))")
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                            },
-                            label: {
-                                HStack {
-                                    Text("Applied Elsewhere")
-                                    Spacer()
-                                    Text("(\(paidThisMonthAppliedDifferentRows.count))")
-                                        .foregroundStyle(.secondary)
+                            )
+                        }
+
+                        if !netZeroRows.isEmpty {
+                            DisclosureGroup(
+                                isExpanded: $showNetZero,
+                                content: {
+                                    ForEach(netZeroRows, id: \.listIdentity) { row in
+                                        ledgerRow(row)
+                                    }
+                                },
+                                label: {
+                                    HStack {
+                                        Text("Net Zero")
+                                        Spacer()
+                                        Text("(\(netZeroRows.count))")
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
 
@@ -217,7 +237,11 @@ private struct LedgerScreen: View {
     }
 
     private var regularRows: [LedgerItemViewData] {
-        viewModel.rows.filter { $0.scopeStatus == .full }
+        viewModel.rows.filter { $0.scopeStatus == .full && !$0.isNetZero }
+    }
+
+    private var netZeroRows: [LedgerItemViewData] {
+        viewModel.rows.filter { $0.isNetZero }
     }
 
     private func shiftScopeByMonth(_ value: Int) {
@@ -234,9 +258,6 @@ private struct LedgerScreen: View {
             ForEach(row.details, id: \.self) { detail in
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
-            let monthLabels = row.monthYears.compactMap(MonthYear.init).map(\.abbreviatedLabel)
-            Text("Applies to: \(monthLabels.isEmpty ? "—" : monthLabels.joined(separator: ", "))")
-                .font(.footnote)
 
             HStack {
                 Spacer()
@@ -275,7 +296,15 @@ private struct LedgerScreen: View {
 
                     Spacer()
                 }
-                Text(row.effectiveAmountLine).font(.subheadline.weight(.medium))
+                HStack(spacing: 2) {
+                    Text(row.effectiveAmountLine).font(.subheadline.weight(.medium))
+                    if let suffix = row.rawAmountSuffix {
+                        Text(suffix).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    }
+                    if let bracket = row.totalRawBracket {
+                        Text(bracket).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    }
+                }
                 Text(row.dateLine).font(.footnote).foregroundStyle(.secondary)
             }
         }

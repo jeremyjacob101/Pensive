@@ -314,14 +314,6 @@ struct LedgerBreakdownCard: View {
                     }
                 }
             }
-
-            HStack {
-                Text("Raw: \(money(summary.totalRaw))")
-                Spacer()
-                Text("Effective: \(money(summary.totalEffective))")
-            }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
         }
         .padding(14)
         .background(
