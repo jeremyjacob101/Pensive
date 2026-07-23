@@ -842,6 +842,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             }(),
             accountName: item.account,
             counterpartyName: item.paidTo,
+            categoryLabel: item.category,
             isNetZero: item.effectiveAmount == 0
         )
     }
@@ -878,6 +879,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             }(),
             accountName: item.account,
             counterpartyName: item.paidBy,
+            categoryLabel: item.incomeType,
             isNetZero: item.effectiveAmount == 0
         )
     }

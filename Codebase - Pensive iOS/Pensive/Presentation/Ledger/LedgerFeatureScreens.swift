@@ -255,6 +255,19 @@ private struct LedgerScreen: View {
         DisclosureGroup {
             accountCounterpartyRow(row)
 
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(color(from: row.categoryColorHex) ?? Color.secondary)
+                    .frame(width: 8, height: 8)
+                    .overlay {
+                        Circle()
+                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                    }
+                    .accessibilityHidden(true)
+                Text("\(viewModel.kind == .expense ? "Category" : "Type"): \(row.categoryLabel)")
+            }
+            .font(.footnote)
+
             ForEach(row.details, id: \.self) { detail in
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
@@ -282,9 +295,6 @@ private struct LedgerScreen: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(row.title)
-                        .font(.headline)
-
                     Circle()
                         .fill(color(from: row.categoryColorHex) ?? Color.secondary)
                         .frame(width: 10, height: 10)
@@ -293,6 +303,9 @@ private struct LedgerScreen: View {
                                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                         }
                         .accessibilityHidden(true)
+
+                    Text(row.title)
+                        .font(.headline)
 
                     Spacer()
                 }

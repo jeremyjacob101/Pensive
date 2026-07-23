@@ -27,6 +27,7 @@ struct LedgerItemViewData: Identifiable {
     let dateLine: String
     let accountName: String
     let counterpartyName: String
+    let categoryLabel: String
     let isNetZero: Bool
 
     var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }

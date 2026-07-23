@@ -128,9 +128,6 @@ struct RecurringsFeatureView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Text(row.title)
-                        .font(.headline)
-
                     Circle()
                         .fill(color(from: row.categoryColorHex) ?? Color.secondary)
                         .frame(width: 10, height: 10)
@@ -139,6 +136,9 @@ struct RecurringsFeatureView: View {
                                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
                         }
                         .accessibilityHidden(true)
+
+                    Text(row.title)
+                        .font(.headline)
 
                     Spacer()
                 }
