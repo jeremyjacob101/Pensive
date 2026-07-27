@@ -17,6 +17,51 @@ enum LedgerFilterTab: CaseIterable, Identifiable {
     }
 }
 
+struct LedgerFilterSelectionState {
+    let availableValues: Set<String>
+    let selectedValues: Set<String>
+
+    private var selectedAvailableValues: Set<String> {
+        selectedValues.intersection(availableValues)
+    }
+
+    var canSelectAll: Bool {
+        !availableValues.isEmpty && selectedAvailableValues.count < availableValues.count
+    }
+
+    var canDeselectAll: Bool {
+        !selectedAvailableValues.isEmpty
+    }
+}
+
+struct LedgerFilterBulkActions: View {
+    let selectionState: LedgerFilterSelectionState
+    let selectAll: () -> Void
+    let deselectAll: () -> Void
+
+    var body: some View {
+        HStack {
+            if selectionState.canSelectAll {
+                Button("Select All", action: selectAll)
+                    .buttonStyle(.borderless)
+            } else {
+                Text("Select All")
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if selectionState.canDeselectAll {
+                Button("Deselect All", action: deselectAll)
+                    .buttonStyle(.borderless)
+            } else {
+                Text("Deselect All")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 struct LedgerFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: LedgerFeatureViewModel
@@ -35,44 +80,32 @@ struct LedgerFilterSheet: View {
 
                 if selectedTab == .account {
                     Section {
-                        HStack {
-                            Button("Select All") {
-                                updateAccountSelection(selectAll: true)
-                            }
-                            .disabled(allAccountsSelected)
-                            Spacer()
-                            Button("Deselect All") {
-                                updateAccountSelection(selectAll: false)
-                            }
-                            .disabled(noAccountsSelected)
-                        }
+                        LedgerFilterBulkActions(
+                            selectionState: accountSelectionState,
+                            selectAll: { updateAccountSelection(selectAll: true) },
+                            deselectAll: { updateAccountSelection(selectAll: false) }
+                        )
 
                         ForEach(viewModel.accountFilterChoices, id: \.self) { account in
                             LedgerAccountFilterRow(
                                 value: account,
                                 colorHex: viewModel.accountColor(for: account),
-                                isSelected: isSelectedBinding(for: account)
+                                isSelected: accountSelectionBinding(for: account)
                             )
                         }
                     }
                 } else {
                     Section {
-                        HStack {
-                            Button("Select All") {
-                                updateCategorySelection(selectAll: true)
-                            }
-                            .disabled(allCategoriesSelected)
-                            Spacer()
-                            Button("Deselect All") {
-                                updateCategorySelection(selectAll: false)
-                            }
-                            .disabled(noCategoriesSelected)
-                        }
+                        LedgerFilterBulkActions(
+                            selectionState: categorySelectionState,
+                            selectAll: { updateCategorySelection(selectAll: true) },
+                            deselectAll: { updateCategorySelection(selectAll: false) }
+                        )
 
                         ForEach(viewModel.categoryFilterRows) { row in
                             LedgerCategoryFilterRow(
                                 row: row,
-                                isSelected: isSelectedBinding(for: row.filterKey)
+                                isSelected: categorySelectionBinding(for: row.filterKey)
                             )
                         }
                     }
@@ -91,45 +124,51 @@ struct LedgerFilterSheet: View {
         }
     }
 
-    private func isSelectedBinding(for value: String) -> Binding<Bool> {
+    private var accountSelectionState: LedgerFilterSelectionState {
+        LedgerFilterSelectionState(
+            availableValues: Set(viewModel.accountFilterChoices),
+            selectedValues: viewModel.selectedAccountFilters
+        )
+    }
+
+    private var categorySelectionState: LedgerFilterSelectionState {
+        LedgerFilterSelectionState(
+            availableValues: Set(viewModel.categoryFilterRows.map(\.filterKey)),
+            selectedValues: viewModel.selectedCategoryFilters
+        )
+    }
+
+    private func accountSelectionBinding(for value: String) -> Binding<Bool> {
         Binding {
-            selectedValues.contains(value)
+            viewModel.selectedAccountFilters.contains(value)
         } set: { isSelected in
-            var next = selectedValues
+            var next = viewModel.selectedAccountFilters
             if isSelected {
                 next.insert(value)
             } else {
                 next.remove(value)
             }
-            updateSelectedValues(next)
+            viewModel.updateAccountFilters(next)
         }
     }
 
-    private var selectedValues: Set<String> {
-        selectedTab == .account ? viewModel.selectedAccountFilters : viewModel.selectedCategoryFilters
-    }
-
-    private func updateSelectedValues(_ values: Set<String>) {
-        if selectedTab == .account {
-            viewModel.updateAccountFilters(values)
-        } else {
-            viewModel.updateCategoryFilters(values)
+    private func categorySelectionBinding(for value: String) -> Binding<Bool> {
+        Binding {
+            viewModel.selectedCategoryFilters.contains(value)
+        } set: { isSelected in
+            var next = viewModel.selectedCategoryFilters
+            if isSelected {
+                next.insert(value)
+            } else {
+                next.remove(value)
+            }
+            viewModel.updateCategoryFilters(next)
         }
-    }
-
-    private var allAccountsSelected: Bool {
-        let accountValues = Set(viewModel.accountFilterChoices)
-        return viewModel.selectedAccountFilters.isSuperset(of: accountValues)
-    }
-
-    private var noAccountsSelected: Bool {
-        let accountValues = Set(viewModel.accountFilterChoices)
-        return viewModel.selectedAccountFilters.isDisjoint(with: accountValues)
     }
 
     private func updateAccountSelection(selectAll: Bool) {
         var next = viewModel.selectedAccountFilters
-        let values = Set(viewModel.accountFilterChoices)
+        let values = accountSelectionState.availableValues
         if selectAll {
             next.formUnion(values)
         } else {
@@ -138,19 +177,9 @@ struct LedgerFilterSheet: View {
         viewModel.updateAccountFilters(next)
     }
 
-    private var allCategoriesSelected: Bool {
-        let categoryValues = Set(viewModel.categoryFilterRows.map(\.filterKey))
-        return viewModel.selectedCategoryFilters.isSuperset(of: categoryValues)
-    }
-
-    private var noCategoriesSelected: Bool {
-        let categoryValues = Set(viewModel.categoryFilterRows.map(\.filterKey))
-        return viewModel.selectedCategoryFilters.isDisjoint(with: categoryValues)
-    }
-
     private func updateCategorySelection(selectAll: Bool) {
         var next = viewModel.selectedCategoryFilters
-        let values = Set(viewModel.categoryFilterRows.map(\.filterKey))
+        let values = categorySelectionState.availableValues
         if selectAll {
             next.formUnion(values)
         } else {

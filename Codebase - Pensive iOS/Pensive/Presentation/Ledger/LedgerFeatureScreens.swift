@@ -265,6 +265,12 @@ private struct LedgerScreen: View {
                     }
                     .accessibilityHidden(true)
                 Text("\(viewModel.kind == .expense ? "Category" : "Type"): \(row.categoryLabel)")
+                if let sub = row.subcategoryLabel, !sub.isEmpty {
+                    Image(systemName: "arrow.right")
+                        .font(.caption)
+                        .accessibilityHidden(true)
+                    Text(sub)
+                }
             }
             .font(.footnote)
 

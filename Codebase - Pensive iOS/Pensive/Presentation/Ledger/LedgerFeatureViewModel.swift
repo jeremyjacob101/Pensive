@@ -214,10 +214,22 @@ final class LedgerFeatureViewModel: ObservableObject {
         applyFiltersAndSearch()
     }
 
+    func replaceAccountFilters(_ values: Set<String>) {
+        selectedAccountFilters = values
+        filterStore.save(values, for: accountFilterKey)
+        applyFiltersAndSearch()
+    }
+
     func updateCategoryFilters(_ values: Set<String>) {
         let normalized = Self.normalizedCategoryFilterValues(values)
         selectedCategoryFilters = normalized
         filterStore.save(normalized, for: categoryFilterKey)
+        applyFiltersAndSearch()
+    }
+
+    func replaceCategoryFilters(_ values: Set<String>) {
+        selectedCategoryFilters = values
+        filterStore.save(values, for: categoryFilterKey)
         applyFiltersAndSearch()
     }
 
@@ -843,6 +855,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             accountName: item.account,
             counterpartyName: item.paidTo,
             categoryLabel: item.category,
+            subcategoryLabel: item.subcategory,
             isNetZero: item.effectiveAmount == 0
         )
     }
@@ -880,6 +893,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             accountName: item.account,
             counterpartyName: item.paidBy,
             categoryLabel: item.incomeType,
+            subcategoryLabel: item.incomeSubtype,
             isNetZero: item.effectiveAmount == 0
         )
     }

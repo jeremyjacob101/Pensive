@@ -28,23 +28,6 @@ private struct BreakdownMetricCard: View {
 }
 
 private struct BreakdownFilterSheet: View {
-    private struct SelectionState {
-        let availableValues: Set<String>
-        let selectedValues: Set<String>
-
-        private var selectedAvailableValues: Set<String> {
-            selectedValues.intersection(availableValues)
-        }
-
-        var canSelectAll: Bool {
-            !availableValues.isEmpty && selectedAvailableValues.count < availableValues.count
-        }
-
-        var canDeselectAll: Bool {
-            !selectedAvailableValues.isEmpty
-        }
-    }
-
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var expenseVM: LedgerFeatureViewModel
     @ObservedObject var incomingVM: LedgerFeatureViewModel
@@ -73,27 +56,11 @@ private struct BreakdownFilterSheet: View {
 
                 if selectedTab == .account {
                     Section {
-                        HStack {
-                            if accountSelectionState.canSelectAll {
-                                Button("Select All") {
-                                    updateAccountSelection(selectAll: true)
-                                }
-                                .buttonStyle(.borderless)
-                            } else {
-                                Text("Select All")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if accountSelectionState.canDeselectAll {
-                                Button("Deselect All") {
-                                    updateAccountSelection(selectAll: false)
-                                }
-                                .buttonStyle(.borderless)
-                            } else {
-                                Text("Deselect All")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+                        LedgerFilterBulkActions(
+                            selectionState: accountSelectionState,
+                            selectAll: { updateAccountSelection(selectAll: true) },
+                            deselectAll: { updateAccountSelection(selectAll: false) }
+                        )
 
                         ForEach(accountValues, id: \.self) { account in
                             LedgerAccountFilterRow(
@@ -105,27 +72,11 @@ private struct BreakdownFilterSheet: View {
                     }
                 } else {
                     Section {
-                        HStack {
-                            if categorySelectionState.canSelectAll {
-                                Button("Select All") {
-                                    updateCategorySelection(selectAll: true)
-                                }
-                                .buttonStyle(.borderless)
-                            } else {
-                                Text("Select All")
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            if categorySelectionState.canDeselectAll {
-                                Button("Deselect All") {
-                                    updateCategorySelection(selectAll: false)
-                                }
-                                .buttonStyle(.borderless)
-                            } else {
-                                Text("Deselect All")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+                        LedgerFilterBulkActions(
+                            selectionState: categorySelectionState,
+                            selectAll: { updateCategorySelection(selectAll: true) },
+                            deselectAll: { updateCategorySelection(selectAll: false) }
+                        )
 
                         ForEach(activeVM.categoryFilterRows) { row in
                             LedgerCategoryFilterRow(
@@ -186,8 +137,8 @@ private struct BreakdownFilterSheet: View {
         value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var accountSelectionState: SelectionState {
-        SelectionState(availableValues: Set(accountValues), selectedValues: selectedValues)
+    private var accountSelectionState: LedgerFilterSelectionState {
+        LedgerFilterSelectionState(availableValues: Set(accountValues), selectedValues: selectedValues)
     }
 
     private func updateAccountSelection(selectAll: Bool) {
@@ -201,8 +152,8 @@ private struct BreakdownFilterSheet: View {
         activeVM.updateAccountFilters(next)
     }
 
-    private var categorySelectionState: SelectionState {
-        SelectionState(
+    private var categorySelectionState: LedgerFilterSelectionState {
+        LedgerFilterSelectionState(
             availableValues: Set(activeVM.categoryFilterRows.map(\.filterKey)),
             selectedValues: activeVM.selectedCategoryFilters
         )
