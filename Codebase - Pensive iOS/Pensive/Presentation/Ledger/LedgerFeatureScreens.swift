@@ -46,6 +46,51 @@ private struct PaybackLinksSheetTarget: Identifiable {
     }
 }
 
+private struct ScrollStableDisclosureGroup<Label: View, Content: View>: View {
+    @State private var isExpanded = false
+
+    let label: Label
+    let content: Content
+
+    init(
+        @ViewBuilder content: () -> Content,
+        @ViewBuilder label: () -> Label
+    ) {
+        self.content = content()
+        self.label = label()
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: expansionBinding) {
+            content
+        } label: {
+            label
+        }
+    }
+
+    private var expansionBinding: Binding<Bool> {
+        Binding(
+            get: { isExpanded },
+            set: { nextValue in
+                setExpanded(nextValue)
+            }
+        )
+    }
+
+    private func setExpanded(_ nextValue: Bool) {
+        if #available(iOS 26.0, *) {
+            withTransaction(
+                \.scrollContentOffsetAdjustmentBehavior,
+                .disabled
+            ) {
+                isExpanded = nextValue
+            }
+        } else {
+            isExpanded = nextValue
+        }
+    }
+}
+
 private struct LedgerScreen: View {
     @ObservedObject var viewModel: LedgerFeatureViewModel
 
@@ -95,9 +140,7 @@ private struct LedgerScreen: View {
                             DisclosureGroup(
                                 isExpanded: $showAppliedThisMonthPaidDifferent,
                                 content: {
-                                    ForEach(appliedThisMonthPaidDifferentRows, id: \.listIdentity) { row in
-                                        ledgerRow(row)
-                                    }
+                                    ledgerRows(appliedThisMonthPaidDifferentRows)
                                 },
                                 label: {
                                     HStack {
@@ -114,9 +157,10 @@ private struct LedgerScreen: View {
                             DisclosureGroup(
                                 isExpanded: $showPaidThisMonthAppliedDifferent,
                                 content: {
-                                    ForEach(paidThisMonthAppliedDifferentRows, id: \.listIdentity) { row in
-                                        ledgerRow(row)
-                                    }
+                                    ledgerRows(
+                                        paidThisMonthAppliedDifferentRows,
+                                        isInAppliedElsewhereSection: true
+                                    )
                                 },
                                 label: {
                                     HStack {
@@ -133,9 +177,7 @@ private struct LedgerScreen: View {
                             DisclosureGroup(
                                 isExpanded: $showNetZero,
                                 content: {
-                                    ForEach(netZeroRows, id: \.listIdentity) { row in
-                                        ledgerRow(row)
-                                    }
+                                    ledgerRows(netZeroRows)
                                 },
                                 label: {
                                     HStack {
@@ -150,9 +192,7 @@ private struct LedgerScreen: View {
                     }
                 }
 
-                ForEach(regularRows, id: \.listIdentity) { row in
-                    ledgerRow(row)
-                }
+                ledgerRows(regularRows)
 
                 if viewModel.rows.isEmpty {
                     ContentUnavailableView(
@@ -251,8 +291,123 @@ private struct LedgerScreen: View {
     }
 
     @ViewBuilder
-    private func ledgerRow(_ row: LedgerItemViewData) -> some View {
-        DisclosureGroup {
+    private func ledgerRows(
+        _ rows: [LedgerItemViewData],
+        isInAppliedElsewhereSection: Bool = false
+    ) -> some View {
+        ForEach(displayItems(for: rows)) { item in
+            switch item {
+            case .row(let row):
+                ledgerRow(
+                    row,
+                    isInAppliedElsewhereSection: isInAppliedElsewhereSection
+                )
+            case .groupHeader(let group):
+                groupHeader(
+                    group,
+                    isInAppliedElsewhereSection: isInAppliedElsewhereSection
+                )
+            case .groupChild(let row):
+                ledgerRow(
+                    row,
+                    isInAppliedElsewhereSection: isInAppliedElsewhereSection,
+                    isGroupedChild: true
+                )
+            }
+        }
+    }
+
+    private func displayItems(for rows: [LedgerItemViewData]) -> [LedgerListItem] {
+        LedgerListItem.grouping(rows)
+    }
+
+    private func groupHeader(
+        _ group: LedgerGroupViewData,
+        isInAppliedElsewhereSection: Bool
+    ) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "link")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 3)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(group.title)
+                        .font(.headline)
+
+                    HStack(spacing: 2) {
+                        Text(viewModel.money(group.scopedEffectiveAmount))
+                            .font(.subheadline.weight(.medium))
+                        if group.scopedRawAmount != group.scopedEffectiveAmount {
+                            Text("(\(viewModel.money(group.scopedRawAmount)))")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                        if LedgerRowPresentation.showsRawAmountBracket(
+                            appliedMonthCount: group.appliedMonthCount,
+                            isInAppliedElsewhereSection: isInAppliedElsewhereSection
+                        ) {
+                            Text("[\(viewModel.money(group.rawAmount))]")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Text(groupCountLabel(group.rows.count))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 12)
+            }
+            .padding(.vertical, 10)
+
+            Divider()
+                .padding(.leading, 20)
+        }
+        .accessibilityElement(children: .combine)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+        .listRowSeparator(.hidden)
+    }
+
+    private func groupCountLabel(_ count: Int) -> String {
+        let singular = viewModel.kind == .expense ? "expense" : "incoming"
+        let plural = viewModel.kind == .expense ? "expenses" : "incomings"
+        return "\(count) \(count == 1 ? singular : plural)"
+    }
+
+    @ViewBuilder
+    private func ledgerRow(
+        _ row: LedgerItemViewData,
+        isInAppliedElsewhereSection: Bool = false,
+        isGroupedChild: Bool = false
+    ) -> some View {
+        ledgerDisclosure(
+            row,
+            isInAppliedElsewhereSection: isInAppliedElsewhereSection,
+            isGroupedChild: isGroupedChild
+        )
+        .swipeActions {
+            Button("Edit") { editingID = LedgerRowID(id: row.id) }.tint(.blue)
+            Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
+        }
+        .listRowInsets(
+            isGroupedChild
+                ? EdgeInsets(top: 5, leading: 40, bottom: 5, trailing: 20)
+                : nil
+        )
+    }
+
+    private func ledgerDisclosure(
+        _ row: LedgerItemViewData,
+        isInAppliedElsewhereSection: Bool,
+        isGroupedChild: Bool
+    ) -> some View {
+        ScrollStableDisclosureGroup {
             accountCounterpartyRow(row)
 
             HStack(spacing: 4) {
@@ -311,7 +466,7 @@ private struct LedgerScreen: View {
                         .accessibilityHidden(true)
 
                     Text(row.title)
-                        .font(.headline)
+                        .font(isGroupedChild ? .subheadline.weight(.semibold) : .headline)
 
                     Spacer()
                 }
@@ -320,16 +475,15 @@ private struct LedgerScreen: View {
                     if let suffix = row.rawAmountSuffix {
                         Text(suffix).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
                     }
-                    if let bracket = row.totalRawBracket {
-                        Text(bracket).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
+                    if LedgerRowPresentation.showsRawAmountBracket(
+                        appliedMonthCount: row.appliedMonthCount,
+                        isInAppliedElsewhereSection: isInAppliedElsewhereSection
+                    ) {
+                        Text(row.rawAmountBracket).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
                     }
                 }
                 Text(row.dateLine).font(.footnote).foregroundStyle(.secondary)
             }
-        }
-        .swipeActions {
-            Button("Edit") { editingID = LedgerRowID(id: row.id) }.tint(.blue)
-            Button(role: .destructive) { deleteID = row.id } label: { Text("Delete") }
         }
     }
 

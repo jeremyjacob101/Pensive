@@ -827,6 +827,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         let scopedRaw = LedgerScopeLogic.scopedContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let scopedEffective = LedgerScopeLogic.scopedContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let appliedMonthCount = LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count
         return LedgerItemViewData(
             id: item.id,
             title: item.name,
@@ -838,11 +839,17 @@ final class LedgerFeatureViewModel: ObservableObject {
             warningText: LedgerFiltering.scopeWarningText(status: status),
             details: [item.notes.map { "Notes: \($0)" } as String?, item.comments.map { "Comments: \($0)" } as String?].compactMap(\.self),
             isGrouped: item.isGrouped,
+            groupID: item.baseExpenseId,
+            groupTitle: item.baseExpenseLabel,
             accountColorHex: accountColor(for: item.account),
             categoryColorHex: optionsByKind["category"]?.first(where: { $0.value == item.category })?.color,
+            scopedEffectiveAmount: scopedEffective,
+            scopedRawAmount: scopedRaw,
+            rawAmount: item.amount,
             effectiveAmountLine: money(scopedEffective),
             rawAmountSuffix: scopedRaw != scopedEffective ? "(\(money(scopedRaw)))" : nil,
-            totalRawBracket: LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count > 1 ? "[\(money(item.amount))]" : nil,
+            rawAmountBracket: "[\(money(item.amount))]",
+            appliedMonthCount: appliedMonthCount,
             dateLine: {
                 let d = date(item.date)
                 let dateMonth = MonthYear(String(LedgerScopeLogic.isoDate(item.date).prefix(7)))
@@ -865,6 +872,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         let scopedRaw = LedgerScopeLogic.scopedContribution(amount: item.amount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let scopedEffective = LedgerScopeLogic.scopedContribution(amount: item.effectiveAmount, date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
         let partial = LedgerScopeLogic.isPartialMatch(date: item.date, monthYears: item.monthYears, scope: scope, calendar: calendar)
+        let appliedMonthCount = LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count
         return LedgerItemViewData(
             id: item.id,
             title: item.name,
@@ -876,11 +884,17 @@ final class LedgerFeatureViewModel: ObservableObject {
             warningText: LedgerFiltering.scopeWarningText(status: status),
             details: [item.notes.map { "Notes: \($0)" } as String?, item.comments.map { "Comments: \($0)" } as String?].compactMap(\.self),
             isGrouped: item.isGrouped,
+            groupID: item.baseIncomingId,
+            groupTitle: nil,
             accountColorHex: accountColor(for: item.account),
             categoryColorHex: optionsByKind["incomeType"]?.first(where: { $0.value == item.incomeType })?.color,
+            scopedEffectiveAmount: scopedEffective,
+            scopedRawAmount: scopedRaw,
+            rawAmount: item.amount,
             effectiveAmountLine: money(scopedEffective),
             rawAmountSuffix: scopedRaw != scopedEffective ? "(\(money(scopedRaw)))" : nil,
-            totalRawBracket: LedgerScopeLogic.normalizedRowMonths(date: item.date, monthYears: item.monthYears).count > 1 ? "[\(money(item.amount))]" : nil,
+            rawAmountBracket: "[\(money(item.amount))]",
+            appliedMonthCount: appliedMonthCount,
             dateLine: {
                 let d = date(item.date)
                 let dateMonth = MonthYear(String(LedgerScopeLogic.isoDate(item.date).prefix(7)))
@@ -947,7 +961,7 @@ final class LedgerFeatureViewModel: ObservableObject {
         })
     }
 
-    private func money(_ value: Double) -> String {
+    func money(_ value: Double) -> String {
         currencyFormatter.string(from: NSNumber(value: value)) ?? "₪\(value)"
     }
 

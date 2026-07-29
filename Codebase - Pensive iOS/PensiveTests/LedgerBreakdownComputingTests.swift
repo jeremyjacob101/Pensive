@@ -2,6 +2,27 @@ import XCTest
 @testable import Pensive
 
 final class LedgerBreakdownComputingTests: XCTestCase {
+    func testRawBracketIncludesSingleMonthOnlyInAppliedElsewhereSection() {
+        XCTAssertTrue(
+            LedgerRowPresentation.showsRawAmountBracket(
+                appliedMonthCount: 1,
+                isInAppliedElsewhereSection: true
+            )
+        )
+        XCTAssertFalse(
+            LedgerRowPresentation.showsRawAmountBracket(
+                appliedMonthCount: 1,
+                isInAppliedElsewhereSection: false
+            )
+        )
+        XCTAssertTrue(
+            LedgerRowPresentation.showsRawAmountBracket(
+                appliedMonthCount: 2,
+                isInAppliedElsewhereSection: false
+            )
+        )
+    }
+
     func testMonthYearAbbreviatedLabelUsesYearRatherThanMonthNumber() {
         XCTAssertEqual(MonthYear("2026-07")?.abbreviatedLabel, "Jul '26")
         XCTAssertEqual(MonthYear("2027-01")?.abbreviatedLabel, "Jan '27")
@@ -224,6 +245,13 @@ final class LedgerBreakdownComputingTests: XCTestCase {
             endDate: date(year: 2026, month: 6, day: 30),
             includeMonthYearOverlapOutsideDate: true
         )
+        XCTAssertEqual(
+            LedgerScopeLogic.targetMonths(
+                startDate: juneScope.startDate,
+                endDate: juneScope.endDate
+            ).map(\.rawValue),
+            ["2026-06"]
+        )
 
         let summary = LedgerBreakdownComputing.expenses(
             rows: [row],
@@ -309,9 +337,9 @@ final class LedgerBreakdownComputingTests: XCTestCase {
     }
 
     private func date(year: Int, month: Int, day: Int) -> Date {
-        DateComponents(
-            calendar: Calendar(identifier: .gregorian), year: year, month: month, day: day
-        ).date!
+        LedgerScopeLogic.calendar.date(
+            from: DateComponents(year: year, month: month, day: day)
+        )!
     }
 
     func testTrackingMonthRangeIsInclusiveAndOrdered() {

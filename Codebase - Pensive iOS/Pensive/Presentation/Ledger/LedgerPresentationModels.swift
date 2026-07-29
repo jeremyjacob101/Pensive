@@ -18,12 +18,18 @@ struct LedgerItemViewData: Identifiable {
     let warningText: String?
     let details: [String]
     let isGrouped: Bool
+    let groupID: String?
+    let groupTitle: String?
 
     let accountColorHex: String?
     let categoryColorHex: String?
+    let scopedEffectiveAmount: Double
+    let scopedRawAmount: Double
+    let rawAmount: Double
     let effectiveAmountLine: String
     let rawAmountSuffix: String?
-    let totalRawBracket: String?
+    let rawAmountBracket: String
+    let appliedMonthCount: Int
     let dateLine: String
     let accountName: String
     let counterpartyName: String
@@ -32,6 +38,91 @@ struct LedgerItemViewData: Identifiable {
     let isNetZero: Bool
 
     var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }
+}
+
+struct LedgerGroupViewData: Identifiable {
+    let id: String
+    let title: String
+    let rows: [LedgerItemViewData]
+
+    var scopedEffectiveAmount: Double {
+        rows.reduce(0) { $0 + $1.scopedEffectiveAmount }
+    }
+
+    var scopedRawAmount: Double {
+        rows.reduce(0) { $0 + $1.scopedRawAmount }
+    }
+
+    var rawAmount: Double {
+        rows.reduce(0) { $0 + $1.rawAmount }
+    }
+
+    var appliedMonthCount: Int {
+        rows.map(\.appliedMonthCount).max() ?? 0
+    }
+}
+
+enum LedgerListItem: Identifiable {
+    case row(LedgerItemViewData)
+    case groupHeader(LedgerGroupViewData)
+    case groupChild(LedgerItemViewData)
+
+    var id: String {
+        switch self {
+        case .row(let row):
+            return "row:\(row.listIdentity)"
+        case .groupHeader(let group):
+            return "group-header:\(group.id):\(group.rows.first?.listIdentity ?? "")"
+        case .groupChild(let row):
+            return "group-child:\(row.listIdentity)"
+        }
+    }
+
+    static func grouping(_ rows: [LedgerItemViewData]) -> [LedgerListItem] {
+        let groupedRows = Dictionary(grouping: rows) { row -> String? in
+            guard let rawID = row.groupID?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawID.isEmpty else {
+                return nil
+            }
+            return rawID
+        }
+        var emittedGroupIDs: Set<String> = []
+        var items: [LedgerListItem] = []
+
+        for row in rows {
+            guard let rawID = row.groupID?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !rawID.isEmpty else {
+                items.append(.row(row))
+                continue
+            }
+            guard emittedGroupIDs.insert(rawID).inserted,
+                  let members = groupedRows[rawID] else {
+                continue
+            }
+
+            let groupTitle = members
+                .compactMap(\.groupTitle)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .first(where: { !$0.isEmpty })
+                ?? members.first?.title
+                ?? "Bulk Group"
+
+            let group = LedgerGroupViewData(id: rawID, title: groupTitle, rows: members)
+            items.append(.groupHeader(group))
+            items.append(contentsOf: members.map(LedgerListItem.groupChild))
+        }
+
+        return items
+    }
+}
+
+enum LedgerRowPresentation {
+    static func showsRawAmountBracket(
+        appliedMonthCount: Int,
+        isInAppliedElsewhereSection: Bool
+    ) -> Bool {
+        appliedMonthCount > 1 || isInAppliedElsewhereSection
+    }
 }
 
 extension MonthYear {
