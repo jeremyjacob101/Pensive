@@ -1,7 +1,5 @@
 import SwiftUI
 
-import SwiftUI
-
 enum LedgerKind: String {
     case expense
     case incoming
@@ -35,6 +33,7 @@ struct LedgerItemViewData: Identifiable {
     let counterpartyName: String
     let categoryLabel: String
     let subcategoryLabel: String?
+    let paybackLinks: [PaybackLinkViewData]
     let isNetZero: Bool
 
     var listIdentity: String { "\(scopeStatus.rawValue)-\(id)" }
@@ -169,6 +168,7 @@ struct ExpenseEditorDraft {
     var baseExpenseId: String?
     var baseExpenseLabel: String?
     var subExpenseId: String?
+    var paybackLinks: [PaybackLinkDraft]
 }
 
 struct IncomingEditorDraft {
@@ -188,13 +188,94 @@ struct IncomingEditorDraft {
     var incomingId: String
     var baseIncomingId: String?
     var subIncomingId: String?
+    var paybackLinks: [PaybackLinkDraft]
 }
 
-struct PaybackLinkViewData: Identifiable {
+struct PaybackLinkViewData: Identifiable, Equatable {
     let id: String
+    let counterpartyID: String
     let counterpartyTitle: String
     let allocatedAmount: Double
     let notes: String?
+}
+
+struct PaybackCandidate: Identifiable, Equatable {
+    let id: String
+    let title: String
+}
+
+struct PaybackLinkDraft: Identifiable, Equatable {
+    let id: UUID
+    var persistedID: String?
+    var counterpartyID: String?
+    var counterpartyTitle: String?
+    var amountText: String
+    var notes: String?
+
+    init(
+        id: UUID = UUID(),
+        persistedID: String? = nil,
+        counterpartyID: String? = nil,
+        counterpartyTitle: String? = nil,
+        amountText: String = "",
+        notes: String? = nil
+    ) {
+        self.id = id
+        self.persistedID = persistedID
+        self.counterpartyID = counterpartyID
+        self.counterpartyTitle = counterpartyTitle
+        self.amountText = amountText
+        self.notes = notes
+    }
+
+    init(summary: PaybackLinkSummary) {
+        self.init(
+            persistedID: summary.id,
+            counterpartyID: summary.counterpartyID,
+            counterpartyTitle: summary.counterpartyTitle,
+            amountText: summary.allocatedAmount.formatted(
+                .number.precision(.fractionLength(0...2))
+            ),
+            notes: summary.notes
+        )
+    }
+
+    static var blank: PaybackLinkDraft {
+        PaybackLinkDraft()
+    }
+
+    var allocatedAmount: Double? {
+        let normalized = amountText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        guard !normalized.isEmpty else { return nil }
+        return Double(normalized)
+    }
+
+    var isBlank: Bool {
+        counterpartyID == nil
+            && amountText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+enum PaybackLinkDraftValidation {
+    static func message(for links: [PaybackLinkDraft]) -> String? {
+        var selectedCounterparties: Set<String> = []
+
+        for link in links where !link.isBlank {
+            guard let counterpartyID = link.counterpartyID else {
+                return "Select a payback name for every amount."
+            }
+            guard let amount = link.allocatedAmount, amount.isFinite, amount > 0 else {
+                return "Enter a payback amount greater than 0."
+            }
+            guard selectedCounterparties.insert(counterpartyID).inserted else {
+                return "The same item cannot be linked more than once."
+            }
+        }
+
+        return nil
+    }
 }
 
 struct LedgerBreakdownSlice: Identifiable, Equatable {

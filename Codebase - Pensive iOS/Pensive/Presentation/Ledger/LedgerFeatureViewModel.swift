@@ -526,50 +526,45 @@ final class LedgerFeatureViewModel: ObservableObject {
         rows.filter { $0.id != id }
     }
 
-    func loadPaybackLinks(for target: PaybackTarget) async throws -> [PaybackLinkViewData] {
-        switch target {
-        case .expense(let id):
-            return try await api.paybackLinks.listForExpense(.init(expenseId: id)).map {
-                PaybackLinkViewData(id: $0._id, counterpartyTitle: $0.incoming.incoming, allocatedAmount: $0.allocatedAmount, notes: $0.notes)
-            }
-        case .incoming(let id):
-            return try await api.paybackLinks.listForIncoming(.init(incomingId: id)).map {
-                PaybackLinkViewData(id: $0._id, counterpartyTitle: $0.expense.expense, allocatedAmount: $0.allocatedAmount, notes: $0.notes)
+    func paybackCandidates() async throws -> [PaybackCandidate] {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["UI_TEST_LEDGER_FIXTURE"] == "1" {
+            switch kind {
+            case .expense:
+                return [.init(id: "ui-test-incoming", title: "UI Test Incoming")]
+            case .incoming:
+                return [.init(id: "ui-test-expense", title: "UI Test Expense")]
             }
         }
-    }
+        #endif
 
-    func paybackCandidates(for target: PaybackTarget) async throws -> [(id: String, title: String)] {
-        switch target {
+        switch kind {
         case .expense:
-            return try await api.paybackLinks.listIncomingCandidates().map { ($0._id, $0.incoming) }
+            return try await api.paybackLinks.listIncomingCandidates().map {
+                PaybackCandidate(id: $0._id, title: $0.incoming)
+            }
         case .incoming:
-            return try await api.paybackLinks.listExpenseCandidates().map { ($0._id, $0.expense) }
+            return try await api.paybackLinks.listExpenseCandidates().map {
+                PaybackCandidate(id: $0._id, title: $0.expense)
+            }
         }
-    }
-
-    func createPaybackLink(target: PaybackTarget, otherId: String, amount: Double, notes: String?) async throws {
-        switch target {
-        case .expense(let expenseId):
-            _ = try await api.paybackLinks.create(.init(expenseId: expenseId, incomingId: otherId, allocatedAmount: amount, notes: notes))
-        case .incoming(let incomingId):
-            _ = try await api.paybackLinks.create(.init(expenseId: otherId, incomingId: incomingId, allocatedAmount: amount, notes: notes))
-        }
-        await refresh()
-    }
-
-    func updatePaybackLink(id: String, amount: Double, notes: String?) async throws {
-        _ = try await api.paybackLinks.update(.init(id: id, allocatedAmount: amount, notes: notes))
-        await refresh()
-    }
-
-    func removePaybackLink(id: String) async throws {
-        _ = try await api.paybackLinks.remove(.init(id: id))
-        await refresh()
     }
 
     func expenseDraft(id: String) -> ExpenseEditorDraft? {
         guard let item = expenses.first(where: { $0.id == id }) else { return nil }
+        return expenseDraft(from: item)
+    }
+
+    func expenseDrafts(id: String) -> [ExpenseEditorDraft]? {
+        guard let selected = expenses.first(where: { $0.id == id }) else { return nil }
+        let baseID = selected.baseExpenseId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let items = baseID?.isEmpty == false
+            ? expenses.filter { $0.baseExpenseId?.trimmingCharacters(in: .whitespacesAndNewlines) == baseID }
+            : [selected]
+        return items.map(expenseDraft(from:))
+    }
+
+    private func expenseDraft(from item: Expense) -> ExpenseEditorDraft {
         return ExpenseEditorDraft(
             id: item.id,
             expense: item.name,
@@ -589,12 +584,26 @@ final class LedgerFeatureViewModel: ObservableObject {
             expenseId: item.expenseId,
             baseExpenseId: item.baseExpenseId,
             baseExpenseLabel: item.baseExpenseLabel,
-            subExpenseId: item.subExpenseId
+            subExpenseId: item.subExpenseId,
+            paybackLinks: paybackDrafts(from: item.paybackLinks)
         )
     }
 
     func incomingDraft(id: String) -> IncomingEditorDraft? {
         guard let item = incomings.first(where: { $0.id == id }) else { return nil }
+        return incomingDraft(from: item)
+    }
+
+    func incomingDrafts(id: String) -> [IncomingEditorDraft]? {
+        guard let selected = incomings.first(where: { $0.id == id }) else { return nil }
+        let baseID = selected.baseIncomingId?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let items = baseID?.isEmpty == false
+            ? incomings.filter { $0.baseIncomingId?.trimmingCharacters(in: .whitespacesAndNewlines) == baseID }
+            : [selected]
+        return items.map(incomingDraft(from:))
+    }
+
+    private func incomingDraft(from item: Incoming) -> IncomingEditorDraft {
         return IncomingEditorDraft(
             id: item.id,
             incoming: item.name,
@@ -613,7 +622,8 @@ final class LedgerFeatureViewModel: ObservableObject {
             comments: item.comments,
             incomingId: item.incomingId,
             baseIncomingId: item.baseIncomingId,
-            subIncomingId: item.subIncomingId
+            subIncomingId: item.subIncomingId,
+            paybackLinks: paybackDrafts(from: item.paybackLinks)
         )
     }
 
@@ -689,13 +699,31 @@ final class LedgerFeatureViewModel: ObservableObject {
                 id: "ui-test-expense", name: "UI Test Expense", account: "Checking", category: "Home", subcategory: nil,
                 amount: 120, effectiveAmount: 120, effectiveAmountMode: .auto, monthYears: [month], date: today,
                 paidTo: "Test Vendor", notes: nil, comments: nil, expenseId: "ui-test-expense",
-                baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil
+                baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil,
+                paybackLinks: [
+                    .init(
+                        id: "ui-test-payback",
+                        counterpartyID: "ui-test-incoming",
+                        counterpartyTitle: "UI Test Incoming",
+                        allocatedAmount: 20,
+                        notes: nil
+                    )
+                ]
             )]
         case .incoming:
             incomings = [.init(
                 id: "ui-test-incoming", name: "UI Test Incoming", paidBy: "Test Employer", incomeType: "Salary", incomeSubtype: nil,
                 account: "Checking", amount: 1_000, effectiveAmount: 1_000, effectiveAmountMode: .auto, monthYears: [month], date: today,
-                notes: nil, comments: nil, incomingId: "ui-test-incoming", baseIncomingId: nil, subIncomingId: nil
+                notes: nil, comments: nil, incomingId: "ui-test-incoming", baseIncomingId: nil, subIncomingId: nil,
+                paybackLinks: [
+                    .init(
+                        id: "ui-test-payback",
+                        counterpartyID: "ui-test-expense",
+                        counterpartyTitle: "UI Test Expense",
+                        allocatedAmount: 20,
+                        notes: nil
+                    )
+                ]
             )]
         }
         selectedAccountFilters = Set(accountFilterChoices)
@@ -863,6 +891,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             counterpartyName: item.paidTo,
             categoryLabel: item.category,
             subcategoryLabel: item.subcategory,
+            paybackLinks: paybackViewData(from: item.paybackLinks),
             isNetZero: item.effectiveAmount == 0
         )
     }
@@ -908,6 +937,7 @@ final class LedgerFeatureViewModel: ObservableObject {
             counterpartyName: item.paidBy,
             categoryLabel: item.incomeType,
             subcategoryLabel: item.incomeSubtype,
+            paybackLinks: paybackViewData(from: item.paybackLinks),
             isNetZero: item.effectiveAmount == 0
         )
     }
@@ -916,24 +946,144 @@ final class LedgerFeatureViewModel: ObservableObject {
         let iso = LedgerScopeLogic.isoDate(draft.date)
         let month = String(iso.prefix(7))
         let monthYears = draft.monthYears.isEmpty ? [month] : draft.monthYears.map(\.rawValue)
-        return ExpenseMutationDTO(expense: draft.expense, account: draft.account, category: draft.category, subcategory: draft.subcategory, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, monthYears: monthYears, date: iso, paidTo: draft.paidTo, notes: draft.notes, comments: draft.comments, expenseId: draft.expenseId, baseExpenseId: draft.baseExpenseId, baseExpenseLabel: draft.baseExpenseLabel, subExpenseId: draft.subExpenseId)
+        return ExpenseMutationDTO(
+            expense: draft.expense,
+            account: draft.account,
+            category: draft.category,
+            subcategory: draft.subcategory,
+            amount: draft.amount,
+            effectiveAmount: draft.effectiveAmount,
+            effectiveAmountMode: draft.effectiveAmountMode.rawValue,
+            monthYears: monthYears,
+            date: iso,
+            paidTo: draft.paidTo,
+            notes: draft.notes,
+            comments: draft.comments,
+            expenseId: draft.expenseId,
+            baseExpenseId: draft.baseExpenseId,
+            baseExpenseLabel: draft.baseExpenseLabel,
+            subExpenseId: draft.subExpenseId,
+            paybackLinks: draft.paybackLinks.compactMap(expensePaybackInput)
+        )
     }
 
     private func expenseUpdateDTO(from draft: ExpenseEditorDraft, id: String) -> ExpenseUpdateDTO {
         let create = expenseCreateDTO(from: draft)
-        return ExpenseUpdateDTO(id: id, expense: create.expense, account: create.account, category: create.category, subcategory: create.subcategory, amount: create.amount, effectiveAmount: create.effectiveAmount, effectiveAmountMode: create.effectiveAmountMode, monthYears: create.monthYears, date: create.date, paidTo: create.paidTo, notes: create.notes, comments: create.comments, expenseId: create.expenseId, baseExpenseId: create.baseExpenseId, baseExpenseLabel: create.baseExpenseLabel, subExpenseId: create.subExpenseId)
+        return ExpenseUpdateDTO(
+            id: id,
+            expense: create.expense,
+            account: create.account,
+            category: create.category,
+            subcategory: create.subcategory,
+            amount: create.amount,
+            effectiveAmount: create.effectiveAmount,
+            effectiveAmountMode: create.effectiveAmountMode,
+            monthYears: create.monthYears,
+            date: create.date,
+            paidTo: create.paidTo,
+            notes: create.notes,
+            comments: create.comments,
+            expenseId: create.expenseId,
+            baseExpenseId: create.baseExpenseId,
+            baseExpenseLabel: create.baseExpenseLabel,
+            subExpenseId: create.subExpenseId,
+            paybackLinks: create.paybackLinks
+        )
     }
 
     private func incomingCreateDTO(from draft: IncomingEditorDraft) -> IncomingMutationDTO {
         let iso = LedgerScopeLogic.isoDate(draft.date)
         let month = String(iso.prefix(7))
         let monthYears = draft.monthYears.isEmpty ? [month] : draft.monthYears.map(\.rawValue)
-        return IncomingMutationDTO(incoming: draft.incoming, paidBy: draft.paidBy, incomeType: draft.incomeType, incomeSubtype: draft.incomeSubtype, account: draft.account, amount: draft.amount, effectiveAmount: draft.effectiveAmount, effectiveAmountMode: draft.effectiveAmountMode.rawValue, date: iso, monthYears: monthYears, notes: draft.notes, comments: draft.comments, incomingId: draft.incomingId, baseIncomingId: draft.baseIncomingId, subIncomingId: draft.subIncomingId)
+        return IncomingMutationDTO(
+            incoming: draft.incoming,
+            paidBy: draft.paidBy,
+            incomeType: draft.incomeType,
+            incomeSubtype: draft.incomeSubtype,
+            account: draft.account,
+            amount: draft.amount,
+            effectiveAmount: draft.effectiveAmount,
+            effectiveAmountMode: draft.effectiveAmountMode.rawValue,
+            date: iso,
+            monthYears: monthYears,
+            notes: draft.notes,
+            comments: draft.comments,
+            incomingId: draft.incomingId,
+            baseIncomingId: draft.baseIncomingId,
+            subIncomingId: draft.subIncomingId,
+            paybackLinks: draft.paybackLinks.compactMap(incomingPaybackInput)
+        )
     }
 
     private func incomingUpdateDTO(from draft: IncomingEditorDraft, id: String) -> IncomingUpdateDTO {
         let create = incomingCreateDTO(from: draft)
-        return IncomingUpdateDTO(id: id, incoming: create.incoming, paidBy: create.paidBy, incomeType: create.incomeType, incomeSubtype: create.incomeSubtype, account: create.account, amount: create.amount, effectiveAmount: create.effectiveAmount, effectiveAmountMode: create.effectiveAmountMode, date: create.date, monthYears: create.monthYears, notes: create.notes, comments: create.comments, incomingId: create.incomingId, baseIncomingId: create.baseIncomingId, subIncomingId: create.subIncomingId)
+        return IncomingUpdateDTO(
+            id: id,
+            incoming: create.incoming,
+            paidBy: create.paidBy,
+            incomeType: create.incomeType,
+            incomeSubtype: create.incomeSubtype,
+            account: create.account,
+            amount: create.amount,
+            effectiveAmount: create.effectiveAmount,
+            effectiveAmountMode: create.effectiveAmountMode,
+            date: create.date,
+            monthYears: create.monthYears,
+            notes: create.notes,
+            comments: create.comments,
+            incomingId: create.incomingId,
+            baseIncomingId: create.baseIncomingId,
+            subIncomingId: create.subIncomingId,
+            paybackLinks: create.paybackLinks
+        )
+    }
+
+    private func expensePaybackInput(_ draft: PaybackLinkDraft) -> ExpensePaybackLinkInputDTO? {
+        guard !draft.isBlank,
+              let incomingId = draft.counterpartyID,
+              let amount = draft.allocatedAmount,
+              amount.isFinite,
+              amount > 0 else {
+            return nil
+        }
+        return ExpensePaybackLinkInputDTO(
+            id: draft.persistedID,
+            incomingId: incomingId,
+            allocatedAmount: amount,
+            notes: draft.notes
+        )
+    }
+
+    private func incomingPaybackInput(_ draft: PaybackLinkDraft) -> IncomingPaybackLinkInputDTO? {
+        guard !draft.isBlank,
+              let expenseId = draft.counterpartyID,
+              let amount = draft.allocatedAmount,
+              amount.isFinite,
+              amount > 0 else {
+            return nil
+        }
+        return IncomingPaybackLinkInputDTO(
+            id: draft.persistedID,
+            expenseId: expenseId,
+            allocatedAmount: amount,
+            notes: draft.notes
+        )
+    }
+
+    private func paybackViewData(from links: [PaybackLinkSummary]) -> [PaybackLinkViewData] {
+        links.map {
+            PaybackLinkViewData(
+                id: $0.id,
+                counterpartyID: $0.counterpartyID,
+                counterpartyTitle: $0.counterpartyTitle,
+                allocatedAmount: $0.allocatedAmount,
+                notes: $0.notes
+            )
+        }
+    }
+
+    private func paybackDrafts(from links: [PaybackLinkSummary]) -> [PaybackLinkDraft] {
+        links.map(PaybackLinkDraft.init(summary:))
     }
 
     private static func normalizedAccountFilterValues(_ values: Set<String>) -> Set<String> {

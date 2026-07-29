@@ -30,22 +30,6 @@ struct IncomingsFeatureView: View {
     }
 }
 
-enum PaybackTarget {
-    case expense(String)
-    case incoming(String)
-}
-
-private struct PaybackLinksSheetTarget: Identifiable {
-    let target: PaybackTarget
-
-    var id: String {
-        switch target {
-        case .expense(let id): return "expense-\(id)"
-        case .incoming(let id): return "incoming-\(id)"
-        }
-    }
-}
-
 private struct ScrollStableDisclosureGroup<Label: View, Content: View>: View {
     @State private var isExpanded = false
 
@@ -101,7 +85,6 @@ private struct LedgerScreen: View {
     @State private var editingID: LedgerRowID?
     @State private var deleteID: String?
     @State private var selectedPartnerAnchorID: LedgerRowID?
-    @State private var selectedPaybackLinksTarget: PaybackLinksSheetTarget?
     @State private var showAppliedThisMonthPaidDifferent = false
     @State private var showPaidThisMonthAppliedDifferent = false
     @State private var showNetZero = false
@@ -235,23 +218,20 @@ private struct LedgerScreen: View {
         }
         .sheet(isPresented: $showCreate) {
             if viewModel.kind == .expense {
-                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil), mode: .create)
+                ExpenseEditorSheet(viewModel: viewModel, initialDraft: ExpenseEditorDraft(id: nil, expense: "", account: "", category: "", subcategory: nil, amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), paidTo: "", notes: nil, comments: nil, expenseId: UUID().uuidString, baseExpenseId: nil, baseExpenseLabel: nil, subExpenseId: nil, paybackLinks: []), mode: .create)
             } else {
-                IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil), mode: .create)
+                IncomingEditorSheet(viewModel: viewModel, initialDraft: IncomingEditorDraft(id: nil, incoming: "", paidBy: "", incomeType: "", incomeSubtype: nil, account: "", amount: 0, effectiveAmount: 0, effectiveAmountMode: .auto, monthYears: LedgerScopeLogic.targetMonths(startDate: Date(), endDate: Date()), date: Date(), notes: nil, comments: nil, incomingId: UUID().uuidString, baseIncomingId: nil, subIncomingId: nil, paybackLinks: []), mode: .create)
             }
         }
         .sheet(item: $editingID) { selected in
-            if viewModel.kind == .expense, let draft = viewModel.expenseDraft(id: selected.id) {
-                ExpenseEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
-            } else if viewModel.kind == .incoming, let draft = viewModel.incomingDraft(id: selected.id) {
-                IncomingEditorSheet(viewModel: viewModel, initialDraft: draft, mode: .edit)
+            if viewModel.kind == .expense, let drafts = viewModel.expenseDrafts(id: selected.id) {
+                ExpenseEditorSheet(viewModel: viewModel, initialDrafts: drafts, selectedID: selected.id, mode: .edit)
+            } else if viewModel.kind == .incoming, let drafts = viewModel.incomingDrafts(id: selected.id) {
+                IncomingEditorSheet(viewModel: viewModel, initialDrafts: drafts, selectedID: selected.id, mode: .edit)
             }
         }
         .sheet(item: $selectedPartnerAnchorID) { anchor in
             PartnerPickerSheet(anchorID: anchor.id, viewModel: viewModel)
-        }
-        .sheet(item: $selectedPaybackLinksTarget) { selection in
-            PaybackLinksManagerView(target: selection.target, viewModel: viewModel)
         }
         .alert("Delete item?", isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
             Button("Delete", role: .destructive) {
@@ -429,6 +409,11 @@ private struct LedgerScreen: View {
             }
             .font(.footnote)
 
+            if !row.paybackLinks.isEmpty {
+                paybackRows(row.paybackLinks)
+                    .accessibilityIdentifier("ledger_paybacks_\(row.id)")
+            }
+
             ForEach(row.details, id: \.self) { detail in
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
             }
@@ -485,6 +470,27 @@ private struct LedgerScreen: View {
                 Text(row.dateLine).font(.footnote).foregroundStyle(.secondary)
             }
         }
+        .accessibilityIdentifier("ledger_disclosure_\(row.id)")
+    }
+
+    private func paybackRows(_ links: [PaybackLinkViewData]) -> some View {
+        Grid(alignment: .leading, horizontalSpacing: 6, verticalSpacing: 3) {
+            ForEach(Array(links.enumerated()), id: \.element.id) { index, link in
+                GridRow {
+                    Text(index == 0 ? "Payback:" : "")
+                    Text(link.counterpartyTitle)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(viewModel.money(link.allocatedAmount))
+                        .monospacedDigit()
+                        .frame(alignment: .trailing)
+                }
+            }
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private func accountCounterpartyRow(_ row: LedgerItemViewData) -> some View {

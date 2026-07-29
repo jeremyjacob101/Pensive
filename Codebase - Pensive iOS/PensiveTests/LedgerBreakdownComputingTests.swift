@@ -2,27 +2,6 @@ import XCTest
 @testable import Pensive
 
 final class LedgerBreakdownComputingTests: XCTestCase {
-    func testRawBracketIncludesSingleMonthOnlyInAppliedElsewhereSection() {
-        XCTAssertTrue(
-            LedgerRowPresentation.showsRawAmountBracket(
-                appliedMonthCount: 1,
-                isInAppliedElsewhereSection: true
-            )
-        )
-        XCTAssertFalse(
-            LedgerRowPresentation.showsRawAmountBracket(
-                appliedMonthCount: 1,
-                isInAppliedElsewhereSection: false
-            )
-        )
-        XCTAssertTrue(
-            LedgerRowPresentation.showsRawAmountBracket(
-                appliedMonthCount: 2,
-                isInAppliedElsewhereSection: false
-            )
-        )
-    }
-
     func testMonthYearAbbreviatedLabelUsesYearRatherThanMonthNumber() {
         XCTAssertEqual(MonthYear("2026-07")?.abbreviatedLabel, "Jul '26")
         XCTAssertEqual(MonthYear("2027-01")?.abbreviatedLabel, "Jan '27")

@@ -227,6 +227,100 @@ struct FormFieldRow<Content: View>: View {
     }
 }
 
+private struct PaybackLinksSection: View {
+    @Binding var links: [PaybackLinkDraft]
+    let candidates: [PaybackCandidate]
+    let isLoadingCandidates: Bool
+    let candidateError: String?
+
+    var body: some View {
+        Section {
+            ForEach($links) { $link in
+                HStack(spacing: 8) {
+                    Menu {
+                        let available = availableCandidates(for: link)
+                        if available.isEmpty {
+                            Text(isLoadingCandidates ? "Loading…" : "No items available")
+                        } else {
+                            ForEach(available) { candidate in
+                                Button(candidate.title) {
+                                    link.counterpartyID = candidate.id
+                                    link.counterpartyTitle = candidate.title
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(link.counterpartyTitle ?? "Payback Name")
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .foregroundStyle(
+                                    link.counterpartyID == nil
+                                        ? Color.secondary
+                                        : Color.primary
+                                )
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isLoadingCandidates && candidates.isEmpty)
+                    .accessibilityLabel("Payback name")
+                    .accessibilityIdentifier("payback_name_\(link.id.uuidString)")
+
+                    TextField("Amount", text: $link.amountText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 82)
+                        .accessibilityLabel("Payback amount")
+                        .accessibilityIdentifier("payback_amount_\(link.id.uuidString)")
+
+                    Button(role: .destructive) {
+                        links.removeAll { $0.id == link.id }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove payback link")
+                }
+            }
+        } header: {
+            HStack {
+                Text("Payback Links")
+                Spacer()
+                Button {
+                    links.append(.blank)
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add payback link")
+                .accessibilityIdentifier("payback_add")
+            }
+        } footer: {
+            if let candidateError {
+                Text(candidateError)
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func availableCandidates(for link: PaybackLinkDraft) -> [PaybackCandidate] {
+        let selectedElsewhere = Set(
+            links
+                .filter { $0.id != link.id }
+                .compactMap(\.counterpartyID)
+        )
+        return candidates.filter {
+            $0.id == link.counterpartyID || !selectedElsewhere.contains($0.id)
+        }
+    }
+}
+
 private struct BulkGroupSection: View {
     let entryCount: Int
     @Binding var selectedIndex: Int
@@ -236,11 +330,13 @@ private struct BulkGroupSection: View {
     let onToggleSingle: (Int) -> Void
 
     private var bulkIndices: [Int] {
-        (0..<entryCount).filter { !singledOutIndices.contains($0) }
+        guard entryCount > 1 else { return [] }
+        return (0..<entryCount).filter { !singledOutIndices.contains($0) }
     }
 
     private var singleIndices: [Int] {
-        (0..<entryCount).filter { singledOutIndices.contains($0) }
+        guard entryCount > 1 else { return [] }
+        return (0..<entryCount).filter { singledOutIndices.contains($0) }
     }
 
     var body: some View {
@@ -316,11 +412,21 @@ struct ExpenseEditorSheet: View {
     @State private var singledOutIndices: Set<Int> = []
     @State private var isSaving = false
     @State private var saveError: String?
+    @State private var paybackCandidates: [PaybackCandidate] = []
+    @State private var isLoadingPaybackCandidates = false
+    @State private var paybackCandidateError: String?
     let mode: EditorMode
 
     init(viewModel: LedgerFeatureViewModel, initialDraft: ExpenseEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
         _drafts = State(initialValue: [initialDraft])
+        self.mode = mode
+    }
+
+    init(viewModel: LedgerFeatureViewModel, initialDrafts: [ExpenseEditorDraft], selectedID: String, mode: EditorMode) {
+        self.viewModel = viewModel
+        _drafts = State(initialValue: initialDrafts)
+        _selectedIndex = State(initialValue: initialDrafts.firstIndex { $0.id == selectedID } ?? 0)
         self.mode = mode
     }
 
@@ -387,6 +493,13 @@ struct ExpenseEditorSheet: View {
                     updateCurrent { $0.comments = value.isEmpty ? nil : value }
                 }))
 
+                PaybackLinksSection(
+                    links: binding(\.paybackLinks),
+                    candidates: paybackCandidates,
+                    isLoadingCandidates: isLoadingPaybackCandidates,
+                    candidateError: paybackCandidateError
+                )
+
                 BulkGroupSection(
                     entryCount: drafts.count,
                     selectedIndex: $selectedIndex,
@@ -427,6 +540,7 @@ struct ExpenseEditorSheet: View {
             }
             .interactiveDismissDisabled(isSaving)
         }
+        .task { await loadPaybackCandidates() }
         .alert("Couldn't save expense", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
             Button("OK", role: .cancel) { saveError = nil }
         } message: {
@@ -444,6 +558,11 @@ struct ExpenseEditorSheet: View {
     }
 
     private func save() async {
+        if let message = paybackValidationMessage {
+            saveError = message
+            return
+        }
+
         isSaving = true
         defer { isSaving = false }
         let didSave: Bool
@@ -452,41 +571,46 @@ struct ExpenseEditorSheet: View {
         let bulkIndices = Set(0..<drafts.count).subtracting(singledOutIndices).sorted()
 
         if bulkIndices.isEmpty && singleIndices.count == 1 {
-            didSave = mode == .create
-                ? await viewModel.createExpense(drafts[singleIndices[0]])
-                : await viewModel.updateExpense(drafts[singleIndices[0]])
+            didSave = await persist(drafts[singleIndices[0]])
         } else if singleIndices.isEmpty && bulkIndices.count == 1 {
-            didSave = mode == .create
-                ? await viewModel.createExpense(drafts[bulkIndices[0]])
-                : await viewModel.updateExpense(drafts[bulkIndices[0]])
+            didSave = await persist(drafts[bulkIndices[0]])
         } else {
             var success = true
 
             for i in singleIndices {
-                success = mode == .create
-                    ? await viewModel.createExpense(drafts[i])
-                    : await viewModel.updateExpense(drafts[i])
+                success = await persist(drafts[i])
                 if !success { break }
             }
 
             if success, !bulkIndices.isEmpty {
                 let bulkDrafts = bulkIndices.map { drafts[$0] }
                 if bulkDrafts.count == 1 {
-                    success = mode == .create
-                        ? await viewModel.createExpense(bulkDrafts[0])
-                        : await viewModel.updateExpense(bulkDrafts[0])
+                    success = await persist(bulkDrafts[0])
                 } else {
-                    let baseExpenseId = UUID().uuidString
-                    let groupLabel = bulkDrafts[0].expense
+                    let baseExpenseId = bulkDrafts
+                        .compactMap(\.baseExpenseId)
+                        .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        ?? UUID().uuidString
+                    let groupLabel = bulkDrafts
+                        .compactMap(\.baseExpenseLabel)
+                        .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        ?? bulkDrafts[0].expense
                     let rows = bulkDrafts.map { draft -> ExpenseEditorDraft in
                         var next = draft
                         next.baseExpenseId = baseExpenseId
                         next.baseExpenseLabel = groupLabel
-                        next.subExpenseId = UUID().uuidString
+                        next.subExpenseId = next.subExpenseId ?? UUID().uuidString
                         if next.expenseId.isEmpty { next.expenseId = UUID().uuidString }
                         return next
                     }
-                    success = await viewModel.bulkCreateExpenses(rows)
+                    if rows.allSatisfy({ $0.id == nil }) {
+                        success = await viewModel.bulkCreateExpenses(rows)
+                    } else {
+                        for row in rows {
+                            success = await persist(row)
+                            if !success { break }
+                        }
+                    }
                 }
             }
 
@@ -501,6 +625,13 @@ struct ExpenseEditorSheet: View {
         }
     }
 
+    private func persist(_ draft: ExpenseEditorDraft) async -> Bool {
+        if draft.id == nil {
+            return await viewModel.createExpense(draft)
+        }
+        return await viewModel.updateExpense(draft)
+    }
+
     private func binding<Value>(_ keyPath: WritableKeyPath<ExpenseEditorDraft, Value>) -> Binding<Value> {
         Binding(get: { drafts[selectedIndex][keyPath: keyPath] }, set: { value in
             drafts[selectedIndex][keyPath: keyPath] = value
@@ -511,6 +642,43 @@ struct ExpenseEditorSheet: View {
         var next = drafts[selectedIndex]
         mutate(&next)
         drafts[selectedIndex] = next
+    }
+
+    private var paybackValidationMessage: String? {
+        for (index, draft) in drafts.enumerated() {
+            if let message = PaybackLinkDraftValidation.message(for: draft.paybackLinks) {
+                return drafts.count == 1 ? message : "Entry \(index + 1): \(message)"
+            }
+        }
+        return nil
+    }
+
+    private func loadPaybackCandidates() async {
+        guard paybackCandidates.isEmpty, !isLoadingPaybackCandidates else { return }
+        isLoadingPaybackCandidates = true
+        defer { isLoadingPaybackCandidates = false }
+
+        do {
+            let loaded = try await viewModel.paybackCandidates()
+            var seenIDs: Set<String> = []
+            var merged: [PaybackCandidate] = []
+
+            for link in drafts.flatMap(\.paybackLinks) {
+                guard let id = link.counterpartyID,
+                      let title = link.counterpartyTitle,
+                      seenIDs.insert(id).inserted else {
+                    continue
+                }
+                merged.append(.init(id: id, title: title))
+            }
+            merged.append(contentsOf: loaded.filter { seenIDs.insert($0.id).inserted })
+            paybackCandidates = merged
+            paybackCandidateError = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            paybackCandidateError = "Couldn't load payback names. Check your connection and try again."
+        }
     }
 
     private func newExpenseDraft(template: ExpenseEditorDraft) -> ExpenseEditorDraft {
@@ -531,7 +699,8 @@ struct ExpenseEditorSheet: View {
             expenseId: UUID().uuidString,
             baseExpenseId: nil,
             baseExpenseLabel: nil,
-            subExpenseId: nil
+            subExpenseId: nil,
+            paybackLinks: []
         )
     }
 }
@@ -544,11 +713,21 @@ struct IncomingEditorSheet: View {
     @State private var singledOutIndices: Set<Int> = []
     @State private var isSaving = false
     @State private var saveError: String?
+    @State private var paybackCandidates: [PaybackCandidate] = []
+    @State private var isLoadingPaybackCandidates = false
+    @State private var paybackCandidateError: String?
     let mode: EditorMode
 
     init(viewModel: LedgerFeatureViewModel, initialDraft: IncomingEditorDraft, mode: EditorMode) {
         self.viewModel = viewModel
         _drafts = State(initialValue: [initialDraft])
+        self.mode = mode
+    }
+
+    init(viewModel: LedgerFeatureViewModel, initialDrafts: [IncomingEditorDraft], selectedID: String, mode: EditorMode) {
+        self.viewModel = viewModel
+        _drafts = State(initialValue: initialDrafts)
+        _selectedIndex = State(initialValue: initialDrafts.firstIndex { $0.id == selectedID } ?? 0)
         self.mode = mode
     }
 
@@ -615,6 +794,13 @@ struct IncomingEditorSheet: View {
                     updateCurrent { $0.comments = value.isEmpty ? nil : value }
                 }))
 
+                PaybackLinksSection(
+                    links: binding(\.paybackLinks),
+                    candidates: paybackCandidates,
+                    isLoadingCandidates: isLoadingPaybackCandidates,
+                    candidateError: paybackCandidateError
+                )
+
                 BulkGroupSection(
                     entryCount: drafts.count,
                     selectedIndex: $selectedIndex,
@@ -654,6 +840,7 @@ struct IncomingEditorSheet: View {
             }
             .interactiveDismissDisabled(isSaving)
         }
+        .task { await loadPaybackCandidates() }
         .alert("Couldn't save incoming", isPresented: Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })) {
             Button("OK", role: .cancel) { saveError = nil }
         } message: {
@@ -671,6 +858,11 @@ struct IncomingEditorSheet: View {
     }
 
     private func save() async {
+        if let message = paybackValidationMessage {
+            saveError = message
+            return
+        }
+
         isSaving = true
         defer { isSaving = false }
         let didSave: Bool
@@ -679,39 +871,41 @@ struct IncomingEditorSheet: View {
         let bulkIndices = Set(0..<drafts.count).subtracting(singledOutIndices).sorted()
 
         if bulkIndices.isEmpty && singleIndices.count == 1 {
-            didSave = mode == .create
-                ? await viewModel.createIncoming(drafts[singleIndices[0]])
-                : await viewModel.updateIncoming(drafts[singleIndices[0]])
+            didSave = await persist(drafts[singleIndices[0]])
         } else if singleIndices.isEmpty && bulkIndices.count == 1 {
-            didSave = mode == .create
-                ? await viewModel.createIncoming(drafts[bulkIndices[0]])
-                : await viewModel.updateIncoming(drafts[bulkIndices[0]])
+            didSave = await persist(drafts[bulkIndices[0]])
         } else {
             var success = true
 
             for i in singleIndices {
-                success = mode == .create
-                    ? await viewModel.createIncoming(drafts[i])
-                    : await viewModel.updateIncoming(drafts[i])
+                success = await persist(drafts[i])
                 if !success { break }
             }
 
             if success, !bulkIndices.isEmpty {
                 let bulkDrafts = bulkIndices.map { drafts[$0] }
                 if bulkDrafts.count == 1 {
-                    success = mode == .create
-                        ? await viewModel.createIncoming(bulkDrafts[0])
-                        : await viewModel.updateIncoming(bulkDrafts[0])
+                    success = await persist(bulkDrafts[0])
                 } else {
-                    let baseIncomingId = UUID().uuidString
+                    let baseIncomingId = bulkDrafts
+                        .compactMap(\.baseIncomingId)
+                        .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                        ?? UUID().uuidString
                     let rows = bulkDrafts.map { draft -> IncomingEditorDraft in
                         var next = draft
                         next.baseIncomingId = baseIncomingId
-                        next.subIncomingId = UUID().uuidString
+                        next.subIncomingId = next.subIncomingId ?? UUID().uuidString
                         if next.incomingId.isEmpty { next.incomingId = UUID().uuidString }
                         return next
                     }
-                    success = await viewModel.bulkCreateIncomings(rows)
+                    if rows.allSatisfy({ $0.id == nil }) {
+                        success = await viewModel.bulkCreateIncomings(rows)
+                    } else {
+                        for row in rows {
+                            success = await persist(row)
+                            if !success { break }
+                        }
+                    }
                 }
             }
 
@@ -726,6 +920,13 @@ struct IncomingEditorSheet: View {
         }
     }
 
+    private func persist(_ draft: IncomingEditorDraft) async -> Bool {
+        if draft.id == nil {
+            return await viewModel.createIncoming(draft)
+        }
+        return await viewModel.updateIncoming(draft)
+    }
+
     private func binding<Value>(_ keyPath: WritableKeyPath<IncomingEditorDraft, Value>) -> Binding<Value> {
         Binding(get: { drafts[selectedIndex][keyPath: keyPath] }, set: { value in
             drafts[selectedIndex][keyPath: keyPath] = value
@@ -736,6 +937,43 @@ struct IncomingEditorSheet: View {
         var next = drafts[selectedIndex]
         mutate(&next)
         drafts[selectedIndex] = next
+    }
+
+    private var paybackValidationMessage: String? {
+        for (index, draft) in drafts.enumerated() {
+            if let message = PaybackLinkDraftValidation.message(for: draft.paybackLinks) {
+                return drafts.count == 1 ? message : "Entry \(index + 1): \(message)"
+            }
+        }
+        return nil
+    }
+
+    private func loadPaybackCandidates() async {
+        guard paybackCandidates.isEmpty, !isLoadingPaybackCandidates else { return }
+        isLoadingPaybackCandidates = true
+        defer { isLoadingPaybackCandidates = false }
+
+        do {
+            let loaded = try await viewModel.paybackCandidates()
+            var seenIDs: Set<String> = []
+            var merged: [PaybackCandidate] = []
+
+            for link in drafts.flatMap(\.paybackLinks) {
+                guard let id = link.counterpartyID,
+                      let title = link.counterpartyTitle,
+                      seenIDs.insert(id).inserted else {
+                    continue
+                }
+                merged.append(.init(id: id, title: title))
+            }
+            merged.append(contentsOf: loaded.filter { seenIDs.insert($0.id).inserted })
+            paybackCandidates = merged
+            paybackCandidateError = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            paybackCandidateError = "Couldn't load payback names. Check your connection and try again."
+        }
     }
 
     private func newIncomingDraft(template: IncomingEditorDraft) -> IncomingEditorDraft {
@@ -755,7 +993,8 @@ struct IncomingEditorSheet: View {
             comments: template.comments,
             incomingId: UUID().uuidString,
             baseIncomingId: nil,
-            subIncomingId: nil
+            subIncomingId: nil,
+            paybackLinks: []
         )
     }
 }
@@ -774,87 +1013,6 @@ struct PartnerPickerSheet: View {
                 }
             }
             .navigationTitle("Select Partner")
-        }
-    }
-}
-
-struct PaybackLinksManagerView: View {
-    @Environment(\.dismiss) private var dismiss
-    let target: PaybackTarget
-    @ObservedObject var viewModel: LedgerFeatureViewModel
-
-    @State private var rows: [PaybackLinkViewData] = []
-    @State private var candidates: [(id: String, title: String)] = []
-    @State private var selectedCandidate: String = ""
-    @State private var amount: String = ""
-    @State private var notes: String = ""
-    @State private var loading = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Create link") {
-                    Picker("Counterparty", selection: $selectedCandidate) {
-                        ForEach(candidates, id: \.id) { item in
-                            Text(item.title).tag(item.id)
-                        }
-                    }
-                    TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
-                    TextField("Notes", text: $notes)
-                    Button("Create") {
-                        guard let parsed = Double(amount), !selectedCandidate.isEmpty else { return }
-                        Task {
-                            try? await viewModel.createPaybackLink(target: target, otherId: selectedCandidate, amount: parsed, notes: notes.isEmpty ? nil : notes)
-                            await load()
-                        }
-                    }
-                }
-
-                Section("Links") {
-                    ForEach(rows) { row in
-                        VStack(alignment: .leading) {
-                            Text(row.counterpartyTitle)
-                            Text("Allocated: \(row.allocatedAmount)")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            if let notes = row.notes, !notes.isEmpty {
-                                Text(notes).font(.footnote)
-                            }
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                Task {
-                                    try? await viewModel.removePaybackLink(id: row.id)
-                                    await load()
-                                }
-                            } label: { Text("Delete") }
-                        }
-                    }
-                }
-            }
-            .scrollDismissesKeyboard(.interactively)
-            .overlay { if loading { ProgressView() } }
-            .navigationTitle("Payback Links")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        loading = true
-        defer { loading = false }
-        do {
-            rows = try await viewModel.loadPaybackLinks(for: target)
-            candidates = try await viewModel.paybackCandidates(for: target)
-            if selectedCandidate.isEmpty { selectedCandidate = candidates.first?.id ?? "" }
-        } catch {
-            rows = []
-            candidates = []
         }
     }
 }

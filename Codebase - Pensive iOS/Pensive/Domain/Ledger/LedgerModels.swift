@@ -42,6 +42,14 @@ struct DateScope: Equatable {
     }
 }
 
+struct PaybackLinkSummary: Identifiable, Equatable {
+    let id: String
+    let counterpartyID: String
+    let counterpartyTitle: String
+    let allocatedAmount: Double
+    let notes: String?
+}
+
 struct Expense: Identifiable, Equatable {
     let id: String
     let name: String
@@ -60,6 +68,7 @@ struct Expense: Identifiable, Equatable {
     let baseExpenseId: String?
     let baseExpenseLabel: String?
     let subExpenseId: String?
+    let paybackLinks: [PaybackLinkSummary]
 
     var isGrouped: Bool { baseExpenseId != nil || subExpenseId != nil }
 }
@@ -81,8 +90,45 @@ struct Incoming: Identifiable, Equatable {
     let incomingId: String
     let baseIncomingId: String?
     let subIncomingId: String?
+    let paybackLinks: [PaybackLinkSummary]
 
     var isGrouped: Bool { baseIncomingId != nil || subIncomingId != nil }
+}
+
+extension Expense {
+    init(
+        id: String, name: String, account: String, category: String, subcategory: String?,
+        amount: Double, effectiveAmount: Double, effectiveAmountMode: EffectiveAmountMode,
+        monthYears: [MonthYear], date: Date, paidTo: String, notes: String?, comments: String?,
+        expenseId: String, baseExpenseId: String?, baseExpenseLabel: String?, subExpenseId: String?
+    ) {
+        self.init(
+            id: id, name: name, account: account, category: category, subcategory: subcategory,
+            amount: amount, effectiveAmount: effectiveAmount, effectiveAmountMode: effectiveAmountMode,
+            monthYears: monthYears, date: date, paidTo: paidTo, notes: notes, comments: comments,
+            expenseId: expenseId, baseExpenseId: baseExpenseId,
+            baseExpenseLabel: baseExpenseLabel, subExpenseId: subExpenseId, paybackLinks: []
+        )
+    }
+}
+
+extension Incoming {
+    init(
+        id: String, name: String, paidBy: String, incomeType: String, incomeSubtype: String?,
+        account: String, amount: Double, effectiveAmount: Double,
+        effectiveAmountMode: EffectiveAmountMode, monthYears: [MonthYear], date: Date,
+        notes: String?, comments: String?, incomingId: String,
+        baseIncomingId: String?, subIncomingId: String?
+    ) {
+        self.init(
+            id: id, name: name, paidBy: paidBy, incomeType: incomeType,
+            incomeSubtype: incomeSubtype, account: account, amount: amount,
+            effectiveAmount: effectiveAmount, effectiveAmountMode: effectiveAmountMode,
+            monthYears: monthYears, date: date, notes: notes, comments: comments,
+            incomingId: incomingId, baseIncomingId: baseIncomingId,
+            subIncomingId: subIncomingId, paybackLinks: []
+        )
+    }
 }
 
 enum LedgerScopeLogic {
@@ -240,6 +286,15 @@ extension Expense {
         baseExpenseId = dto.baseExpenseId
         baseExpenseLabel = dto.baseExpenseLabel
         subExpenseId = dto.subExpenseId
+        paybackLinks = (dto.paybackLinks ?? []).map {
+            PaybackLinkSummary(
+                id: $0.id,
+                counterpartyID: $0.counterpartyId,
+                counterpartyTitle: $0.counterpartyTitle,
+                allocatedAmount: $0.allocatedAmount,
+                notes: $0.notes
+            )
+        }
     }
 }
 
@@ -261,5 +316,14 @@ extension Incoming {
         incomingId = dto.incomingId
         baseIncomingId = dto.baseIncomingId
         subIncomingId = dto.subIncomingId
+        paybackLinks = (dto.paybackLinks ?? []).map {
+            PaybackLinkSummary(
+                id: $0.id,
+                counterpartyID: $0.counterpartyId,
+                counterpartyTitle: $0.counterpartyTitle,
+                allocatedAmount: $0.allocatedAmount,
+                notes: $0.notes
+            )
+        }
     }
 }

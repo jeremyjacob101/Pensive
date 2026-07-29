@@ -219,6 +219,7 @@ struct ExpenseDTO: Codable {
     let baseExpenseId: String?
     let baseExpenseLabel: String?
     let subExpenseId: String?
+    let paybackLinks: [PaybackLinkSummaryDTO]?
 }
 
 struct IncomingDTO: Codable {
@@ -239,6 +240,29 @@ struct IncomingDTO: Codable {
     let incomingId: String
     let baseIncomingId: String?
     let subIncomingId: String?
+    let paybackLinks: [PaybackLinkSummaryDTO]?
+}
+
+struct PaybackLinkSummaryDTO: Codable {
+    let id: String
+    let counterpartyId: String
+    let counterpartyTitle: String
+    let allocatedAmount: Double
+    let notes: String?
+}
+
+struct ExpensePaybackLinkInputDTO: Codable {
+    let id: String?
+    let incomingId: String
+    let allocatedAmount: Double
+    let notes: String?
+}
+
+struct IncomingPaybackLinkInputDTO: Codable {
+    let id: String?
+    let expenseId: String
+    let allocatedAmount: Double
+    let notes: String?
 }
 
 struct ExpenseMutationDTO: Codable {
@@ -258,6 +282,7 @@ struct ExpenseMutationDTO: Codable {
     let baseExpenseId: String?
     let baseExpenseLabel: String?
     let subExpenseId: String?
+    let paybackLinks: [ExpensePaybackLinkInputDTO]?
 }
 
 struct ExpenseUpdateDTO: Codable {
@@ -278,6 +303,7 @@ struct ExpenseUpdateDTO: Codable {
     let baseExpenseId: String?
     let baseExpenseLabel: String?
     let subExpenseId: String?
+    let paybackLinks: [ExpensePaybackLinkInputDTO]?
 }
 
 struct IncomingMutationDTO: Codable {
@@ -296,6 +322,7 @@ struct IncomingMutationDTO: Codable {
     let incomingId: String
     let baseIncomingId: String?
     let subIncomingId: String?
+    let paybackLinks: [IncomingPaybackLinkInputDTO]?
 }
 
 struct IncomingUpdateDTO: Codable {
@@ -315,6 +342,7 @@ struct IncomingUpdateDTO: Codable {
     let incomingId: String
     let baseIncomingId: String?
     let subIncomingId: String?
+    let paybackLinks: [IncomingPaybackLinkInputDTO]?
 }
 
 struct ExpenseBulkPatchRequest: Codable { let ids: [String]; let patch: ExpensePatchDTO }

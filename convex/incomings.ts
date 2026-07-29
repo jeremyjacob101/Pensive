@@ -1,4 +1,4 @@
-import { deletePaybackLinksForIncoming, normalizeEffectiveAmountFields, recomputeIncomingEffectiveAmount, type EffectiveAmountMode } from "./paybackHelpers";
+import { deletePaybackLinksForIncoming, normalizeEffectiveAmountFields, recomputeIncomingEffectiveAmount, syncIncomingPaybackLinks, type EffectiveAmountMode } from "./paybackHelpers";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { normalizeMonthYearsInput } from "./monthYears";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -70,6 +70,13 @@ const effectiveAmountModeValidator = v.union(
   v.literal("auto"),
   v.literal("manual"),
 );
+
+const incomingPaybackLinkInputValidator = v.object({
+  id: v.optional(v.id("paybackLinks")),
+  expenseId: v.id("expenses"),
+  allocatedAmount: v.number(),
+  notes: v.optional(v.string()),
+});
 
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
   const userId = await getAuthUserId(ctx);
@@ -234,7 +241,59 @@ export const listByDateScope = query({
       if (a.date === b.date) return b._creationTime - a._creationTime;
       return b.date.localeCompare(a.date);
     });
-    return rows;
+    if (rows.length === 0) return rows;
+
+    const visibleIncomingIds = new Set(rows.map((row) => row._id));
+    const relevantLinks = (
+      await ctx.db
+        .query("paybackLinks")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .collect()
+    ).filter((link) => visibleIncomingIds.has(link.incomingId));
+    const expenseIds = [
+      ...new Set(relevantLinks.map((link) => link.expenseId)),
+    ];
+    const expenseRows = await Promise.all(
+      expenseIds.map((expenseId) => ctx.db.get(expenseId)),
+    );
+    const expenseById = new Map(
+      expenseRows
+        .filter((expense) => expense?.userId === userId)
+        .map((expense) => [expense!._id, expense!]),
+    );
+    const linksByIncomingId = new Map<
+      Id<"incomings">,
+      Array<{
+        id: Id<"paybackLinks">;
+        counterpartyId: Id<"expenses">;
+        counterpartyTitle: string;
+        allocatedAmount: number;
+        notes?: string;
+        createdAt: number;
+      }>
+    >();
+
+    for (const link of relevantLinks) {
+      const expense = expenseById.get(link.expenseId);
+      if (!expense) continue;
+      const summaries = linksByIncomingId.get(link.incomingId) ?? [];
+      summaries.push({
+        id: link._id,
+        counterpartyId: link.expenseId,
+        counterpartyTitle: expense.expense,
+        allocatedAmount: link.allocatedAmount,
+        notes: link.notes,
+        createdAt: link.createdAt,
+      });
+      linksByIncomingId.set(link.incomingId, summaries);
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      paybackLinks: (linksByIncomingId.get(row._id) ?? [])
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map(({ createdAt: _, ...link }) => link),
+    }));
   },
 });
 
@@ -297,15 +356,16 @@ export const create = mutation({
     incomingId: v.string(),
     baseIncomingId: v.optional(v.string()),
     subIncomingId: v.optional(v.string()),
+    paybackLinks: v.optional(v.array(incomingPaybackLinkInputValidator)),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { paybackLinks, ...args }) => {
     const userId = await requireUserId(ctx);
     const incomingId = args.incomingId.trim() || randomId16();
     const shared = normalizeSharedFields(args);
     const monthYears = normalizeMonthYearsInput(args.monthYears, args.date);
     const effective = normalizeEffectiveAmountFields({ ...args, monthYears });
 
-    return await ctx.db.insert("incomings", {
+    const id = await ctx.db.insert("incomings", {
       ...args,
       ...shared,
       ...effective,
@@ -314,6 +374,10 @@ export const create = mutation({
       userId,
       date: normalizeDate(args.date),
     });
+    if (paybackLinks) {
+      await syncIncomingPaybackLinks(ctx, userId, id, paybackLinks);
+    }
+    return id;
   },
 });
 
@@ -336,26 +400,37 @@ export const bulkCreate = mutation({
         incomingId: v.string(),
         baseIncomingId: v.optional(v.string()),
         subIncomingId: v.optional(v.string()),
+        paybackLinks: v.optional(v.array(incomingPaybackLinkInputValidator)),
       }),
     ),
   },
   handler: async (ctx, { rows }) => {
     const userId = await requireUserId(ctx);
     for (const row of rows) {
-      const incomingId = row.incomingId.trim() || randomId16();
-      const shared = normalizeSharedFields(row);
-      const monthYears = normalizeMonthYearsInput(row.monthYears, row.date);
-      const effective = normalizeEffectiveAmountFields({ ...row, monthYears });
+      const { paybackLinks, ...incomingRow } = row;
+      const incomingId = incomingRow.incomingId.trim() || randomId16();
+      const shared = normalizeSharedFields(incomingRow);
+      const monthYears = normalizeMonthYearsInput(
+        incomingRow.monthYears,
+        incomingRow.date,
+      );
+      const effective = normalizeEffectiveAmountFields({
+        ...incomingRow,
+        monthYears,
+      });
 
-      await ctx.db.insert("incomings", {
-        ...row,
+      const id = await ctx.db.insert("incomings", {
+        ...incomingRow,
         ...shared,
         ...effective,
         monthYears,
         incomingId,
         userId,
-        date: normalizeDate(row.date),
+        date: normalizeDate(incomingRow.date),
       });
+      if (paybackLinks) {
+        await syncIncomingPaybackLinks(ctx, userId, id, paybackLinks);
+      }
     }
     return { inserted: rows.length };
   },
@@ -396,10 +471,11 @@ export const update = mutation({
     incomingId: v.string(),
     baseIncomingId: v.optional(v.string()),
     subIncomingId: v.optional(v.string()),
+    paybackLinks: v.optional(v.array(incomingPaybackLinkInputValidator)),
   },
   handler: async (
     ctx,
-    { id, effectiveAmount, effectiveAmountMode, ...rest },
+    { id, effectiveAmount, effectiveAmountMode, paybackLinks, ...rest },
   ) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
@@ -430,7 +506,9 @@ export const update = mutation({
       incomingId,
       date: normalizeDate(rest.date),
     });
-    if (nextEffectiveAmountMode === "auto") {
+    if (paybackLinks) {
+      await syncIncomingPaybackLinks(ctx, userId, id, paybackLinks);
+    } else if (nextEffectiveAmountMode === "auto") {
       await recomputeIncomingEffectiveAmount(ctx, userId, id);
     }
     return id;
