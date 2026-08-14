@@ -4,6 +4,6 @@ APP_ENV_NAME = Debug
 LOG_LEVEL = debug
 // Default Debug to the active shared dev deployment so local Run works out-of-the-box.
 // Override in Local.xcconfig if needed per-developer.
-CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)marvelous-fish-603.convex.cloud
-CONVEX_HTTP_ACTION_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)marvelous-fish-603.convex.site
+CONVEX_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)third-goshawk-681.convex.cloud
+CONVEX_HTTP_ACTION_BASE_URL = $(URL_SCHEME_HTTPS)$(URL_SLASH)$(URL_SLASH)third-goshawk-681.convex.site
 AUTH_CLIENT_ID = pensive-ios-debug
