@@ -8,6 +8,7 @@ on:
 jobs:
   materialize:
     runs-on: ubuntu-latest
+    environment: Production
 
     steps:
       - uses: actions/checkout@v5
@@ -25,7 +26,6 @@ jobs:
       - name: Materialize due recurrings into expenses
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
           RUN_DATE: ${{ steps.date.outputs.run_date }}
         run: |
           npx convex run internal.recurrings.materializeDueExpensesForAllUsers "{\"runDate\":\"$RUN_DATE\"}"
