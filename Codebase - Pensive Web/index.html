@@ -7,6 +7,20 @@
   <link rel="icon" href="/logos/pensive-logo-1.svg" type="image/svg+xml">
   <link rel="alternate icon" href="/favicon.ico">
   <title>Pensive</title>
+  <script>
+    (() => {
+      const convexUrl = "%VITE_CONVEX_URL%";
+      const environment = convexUrl.includes("third-goshawk-681")
+        ? "dev"
+        : convexUrl.includes("mellow-pigeon-433")
+          ? "staging"
+          : "production";
+
+      document.title = environment === "production"
+        ? "Pensive"
+        : `Pensive/${environment}`;
+    })();
+  </script>
 </head>
 
 <body>
