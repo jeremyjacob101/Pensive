@@ -1,5 +1,6 @@
 import { handleAddExpense, handleAddIncoming, handleAddRecurring } from "./actions";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { EnvironmentBanner } from "../components/EnvironmentBanner";
 import { layoutMenuItems, type MenuItemKey } from "../types/ui";
 import { AddEntryPanel } from "../components/AddEntryPanel";
 import { LeftMenuPanel } from "../components/LeftMenuPanel";
@@ -122,6 +123,7 @@ export function AppLayout() {
 
   return (
     <div className={isDark ? "theme-dark" : ""}>
+      <EnvironmentBanner />
       <main className="page">
         <div className="app-shell">
           <LeftMenuPanel
