@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - staging
+      - hotfix
   workflow_dispatch:
 
 permissions:

@@ -23,3 +23,5 @@ The Playwright config rejects production hostnames and refuses to start without 
 Live iOS contract checks are opt-in through `PENSIVE_RUN_LIVE_IOS_CONTRACT=1` and `PENSIVE_IOS_TEST_HTTP_URL`. The script rejects production-looking values before making a request. The normal iOS unit, integration, and UI targets remain deterministic and local.
 
 The four Test Suite jobs are the required PR checks on `main` and `staging`: `Static quality`, `Web and Convex behavior tests`, `Browser E2E (non-production)`, and `iOS unit, integration, and UI tests`. A push to `staging` deploys Convex only from the Test Suite's `Deploy staging` job, which depends on all four jobs succeeding. Coverage and browser reports remain temporary CI artifacts; they are not committed to the repository.
+
+Hotfix pushes run the same four jobs. The hotfix promotion workflow waits for those exact check results on the exact hotfix commit before it can advance `main`.

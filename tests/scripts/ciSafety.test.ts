@@ -8,7 +8,7 @@ async function workflow(name: string) {
 }
 
 describe("CI test safety", () => {
-  it("runs the required test layers for pull requests and staging pushes", async () => {
+  it("runs the required test layers for pull requests and protected branch pushes", async () => {
     const contents = await workflow("test-suite.yml");
     expect(contents).toContain("pull_request:");
     expect(contents).toContain("- main");
@@ -19,6 +19,7 @@ describe("CI test safety", () => {
     expect(contents).toContain("npm run test:e2e");
     expect(contents).toContain("ios-tests:");
     expect(contents).toContain("./scripts/test-ios-stable.sh");
+    expect(contents).toContain("- hotfix");
   });
 
   it("does not hard-code the production deployment into the test workflow", async () => {
@@ -56,5 +57,23 @@ describe("CI test safety", () => {
     expect(contents).not.toContain(
       "gh workflow run deploy-convex-environments.yml",
     );
+  });
+
+  it("requires the exact full Test Suite before hotfix promotion can update main", async () => {
+    const contents = await workflow("promote-hotfix-to-main.yml");
+    expect(contents).toContain("checks: read");
+    expect(contents).toContain(
+      "Require the complete Test Suite for the exact hotfix commit",
+    );
+    for (const check of [
+      "Static quality",
+      "Web and Convex behavior tests",
+      "Browser E2E (non-production)",
+      "iOS unit, integration, and UI tests",
+    ]) {
+      expect(contents).toContain(check);
+    }
+    expect(contents).toContain("max_wait_seconds=1800");
+    expect(contents).toContain("exit 1");
   });
 });
