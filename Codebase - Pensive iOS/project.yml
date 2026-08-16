@@ -39,27 +39,39 @@ targets:
     preBuildScripts: []
     dependencies: []
 
-  PensiveTests:
+  PensiveUnitTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: PensiveTests
+      - path: PensiveUnitTests
     settings:
       base:
-        PRODUCT_NAME: PensiveTests
-        PRODUCT_MODULE_NAME: PensiveTests
+        PRODUCT_NAME: PensiveUnitTests
+        PRODUCT_MODULE_NAME: PensiveUnitTests
     dependencies:
       - target: Pensive
 
-  PensiveUITests:
+  PensiveIntegrationTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PensiveIntegrationTests
+    settings:
+      base:
+        PRODUCT_NAME: PensiveIntegrationTests
+        PRODUCT_MODULE_NAME: PensiveIntegrationTests
+    dependencies:
+      - target: Pensive
+
+  PensiveE2ETests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: PensiveUITests
+      - path: PensiveE2ETests
     settings:
       base:
-        PRODUCT_NAME: PensiveUITests
-        PRODUCT_MODULE_NAME: PensiveUITests
+        PRODUCT_NAME: PensiveE2ETests
+        PRODUCT_MODULE_NAME: PensiveE2ETests
     dependencies:
       - target: Pensive
 
@@ -68,13 +80,15 @@ schemes:
     build:
       targets:
         Pensive: all
-        PensiveTests: [test]
-        PensiveUITests: [test]
+        PensiveUnitTests: [test]
+        PensiveIntegrationTests: [test]
+        PensiveE2ETests: [test]
     test:
       config: Debug
       targets:
-        - name: PensiveTests
-        - name: PensiveUITests
+        - name: PensiveUnitTests
+        - name: PensiveIntegrationTests
+        - name: PensiveE2ETests
     run:
       config: Debug
     archive:

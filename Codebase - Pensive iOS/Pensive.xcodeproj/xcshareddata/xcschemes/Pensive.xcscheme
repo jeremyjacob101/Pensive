@@ -29,9 +29,9 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "623956006B0E9D6271F65626"
-               BuildableName = "PensiveTests.xctest"
-               BlueprintName = "PensiveTests"
+               BlueprintIdentifier = "20F36AE3A98E72FEE24F0561"
+               BuildableName = "PensiveE2ETests.xctest"
+               BlueprintName = "PensiveE2ETests"
                ReferencedContainer = "container:Pensive.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -43,9 +43,23 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "70FD305C9BF26D8DBF4EEC62"
-               BuildableName = "PensiveUITests.xctest"
-               BlueprintName = "PensiveUITests"
+               BlueprintIdentifier = "5D0368D51DE1D1D78A815F42"
+               BuildableName = "PensiveIntegrationTests.xctest"
+               BlueprintName = "PensiveIntegrationTests"
+               ReferencedContainer = "container:Pensive.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "458D95EEDDAB4737346856FA"
+               BuildableName = "PensiveUnitTests.xctest"
+               BlueprintName = "PensiveUnitTests"
                ReferencedContainer = "container:Pensive.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -72,9 +86,9 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "623956006B0E9D6271F65626"
-               BuildableName = "PensiveTests.xctest"
-               BlueprintName = "PensiveTests"
+               BlueprintIdentifier = "458D95EEDDAB4737346856FA"
+               BuildableName = "PensiveUnitTests.xctest"
+               BlueprintName = "PensiveUnitTests"
                ReferencedContainer = "container:Pensive.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -83,9 +97,20 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "70FD305C9BF26D8DBF4EEC62"
-               BuildableName = "PensiveUITests.xctest"
-               BlueprintName = "PensiveUITests"
+               BlueprintIdentifier = "5D0368D51DE1D1D78A815F42"
+               BuildableName = "PensiveIntegrationTests.xctest"
+               BlueprintName = "PensiveIntegrationTests"
+               ReferencedContainer = "container:Pensive.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "20F36AE3A98E72FEE24F0561"
+               BuildableName = "PensiveE2ETests.xctest"
+               BlueprintName = "PensiveE2ETests"
                ReferencedContainer = "container:Pensive.xcodeproj">
             </BuildableReference>
          </TestableReference>

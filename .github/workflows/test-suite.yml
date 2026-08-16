@@ -1,0 +1,143 @@
+name: Test Suite
+
+on:
+  pull_request:
+    branches:
+      - main
+      - staging
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-suite-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-quality:
+    name: Static quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run formatting, lint, typecheck, and build gates
+        run: npm run test:static
+
+  behavior-tests:
+    name: Web and Convex behavior tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run deterministic behavior tests
+        run: npm test
+
+      - name: Generate informational coverage report
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pensive-web-convex-coverage-${{ github.run_id }}
+          path: test-results/coverage
+          if-no-files-found: warn
+          retention-days: 14
+
+  browser-e2e:
+    name: Browser E2E (non-production)
+    runs-on: ubuntu-latest
+    environment: Testing
+
+    env:
+      PENSIVE_E2E_BASE_URL: http://127.0.0.1:1111
+      PENSIVE_E2E_API_URL: ${{ vars.PENSIVE_E2E_API_URL }}
+      PENSIVE_E2E_CONVEX_URL: ${{ vars.PENSIVE_E2E_CONVEX_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Require disposable non-production targets
+        run: |
+          set -euo pipefail
+          [[ -n "$PENSIVE_E2E_API_URL" ]] || { echo "PENSIVE_E2E_API_URL is not configured in the Testing environment."; exit 1; }
+          [[ -n "$PENSIVE_E2E_CONVEX_URL" ]] || { echo "PENSIVE_E2E_CONVEX_URL is not configured in the Testing environment."; exit 1; }
+          ! printf '%s\n' "$PENSIVE_E2E_API_URL $PENSIVE_E2E_CONVEX_URL" | rg -i 'frugal-mosquito-712|production|(^|[^a-z])prod([^a-z]|$)'
+
+      - name: Install Chromium, WebKit, and system dependencies
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run browser, accessibility, responsive, and HTTP contract tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pensive-playwright-${{ github.run_id }}
+          path: test-results/playwright
+          if-no-files-found: warn
+          retention-days: 14
+
+  ios-tests:
+    name: iOS unit, integration, and UI tests
+    runs-on: macos-15
+    environment: Testing
+
+    env:
+      DEVICE: iPhone 16 Pro
+      PENSIVE_RESET_SIMULATOR: "1"
+      PENSIVE_IOS_TEST_HTTP_URL: ${{ vars.PENSIVE_IOS_TEST_HTTP_URL }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install xcodegen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Reject production live-test target
+        run: |
+          set -euo pipefail
+          if [[ -n "${PENSIVE_IOS_TEST_HTTP_URL:-}" ]]; then
+            ! printf '%s\n' "$PENSIVE_IOS_TEST_HTTP_URL" | rg -i 'frugal-mosquito-712|production|(^|[^a-z])prod([^a-z]|$)'
+          fi
+
+      - name: Run the complete iOS test flow
+        run: ./scripts/test-ios-stable.sh

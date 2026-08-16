@@ -126,6 +126,18 @@ export const create = mutation({
     const userId = await requireUserId(ctx);
     await requireOwnedPair(ctx, userId, expenseId, incomingId);
 
+    const existing = await ctx.db
+      .query("paybackLinks")
+      .withIndex("by_user_pair", (q) =>
+        q
+          .eq("userId", userId)
+          .eq("expenseId", expenseId)
+          .eq("incomingId", incomingId))
+      .first();
+    if (existing) {
+      throw new Error("Expense and incoming are already linked");
+    }
+
     const now = getPaybackLinkTimestamp();
     const id = await ctx.db.insert("paybackLinks", {
       userId,

@@ -90,9 +90,8 @@ jobs:
 
       - name: Run hotfix verification
         run: |
-          npm run convex:typecheck
-          npm run web:build
-          npm run lint
+          npm run test:static
+          npm test
 
   promote-main:
     name: Advance main after hotfix checks

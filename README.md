@@ -161,6 +161,20 @@ open Pensive.xcodeproj
 
 The app reads its Convex URL from xcconfig build settings defined in `Config/`, ensuring that it connects to the same deployment as the web client.
 
+### Test Suite
+
+From the repository root:
+
+```bash
+npm test                  # deterministic web + Convex behavior tests
+npm run test:static       # formatting, lint, typechecks, and web build
+npm run test:e2e          # browser/API tests; requires explicit disposable targets
+npm run ios:test          # iOS unit, API integration, and fixture-backed UI tests
+npm run test:all          # complete local sequence
+```
+
+The Convex tests use an in-memory database. Browser tests require `PENSIVE_E2E_API_URL` and `PENSIVE_E2E_CONVEX_URL` for a disposable non-production deployment; the web bundle itself runs locally. iOS UI tests use loopback fixtures, and live iOS checks are opt-in with an explicit non-production URL. Production URLs are rejected by the test harness. Coverage is generated only as a temporary CI/local report under `test-results/` (ignored by Git); it is not committed or deployed.
+
 ## Shared Account Deletion
 
 Both clients call the same authenticated Convex mutation:
@@ -218,8 +232,9 @@ Local credentials are cleared only after the server confirms deletion.
 │   │   ├── Networking/                  HTTP transport, URLSession client
 │   │   └── Presentation/                Auth, Breakdown, Ledger, Notepad, Options,
 │   │                                    QuickAdd, Recurrings, Shell, Tracking, User modules
-│   ├── PensiveTests/                    Unit tests (HTTP client auth recovery, breakdown computing, session store auth refresh)
-│   ├── PensiveUITests/                  UI tests
+│   ├── PensiveUnitTests/                Domain and API model unit tests
+│   ├── PensiveIntegrationTests/         HTTP transport and non-production API contracts
+│   ├── PensiveE2ETests/                 Fixture-backed UI workflows
 │   └── project.yml                      XcodeGen source of truth
 ├── scripts/                             iOS tests, schema checkpoints, and compatibility contracts
 ├── docs/images/                         README artwork
