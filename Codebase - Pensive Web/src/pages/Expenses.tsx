@@ -455,7 +455,7 @@ export function Expenses() {
       items.push({
         kind: "section",
         id: "monthYearsOnly",
-        label: "Applies to this month, paid in other month/s",
+        label: "Paid Elsewhere",
         isOpen: isMonthYearsSectionOpen,
         count: monthYearsOnlyItems.length,
       });
@@ -468,7 +468,7 @@ export function Expenses() {
       items.push({
         kind: "section",
         id: "dateOnly",
-        label: "Paid this month, applied to other month/s",
+        label: "Applies Elsewhere",
         isOpen: isDateOnlySectionOpen,
         count: dateOnlyItems.length,
       });
