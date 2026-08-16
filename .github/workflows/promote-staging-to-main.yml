@@ -269,7 +269,7 @@ jobs:
     name: Advance main after passing checks
     needs:
       - promotion-gate
-    if: needs.promotion-gate.result == 'success'
+    if: always() && needs.promotion-gate.result == 'success'
     runs-on: ubuntu-latest
     environment: Production
     permissions:
@@ -331,7 +331,7 @@ jobs:
     needs:
       - promotion-gate
       - promote-main
-    if: needs.promote-main.result == 'success'
+    if: always() && needs.promote-main.result == 'success'
     runs-on: ubuntu-latest
     environment: Production
 
