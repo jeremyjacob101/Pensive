@@ -12,7 +12,7 @@ final class UIWorkflowTests: XCTestCase {
         app.launchEnvironment["UI_TEST_UNAUTHENTICATED"] = "1"
         app.launch()
 
-        XCTAssertTrue(app.otherElements["root_view"].waitForExistence(timeout: 10))
+        XCTAssertTrue(element(id: "root_view", app: app).waitForExistence(timeout: 10))
         XCTAssertTrue(app.textFields["username_field"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.secureTextFields["password_field"].waitForExistence(timeout: 3))
         app.buttons["auth_submit_button"].tap()
@@ -43,9 +43,9 @@ final class UIWorkflowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["New Incoming"].waitForExistence(timeout: 5))
         app.swipeUp()
         XCTAssertTrue(app.buttons["ledger_bulk_add"].waitForExistence(timeout: 3))
-        XCTAssertEqual(app.staticTexts["ledger_bulk_entry_count"].label, "Entries: 1")
         app.buttons["ledger_bulk_add"].tap()
-        XCTAssertEqual(app.staticTexts["ledger_bulk_entry_count"].label, "Entries: 2")
+        XCTAssertTrue(app.staticTexts["Entry 1"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Entry 2"].waitForExistence(timeout: 3))
     }
 
     func testAuthenticatedUserCanNavigateEveryPrimaryFeature() {

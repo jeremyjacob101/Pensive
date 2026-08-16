@@ -161,6 +161,14 @@ open Pensive.xcodeproj
 
 The app reads its Convex URL from xcconfig build settings defined in `Config/`, ensuring that it connects to the same deployment as the web client.
 
+If VS Code/SourceKit reports `No such module 'XCTest'` in a file under `PensiveUnitTests`, configure the Xcode build server from the repository root and reload the editor:
+
+```bash
+./scripts/configure-ios-sourcekit.sh
+```
+
+`XCTest` is supplied by the iOS SDK; it should not be installed as a package dependency. The script regenerates the XcodeGen project and gives SourceKit the test-target build settings it needs.
+
 ### Test Suite
 
 From the repository root:

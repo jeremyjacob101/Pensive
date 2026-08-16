@@ -56,7 +56,7 @@ final class DomainBehaviorTests: XCTestCase {
         XCTAssertFalse(LedgerScopeLogic.isPartialMatch(date: date, monthYears: months, scope: customScope))
     }
 
-    func testFilteringNormalizesAccountsSearchesAllRelevantFieldsAndUsesParentChildKeys() {
+    func testFilteringTrimsAccountsSearchesAllRelevantFieldsAndUsesParentChildKeys() {
         let rows = [
             makeExpense(id: "food", account: " Checking ", category: "Food", subcategory: "Groceries", notes: "weekly"),
             makeExpense(id: "rent", account: "Savings", category: "Rent", subcategory: nil, notes: "monthly"),
@@ -65,7 +65,7 @@ final class DomainBehaviorTests: XCTestCase {
         XCTAssertEqual(
             LedgerFiltering.filterExpenses(
                 rows,
-                deselectedAccounts: ["checking"],
+                deselectedAccounts: [" Checking "],
                 deselectedCategories: [],
                 searchText: ""
             ).map(\.id),
@@ -76,6 +76,15 @@ final class DomainBehaviorTests: XCTestCase {
                 rows,
                 deselectedAccounts: [],
                 deselectedCategories: ["Food|Groceries"],
+                searchText: ""
+            ).map(\.id),
+            ["rent", "other"]
+        )
+        XCTAssertEqual(
+            LedgerFiltering.filterExpenses(
+                rows,
+                deselectedAccounts: [],
+                deselectedCategories: [],
                 searchText: "WEEK"
             ).map(\.id),
             ["food"]

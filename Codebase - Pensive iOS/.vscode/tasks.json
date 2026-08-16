@@ -4,17 +4,17 @@
     {
       "label": "xcode: build-for-testing (sim workaround)",
       "type": "shell",
-      "command": "xcodebuild -scheme Pensive -destination 'generic/platform=iOS Simulator' -derivedDataPath /private/tmp/PensiveDerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build-for-testing"
+      "command": "xcodebuild -project Pensive.xcodeproj -scheme Pensive -destination 'generic/platform=iOS Simulator' -derivedDataPath /private/tmp/PensiveDerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build-for-testing"
     },
     {
       "label": "xcode: unit tests (iPhone 17)",
       "type": "shell",
-      "command": "xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /private/tmp/PensiveDerivedData -only-testing:PensiveTests test"
+      "command": "xcodebuild -project Pensive.xcodeproj -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /private/tmp/PensiveDerivedData -only-testing:PensiveUnitTests test"
     },
     {
       "label": "xcode: ui smoke test (iPhone 17)",
       "type": "shell",
-      "command": "xcodebuild -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /private/tmp/PensiveDerivedData -only-testing:PensiveUITests/PensiveUITests/testLaunchShowsRootView test"
+      "command": "xcodebuild -project Pensive.xcodeproj -scheme Pensive -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath /private/tmp/PensiveDerivedData -only-testing:PensiveE2ETests/UIWorkflowTests/testAuthenticatedUserCanNavigateEveryPrimaryFeature test"
     }
   ]
 }
