@@ -46,8 +46,8 @@ if [[ -z "$AVAILABLE_DEVICES" ]]; then
   echo "No available iOS Simulator devices were found." >&2
   exit 1
 fi
-if ! printf '%s\n' "$AVAILABLE_DEVICES" | rg -q --fixed-strings "    $DEVICE ("; then
-  DEVICE="$(printf '%s\n' "$AVAILABLE_DEVICES" | rg -o 'iPhone [^()]+' | sed 's/[[:space:]]*$//' | head -n 1 || true)"
+if ! printf '%s\n' "$AVAILABLE_DEVICES" | grep -Fq "    $DEVICE ("; then
+  DEVICE="$(printf '%s\n' "$AVAILABLE_DEVICES" | sed -n 's/^    \(iPhone [^()]*\) (.*/\1/p' | sed 's/[[:space:]]*$//' | head -n 1 || true)"
 fi
 if [[ -z "$DEVICE" ]]; then
   echo "Could not select an iPhone Simulator device." >&2

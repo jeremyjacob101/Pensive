@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 const productionHosts = new Set([
   "frugal-mosquito-712.convex.cloud",
   "frugal-mosquito-712.convex.site",
@@ -26,9 +28,18 @@ export function assertNonProductionEnvironment(env: NodeJS.ProcessEnv) {
 }
 
 export function uniqueTestUsername(prefix = "pensive-test") {
-  const run = process.env.GITHUB_RUN_ID ?? "local";
-  const suffix = `${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-  return `${prefix}-${run}-${suffix}`.slice(0, 32).toLowerCase();
+  const normalizedPrefix =
+    prefix
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-") || "test";
+  const run = (process.env.GITHUB_RUN_ID ?? "local")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-");
+  const runPart = run.slice(-5) || "local";
+  const nonce = randomBytes(6).toString("hex");
+  const prefixLength = Math.max(1, 32 - runPart.length - nonce.length - 2);
+  const boundedPrefix =
+    normalizedPrefix.slice(0, prefixLength).replace(/-+$/, "") || "test";
+  return `${boundedPrefix}-${runPart}-${nonce}`.slice(0, 32);
 }
