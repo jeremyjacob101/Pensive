@@ -271,6 +271,7 @@ jobs:
       - promotion-gate
     if: needs.promotion-gate.result == 'success'
     runs-on: ubuntu-latest
+    environment: Production
     permissions:
       contents: write
 
@@ -279,6 +280,19 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Configure main promotion SSH
+        env:
+          MAIN_PROMOTION_SSH_KEY: ${{ secrets.MAIN_PROMOTION_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$MAIN_PROMOTION_SSH_KEY" > "$HOME/.ssh/pensive-main-promotion"
+          chmod 600 "$HOME/.ssh/pensive-main-promotion"
+          ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/pensive-main-promotion -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
 
       - name: Advance main to the tested staging commit
         env:
