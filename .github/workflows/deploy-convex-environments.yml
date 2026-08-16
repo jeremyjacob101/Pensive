@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - staging
-  push:
-    branches:
-      - staging
   workflow_dispatch:
 
 permissions:
@@ -39,33 +36,3 @@ jobs:
 
       - name: Run web and Convex behavior tests
         run: npm test
-
-  deploy-staging:
-    name: Deploy staging
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging')
-    needs: verify
-    runs-on: ubuntu-latest
-    environment: Staging
-    concurrency:
-      group: convex-staging-deployment
-      cancel-in-progress: false
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Deploy Convex staging
-        env:
-          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
-        run: npx convex deploy --message "Deploy $GITHUB_SHA to staging"

@@ -32,10 +32,29 @@ describe("CI test safety", () => {
     expect(contents).toContain("PENSIVE_IOS_TEST_HTTP_URL");
   });
 
-  it("keeps staging verification ahead of deployment", async () => {
+  it("keeps the standalone staging verification workflow non-deploying", async () => {
     const contents = await workflow("deploy-convex-environments.yml");
     expect(contents).toContain("run: npm run test:static");
     expect(contents).toContain("run: npm test");
-    expect(contents).toContain("needs: verify");
+    expect(contents).not.toContain("Deploy Convex staging");
+  });
+
+  it("deploys staging only after every Test Suite job passes", async () => {
+    const contents = await workflow("test-suite.yml");
+    expect(contents).toContain("deploy-staging:");
+    expect(contents).toContain(
+      "Deploy Convex staging after the complete test suite",
+    );
+    expect(contents).toMatch(
+      /needs:\s*[\r\n]+\s+- static-quality[\r\n]+\s+- behavior-tests[\r\n]+\s+- browser-e2e[\r\n]+\s+- ios-tests/,
+    );
+    expect(contents).toContain("github.ref == 'refs/heads/staging'");
+  });
+
+  it("does not start a second staging deployment from the sync workflow", async () => {
+    const contents = await workflow("sync-main-to-staging.yml");
+    expect(contents).not.toContain(
+      "gh workflow run deploy-convex-environments.yml",
+    );
   });
 });
