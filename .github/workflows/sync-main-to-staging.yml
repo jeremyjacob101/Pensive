@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  actions: write
 
 concurrency:
   group: sync-main-to-staging
@@ -72,9 +71,3 @@ jobs:
             --force-with-lease="refs/heads/staging:${EXPECTED_STAGING_SHA}" \
             origin \
             "${MAIN_SHA}:refs/heads/staging"
-
-      - name: Start staging Convex deployment
-        if: steps.guard.outputs.updated == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy-convex-environments.yml --repo "$GITHUB_REPOSITORY" --ref staging

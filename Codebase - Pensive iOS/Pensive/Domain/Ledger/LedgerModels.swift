@@ -236,7 +236,10 @@ enum LedgerScopeLogic {
     }
 
     static func parseISODate(_ value: String) -> Date? {
-        isoFormatter.date(from: value)
+        guard let date = isoFormatter.date(from: value), isoFormatter.string(from: date) == value else {
+            return nil
+        }
+        return date
     }
 
     private static let isoFormatter: DateFormatter = {
@@ -245,6 +248,7 @@ enum LedgerScopeLogic {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
         return formatter
     }()
 

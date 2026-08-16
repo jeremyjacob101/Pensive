@@ -25,6 +25,10 @@ dist/
 dist-ssr
 *.local
 
+# Test reports and browser artifacts
+test-results/
+playwright-report/
+
 # Xcode
 DerivedData/
 build/

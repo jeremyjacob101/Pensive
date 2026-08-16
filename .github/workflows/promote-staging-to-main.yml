@@ -73,8 +73,85 @@ jobs:
 
       - name: Run candidate verification
         run: |
-          npm run convex:typecheck
-          npm run web:build
+          npm run test:static
+          npm test
+
+  verify-browser-e2e:
+    name: Verify browser E2E on staging candidate
+    needs: verify-staging
+    runs-on: ubuntu-latest
+    environment: Testing
+
+    env:
+      PENSIVE_E2E_BASE_URL: http://127.0.0.1:1111
+      PENSIVE_E2E_API_URL: ${{ vars.PENSIVE_E2E_API_URL }}
+      PENSIVE_E2E_CONVEX_URL: ${{ vars.PENSIVE_E2E_CONVEX_URL }}
+
+    steps:
+      - name: Check out the exact staging candidate
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify-staging.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Require disposable non-production targets
+        run: |
+          set -euo pipefail
+          [[ -n "$PENSIVE_E2E_API_URL" ]] || { echo "PENSIVE_E2E_API_URL is not configured in the Testing environment."; exit 1; }
+          [[ -n "$PENSIVE_E2E_CONVEX_URL" ]] || { echo "PENSIVE_E2E_CONVEX_URL is not configured in the Testing environment."; exit 1; }
+          if printf '%s\n' "$PENSIVE_E2E_API_URL $PENSIVE_E2E_CONVEX_URL" | grep -Eiq 'frugal-mosquito-712|production|(^|[^a-z])prod([^a-z]|$)'; then
+            echo "Production-looking E2E target rejected." >&2
+            exit 1
+          fi
+
+      - name: Install Chromium, WebKit, and system dependencies
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run browser E2E on the candidate frontend
+        run: npm run test:e2e
+
+  verify-ios:
+    name: Verify iOS tests on staging candidate
+    needs: verify-staging
+    runs-on: macos-15
+    environment: Testing
+
+    env:
+      DEVICE: iPhone 16 Pro
+      PENSIVE_RESET_SIMULATOR: "1"
+      PENSIVE_IOS_TEST_HTTP_URL: ${{ vars.PENSIVE_IOS_TEST_HTTP_URL }}
+
+    steps:
+      - name: Check out the exact staging candidate
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify-staging.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Install xcodegen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Reject production live-test target
+        run: |
+          set -euo pipefail
+          if [[ -n "${PENSIVE_IOS_TEST_HTTP_URL:-}" ]]; then
+            if printf '%s\n' "$PENSIVE_IOS_TEST_HTTP_URL" | grep -Eiq 'frugal-mosquito-712|production|(^|[^a-z])prod([^a-z]|$)'; then
+              echo "Production-looking iOS test target rejected." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Run iOS unit, integration, and UI tests
+        run: ./scripts/test-ios-stable.sh
 
   detect-schema:
     name: Detect production schema change
@@ -227,6 +304,8 @@ jobs:
     if: always()
     needs:
       - verify-staging
+      - verify-browser-e2e
+      - verify-ios
       - detect-schema
       - checkpoint-production
       - compatibility-staging
@@ -240,6 +319,8 @@ jobs:
       - name: Require every promotion step to pass
         env:
           VERIFY_RESULT: ${{ needs.verify-staging.result }}
+          BROWSER_RESULT: ${{ needs.verify-browser-e2e.result }}
+          IOS_RESULT: ${{ needs.verify-ios.result }}
           DETECT_RESULT: ${{ needs.detect-schema.result }}
           SNAPSHOT_RESULT: ${{ needs.checkpoint-production.result }}
           COMPATIBILITY_RESULT: ${{ needs.compatibility-staging.result }}
@@ -249,6 +330,8 @@ jobs:
           set -euo pipefail
 
           [[ "$VERIFY_RESULT" == "success" ]] || { echo "Staging verification failed."; exit 1; }
+          [[ "$BROWSER_RESULT" == "success" ]] || { echo "Browser E2E verification failed."; exit 1; }
+          [[ "$IOS_RESULT" == "success" ]] || { echo "iOS verification failed."; exit 1; }
           [[ "$DETECT_RESULT" == "success" ]] || { echo "Schema detection failed."; exit 1; }
 
           if [[ "$SCHEMA_CHANGED" != "true" ]]; then

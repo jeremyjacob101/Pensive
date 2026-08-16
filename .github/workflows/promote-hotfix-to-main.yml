@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  checks: read
 
 concurrency:
   group: promote-hotfix-to-main
@@ -73,6 +74,53 @@ jobs:
           echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
           echo "hotfix_sha=$hotfix_sha" >> "$GITHUB_OUTPUT"
 
+      - name: Require the complete Test Suite for the exact hotfix commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOTFIX_SHA: ${{ steps.refs.outputs.hotfix_sha }}
+        run: |
+          set -euo pipefail
+
+          required_checks_json='["Static quality","Web and Convex behavior tests","Browser E2E (non-production)","iOS unit, integration, and UI tests"]'
+          latest_checks_jq='[
+            .check_runs[]
+            | select(.name as $name | ($required | index($name)) != null)
+          ]
+          | group_by(.name)
+          | map(max_by(.started_at // ""))'
+
+          waited_seconds=0
+          max_wait_seconds=1800
+          while (( waited_seconds < max_wait_seconds )); do
+            checks_json="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HOTFIX_SHA}/check-runs?per_page=100")"
+
+            if jq --argjson required "$required_checks_json" -e \
+              "$latest_checks_jq | length == 4 and all(.[]; .status == \"completed\" and .conclusion == \"success\")" \
+              <<< "$checks_json" >/dev/null; then
+              echo "The complete Test Suite passed for hotfix ${HOTFIX_SHA}."
+              exit 0
+            fi
+
+            failed_checks="$(jq --argjson required "$required_checks_json" -r \
+              "$latest_checks_jq | map(select(.status == \"completed\" and .conclusion != \"success\")) | .[]? | \"\(.name): \(.conclusion)\"" \
+              <<< "$checks_json")"
+            if [[ -n "$failed_checks" ]]; then
+              echo "::error::The complete Test Suite failed for hotfix ${HOTFIX_SHA}:" >&2
+              printf '%s\n' "$failed_checks" >&2
+              exit 1
+            fi
+
+            summary="$(jq --argjson required "$required_checks_json" -r \
+              "$latest_checks_jq | map(\"\(.name)=\(.status)/\(.conclusion // \"pending\")\") | join(\", \" )" \
+              <<< "$checks_json")"
+            echo "Waiting for the complete Test Suite on ${HOTFIX_SHA}: ${summary:-checks not reported yet}"
+            sleep 15
+            waited_seconds=$((waited_seconds + 15))
+          done
+
+          echo "::error::Timed out waiting for the complete Test Suite on hotfix ${HOTFIX_SHA}." >&2
+          exit 1
+
       - name: Check out the exact hotfix commit
         uses: actions/checkout@v5
         with:
@@ -90,9 +138,8 @@ jobs:
 
       - name: Run hotfix verification
         run: |
-          npm run convex:typecheck
-          npm run web:build
-          npm run lint
+          npm run test:static
+          npm test
 
   promote-main:
     name: Advance main after hotfix checks

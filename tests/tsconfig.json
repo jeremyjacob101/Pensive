@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client", "vitest/globals"],
+    "baseUrl": "..",
+    "paths": {
+      "@pensive/convex-api": ["convex/_generated/api"],
+      "@pensive/convex-data-model": ["convex/_generated/dataModel"],
+      "@pensive/web/*": ["Codebase - Pensive Web/src/*"],
+      "src/*": ["Codebase - Pensive Web/src/*"]
+    },
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"]
+}

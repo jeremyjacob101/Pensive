@@ -354,6 +354,7 @@ private struct BulkGroupSection: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Add entry")
+                .accessibilityIdentifier("ledger_bulk_add")
             }
         }
 

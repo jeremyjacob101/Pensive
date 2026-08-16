@@ -90,9 +90,25 @@ export function useMonthScope(monthBounds: MonthBounds | undefined) {
       if (!previousWindow.startDate || !previousWindow.endDate) return;
 
       loadingMoreRef.current = true;
-      setSelectedWindows([previousWindow]);
+      setSelectedWindows((currentWindows) => {
+        const loadedWindows =
+          currentWindows.length > 0 ? currentWindows : activeSelectedWindows;
+        if (
+          loadedWindows.some(
+            (window) => monthFromWindow(window) === previousMonth,
+          )
+        ) {
+          return currentWindows;
+        }
+        return [...loadedWindows, previousWindow];
+      });
     },
-    [canAppendPreviousMonth, oldestLoadedMonth, selectedMonths],
+    [
+      activeSelectedWindows,
+      canAppendPreviousMonth,
+      oldestLoadedMonth,
+      selectedMonths,
+    ],
   );
 
   const scope = useMemo(() => {
