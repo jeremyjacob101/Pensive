@@ -696,12 +696,16 @@ private struct TrackingSelectionSheet: View {
 private extension View {
     @ViewBuilder
     func trackingSelectionSearchable(text: Binding<String>) -> some View {
+#if compiler(>=6.2)
         if #available(iOS 26.0, *) {
             searchable(text: text, prompt: "Categories and subcategories")
                 .searchToolbarBehavior(.minimize)
         } else {
             searchable(text: text, prompt: "Categories and subcategories")
         }
+#else
+        searchable(text: text, prompt: "Categories and subcategories")
+#endif
     }
 }
 
