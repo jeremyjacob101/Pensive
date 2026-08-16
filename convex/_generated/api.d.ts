@@ -10,6 +10,7 @@
 
 import type * as account from "../account.js";
 import type * as auth from "../auth.js";
+import type * as backupSnapshots from "../backupSnapshots.js";
 import type * as baseSubIds from "../baseSubIds.js";
 import type * as effectiveAmounts from "../effectiveAmounts.js";
 import type * as expenses from "../expenses.js";
@@ -33,6 +34,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   account: typeof account;
   auth: typeof auth;
+  backupSnapshots: typeof backupSnapshots;
   baseSubIds: typeof baseSubIds;
   effectiveAmounts: typeof effectiveAmounts;
   expenses: typeof expenses;

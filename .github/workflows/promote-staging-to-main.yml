@@ -1,0 +1,344 @@
+name: Promote Staging to Main
+
+on:
+  workflow_dispatch:
+    inputs:
+      staging_sha:
+        description: "Optional staging commit SHA; defaults to origin/staging"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: promote-staging-to-main
+  cancel-in-progress: false
+
+jobs:
+  verify-staging:
+    name: Verify staging candidate
+    runs-on: ubuntu-latest
+
+    outputs:
+      main_sha: ${{ steps.refs.outputs.main_sha }}
+      staging_sha: ${{ steps.refs.outputs.staging_sha }}
+
+    steps:
+      - name: Check out staging
+        uses: actions/checkout@v5
+        with:
+          ref: staging
+          fetch-depth: 0
+
+      - name: Resolve promotion commits
+        id: refs
+        env:
+          REQUESTED_STAGING_SHA: ${{ inputs.staging_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main staging
+
+          main_sha="$(git rev-parse origin/main)"
+          if [[ -n "$REQUESTED_STAGING_SHA" ]]; then
+            staging_sha="$REQUESTED_STAGING_SHA"
+            git cat-file -e "$staging_sha^{commit}"
+          else
+            staging_sha="$(git rev-parse origin/staging)"
+          fi
+
+          if ! git merge-base --is-ancestor "$main_sha" "$staging_sha"; then
+            echo "::error::Staging is not ahead of main. Reconcile the branches before promotion."
+            exit 1
+          fi
+
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+          echo "staging_sha=$staging_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact staging candidate
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.refs.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run candidate verification
+        run: |
+          npm run convex:typecheck
+          npm run web:build
+
+  detect-schema:
+    name: Detect production schema change
+    needs: verify-staging
+    runs-on: ubuntu-latest
+
+    outputs:
+      changed: ${{ steps.schema.outputs.changed }}
+      bootstrap: ${{ steps.schema.outputs.bootstrap }}
+      main_sha: ${{ needs.verify-staging.outputs.main_sha }}
+      staging_sha: ${{ needs.verify-staging.outputs.staging_sha }}
+      schema_hash: ${{ steps.schema.outputs.schema_hash }}
+
+    steps:
+      - name: Check out staging candidate
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify-staging.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Detect schema change
+        id: schema
+        env:
+          MAIN_SHA: ${{ needs.verify-staging.outputs.main_sha }}
+          STAGING_SHA: ${{ needs.verify-staging.outputs.staging_sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! -f convex/backupSnapshots.ts ]]; then
+            echo "::error::convex/backupSnapshots.ts is missing; refusing promotion without checkpoint infrastructure."
+            exit 1
+          fi
+
+          changed="$(node scripts/convex-schema-changed.mjs "$MAIN_SHA" "$STAGING_SHA")"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+          if git cat-file -e "$MAIN_SHA:convex/backupSnapshots.ts" 2>/dev/null; then
+            bootstrap=false
+          else
+            bootstrap=true
+          fi
+          echo "bootstrap=$bootstrap" >> "$GITHUB_OUTPUT"
+
+          if [[ "$changed" == "true" ]]; then
+            schema_hash="$(node scripts/convex-schema-hash.mjs "$STAGING_SHA")"
+          else
+            schema_hash="not-applicable"
+          fi
+          echo "schema_hash=$schema_hash" >> "$GITHUB_OUTPUT"
+
+          echo "Production schema changed: $changed"
+
+  checkpoint-production:
+    name: Backup production database
+    if: >-
+      needs.detect-schema.result == 'success' &&
+      needs.detect-schema.outputs.changed == 'true' &&
+      needs.detect-schema.outputs.bootstrap != 'true'
+    needs:
+      - verify-staging
+      - detect-schema
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      # Production credentials only run trusted tooling from the current main revision.
+      - name: Check out trusted checkpoint tooling
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.detect-schema.outputs.main_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Export and store production snapshot
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          GITHUB_BASE_SHA: ${{ needs.detect-schema.outputs.main_sha }}
+          GITHUB_HEAD_SHA: ${{ needs.detect-schema.outputs.staging_sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          SCHEMA_HASH: ${{ needs.detect-schema.outputs.schema_hash }}
+          SNAPSHOT_PATH: ${{ runner.temp }}/pensive-production-snapshot.zip
+        run: npm run convex:schema-checkpoint
+
+      - name: Pass snapshot to staging compatibility tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: pensive-production-snapshot-${{ github.run_id }}
+          path: ${{ runner.temp }}/pensive-production-snapshot.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  compatibility-staging:
+    name: Test schema compatibility in staging
+    if: >-
+      needs.detect-schema.result == 'success' &&
+      needs.detect-schema.outputs.changed == 'true' &&
+      needs.detect-schema.outputs.bootstrap != 'true' &&
+      needs.checkpoint-production.result == 'success'
+    needs:
+      - verify-staging
+      - detect-schema
+      - checkpoint-production
+    runs-on: ubuntu-latest
+    environment: Staging
+    concurrency:
+      group: convex-staging-deployment
+      cancel-in-progress: false
+
+    steps:
+      - name: Check out the exact staging candidate
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.detect-schema.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Retrieve production snapshot
+        uses: actions/download-artifact@v4
+        with:
+          name: pensive-production-snapshot-${{ github.run_id }}
+          path: ${{ runner.temp }}/checkpoint
+
+      - name: Run forward and backward compatibility contracts
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          GITHUB_BASE_SHA: ${{ needs.detect-schema.outputs.main_sha }}
+          GITHUB_HEAD_SHA: ${{ needs.detect-schema.outputs.staging_sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          SNAPSHOT_PATH: ${{ runner.temp }}/checkpoint/pensive-production-snapshot.zip
+        run: npm run convex:staging-compatibility
+
+  promotion-gate:
+    name: Staging promotion gate
+    if: always()
+    needs:
+      - verify-staging
+      - detect-schema
+      - checkpoint-production
+      - compatibility-staging
+    runs-on: ubuntu-latest
+
+    outputs:
+      main_sha: ${{ needs.detect-schema.outputs.main_sha }}
+      staging_sha: ${{ needs.detect-schema.outputs.staging_sha }}
+
+    steps:
+      - name: Require every promotion step to pass
+        env:
+          VERIFY_RESULT: ${{ needs.verify-staging.result }}
+          DETECT_RESULT: ${{ needs.detect-schema.result }}
+          SNAPSHOT_RESULT: ${{ needs.checkpoint-production.result }}
+          COMPATIBILITY_RESULT: ${{ needs.compatibility-staging.result }}
+          SCHEMA_CHANGED: ${{ needs.detect-schema.outputs.changed }}
+          BOOTSTRAP: ${{ needs.detect-schema.outputs.bootstrap }}
+        run: |
+          set -euo pipefail
+
+          [[ "$VERIFY_RESULT" == "success" ]] || { echo "Staging verification failed."; exit 1; }
+          [[ "$DETECT_RESULT" == "success" ]] || { echo "Schema detection failed."; exit 1; }
+
+          if [[ "$SCHEMA_CHANGED" != "true" ]]; then
+            echo "No convex/schema.ts change; promotion gate passed."
+            exit 0
+          fi
+
+          if [[ "$BOOTSTRAP" == "true" ]]; then
+            echo "::error::Checkpoint infrastructure must be manually bootstrapped once before its first protected schema promotion."
+            exit 1
+          fi
+
+          [[ "$SNAPSHOT_RESULT" == "success" ]] || { echo "Production snapshot failed."; exit 1; }
+          [[ "$COMPATIBILITY_RESULT" == "success" ]] || { echo "Compatibility checks failed."; exit 1; }
+          echo "Staging promotion gate passed."
+
+  promote-main:
+    name: Advance main after passing checks
+    needs:
+      - promotion-gate
+    if: needs.promotion-gate.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Advance main to the tested staging commit
+        env:
+          MAIN_SHA: ${{ needs.promotion-gate.outputs.main_sha }}
+          STAGING_SHA: ${{ needs.promotion-gate.outputs.staging_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main staging
+          current_main="$(git rev-parse origin/main)"
+          current_staging="$(git rev-parse origin/staging)"
+          [[ "$current_main" == "$MAIN_SHA" ]] || {
+            echo "::error::Main changed while promotion was running. Nothing was pushed.";
+            exit 1;
+          }
+          [[ "$current_staging" == "$STAGING_SHA" ]] || {
+            echo "::error::Staging changed while promotion was running. Nothing was pushed.";
+            exit 1;
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push origin "${STAGING_SHA}:refs/heads/main"
+
+          hotfix_sha="$(git ls-remote origin refs/heads/hotfix | awk 'NR == 1 { print $1 }')"
+          if [[ -n "$hotfix_sha" ]]; then
+            git push \
+              --force-with-lease="refs/heads/hotfix:${hotfix_sha}" \
+              origin \
+              "${STAGING_SHA}:refs/heads/hotfix"
+          else
+            git push origin "${STAGING_SHA}:refs/heads/hotfix"
+          fi
+
+  deploy-production:
+    name: Deploy promoted production
+    needs:
+      - promotion-gate
+      - promote-main
+    if: needs.promote-main.result == 'success'
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Check out the promoted commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.promotion-gate.outputs.staging_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Deploy Convex production
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          PROMOTED_SHA: ${{ needs.promotion-gate.outputs.staging_sha }}
+        run: npx convex deploy --message "Promote $PROMOTED_SHA from staging to production"

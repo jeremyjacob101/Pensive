@@ -1,0 +1,47 @@
+name: Reset Hotfix to Main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-main-to-hotfix
+  cancel-in-progress: false
+
+jobs:
+  reset-hotfix:
+    name: Reset hotfix to main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Reset hotfix to the pushed main commit
+        env:
+          MAIN_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+
+          current_main="$(git rev-parse origin/main)"
+          [[ "$current_main" == "$MAIN_SHA" ]] || {
+            echo "::error::The main branch moved again before hotfix synchronization.";
+            exit 1;
+          }
+
+          hotfix_sha="$(git ls-remote origin refs/heads/hotfix | awk 'NR == 1 { print $1 }')"
+          if [[ -n "$hotfix_sha" ]]; then
+            git push \
+              --force-with-lease="refs/heads/hotfix:${hotfix_sha}" \
+              origin \
+              "${MAIN_SHA}:refs/heads/hotfix"
+          else
+            git push origin "${MAIN_SHA}:refs/heads/hotfix"
+          fi

@@ -102,6 +102,32 @@ npm run convex:dev
 
 This creates or connects the Convex development deployment and generates the shared API types.
 
+### Production Schema Checkpoints
+
+Production promotion is staging-first. Feature branches merge into `staging`; production is advanced only by the manually dispatched `Promote Staging to Main` workflow. That workflow verifies the exact staging commit, detects changes to `convex/schema.ts`, and—only for schema changes—exports production, stores the ZIP in production Convex File Storage, records it in `backupSnapshots`, imports it into the disposable staging deployment, and runs forward and backward compatibility contracts. If every check passes, the workflow advances `main` to that exact tested staging commit and deploys production. Non-schema promotions skip the snapshot and compatibility work.
+
+Protect `main` in GitHub with a branch ruleset: disable normal pushes, force-pushes, and deletions, and allow only the GitHub Actions identity used by the promotion workflow to update it. Do not require a PR into `main`; the promotion workflow is the protected update path. This is what guarantees `main` cannot move before the pipeline passes. The existing `main → staging` sync then keeps the Git branch and staging deployment aligned after promotion. A direct push that bypasses this repository rule is not a supported production path.
+
+The production GitHub environment needs its existing `CONVEX_DEPLOY_KEY`, and the staging GitHub environment needs its existing staging `CONVEX_DEPLOY_KEY`. No preview deploy key is needed. The staging deployment is overwritten during compatibility runs, so its data is intentionally disposable.
+
+The `hotfix` branch is disposable. Every successful `main` update resets it to exactly the same commit, intentionally discarding any unpromoted hotfix work. It is created automatically on the first successful main update and is kept current by `Reset Hotfix to Main`.
+
+For an emergency code-only fix, commit to `hotfix`, then run `Promote Hotfix to Main` from GitHub Actions. It verifies that `hotfix` contains current `main`, rejects any `convex/schema.ts` change, runs typecheck/build/lint, and only then advances `main` and deploys production. Schema changes must go through the normal staging promotion workflow.
+
+When installing this system for the first time, manually export production once before deploying the new `backupSnapshots` schema and functions:
+
+```bash
+npx convex export --prod --path /tmp/pensive-bootstrap-snapshot.zip
+```
+
+After that bootstrap deployment, future staging-to-main promotions that change `convex/schema.ts` are protected automatically.
+
+To list stored production checkpoints from the CLI:
+
+```bash
+npx convex run backupSnapshots:list '{"limit":50}' --prod
+```
+
 ### Web App
 
 ```bash
@@ -195,9 +221,9 @@ Local credentials are cleared only after the server confirms deletion.
 │   ├── PensiveTests/                    Unit tests (HTTP client auth recovery, breakdown computing, session store auth refresh)
 │   ├── PensiveUITests/                  UI tests
 │   └── project.yml                      XcodeGen source of truth
-├── scripts/                             test-ios-stable.sh
+├── scripts/                             iOS tests, schema checkpoints, and compatibility contracts
 ├── docs/images/                         README artwork
-├── .github/workflows/                   Daily recurring materialization cron
+├── .github/workflows/                   Staging deploy, promotion, branch sync, and recurring cron
 ├── vercel.json                          Vercel SPA deployment config
 └── README.md
 ```

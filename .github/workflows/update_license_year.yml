@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          ref: staging
+          fetch-depth: 0
 
       - name: Pick license file
         shell: bash
@@ -88,6 +91,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "$LICENSE_FILE"
           git commit -m "chore: update license year"
-          git push
+          git push origin HEAD:refs/heads/staging
         env:
           LICENSE_FILE: ${{ env.LICENSE_FILE }}

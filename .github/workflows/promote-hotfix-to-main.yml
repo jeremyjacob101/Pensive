@@ -1,0 +1,162 @@
+name: Promote Hotfix to Main
+
+on:
+  workflow_dispatch:
+    inputs:
+      hotfix_sha:
+        description: "Optional hotfix commit SHA; defaults to origin/hotfix"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-hotfix-to-main
+  cancel-in-progress: false
+
+jobs:
+  verify-hotfix:
+    name: Verify schema-free hotfix
+    runs-on: ubuntu-latest
+
+    outputs:
+      main_sha: ${{ steps.refs.outputs.main_sha }}
+      hotfix_sha: ${{ steps.refs.outputs.hotfix_sha }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve and validate hotfix refs
+        id: refs
+        env:
+          REQUESTED_HOTFIX_SHA: ${{ inputs.hotfix_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+
+          main_sha="$(git rev-parse origin/main)"
+          hotfix_sha="$(git ls-remote origin refs/heads/hotfix | awk 'NR == 1 { print $1 }')"
+          if [[ -z "$hotfix_sha" ]]; then
+            echo "::error::The hotfix branch does not exist yet. Wait for the first main promotion to create it."
+            exit 1
+          fi
+
+          git fetch --no-tags origin hotfix
+          hotfix_sha="$(git rev-parse origin/hotfix)"
+
+          if [[ -n "$REQUESTED_HOTFIX_SHA" && "$REQUESTED_HOTFIX_SHA" != "$hotfix_sha" ]]; then
+            echo "::error::The requested hotfix SHA is not the current hotfix branch tip."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$main_sha" "$hotfix_sha"; then
+            echo "::error::Hotfix must contain the current main commit before promotion."
+            exit 1
+          fi
+
+          if git diff --quiet "$main_sha" "$hotfix_sha" -- convex/schema.ts; then
+            schema_changed=false
+          else
+            schema_changed=true
+          fi
+
+          if [[ "$schema_changed" == "true" ]]; then
+            echo "::error::Hotfix promotions cannot change convex/schema.ts. Use the staging promotion workflow for schema changes."
+            exit 1
+          fi
+
+          echo "main_sha=$main_sha" >> "$GITHUB_OUTPUT"
+          echo "hotfix_sha=$hotfix_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the exact hotfix commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.refs.outputs.hotfix_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run hotfix verification
+        run: |
+          npm run convex:typecheck
+          npm run web:build
+          npm run lint
+
+  promote-main:
+    name: Advance main after hotfix checks
+    needs: verify-hotfix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Advance main to the tested hotfix commit
+        env:
+          MAIN_SHA: ${{ needs.verify-hotfix.outputs.main_sha }}
+          HOTFIX_SHA: ${{ needs.verify-hotfix.outputs.hotfix_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main hotfix
+          current_main="$(git rev-parse origin/main)"
+          current_hotfix="$(git rev-parse origin/hotfix)"
+
+          [[ "$current_main" == "$MAIN_SHA" ]] || {
+            echo "::error::Main changed while hotfix checks were running. Nothing was pushed.";
+            exit 1;
+          }
+          [[ "$current_hotfix" == "$HOTFIX_SHA" ]] || {
+            echo "::error::Hotfix changed while checks were running. Nothing was pushed.";
+            exit 1;
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push origin "${HOTFIX_SHA}:refs/heads/main"
+
+  deploy-production:
+    name: Deploy promoted hotfix
+    needs:
+      - verify-hotfix
+      - promote-main
+    if: needs.promote-main.result == 'success'
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Check out the promoted hotfix
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.verify-hotfix.outputs.hotfix_sha }}
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Deploy Convex production
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+          PROMOTED_SHA: ${{ needs.verify-hotfix.outputs.hotfix_sha }}
+        run: npx convex deploy --message "Promote hotfix $PROMOTED_SHA to production"

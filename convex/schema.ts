@@ -146,4 +146,17 @@ export default defineSchema({
     ),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
+  backupSnapshots: defineTable({
+    environment: v.literal("prod"),
+    reason: v.literal("schema-change"),
+    storageId: v.id("_storage"),
+    beforeCommit: v.string(),
+    afterCommit: v.string(),
+    schemaHash: v.string(),
+    createdAt: v.number(),
+    archiveName: v.string(),
+    sizeBytes: v.number(),
+  })
+    .index("by_created_at", ["createdAt"])
+    .index("by_after_commit", ["afterCommit"]),
 });

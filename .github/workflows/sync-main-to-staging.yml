@@ -61,7 +61,7 @@ jobs:
           echo "staging_sha=$staging_sha" >> "$GITHUB_OUTPUT"
           echo "main_sha=$MAIN_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Advance staging to main
+      - name: Advance staging to match main
         if: steps.guard.outputs.updated == 'true'
         env:
           EXPECTED_STAGING_SHA: ${{ steps.guard.outputs.staging_sha }}
