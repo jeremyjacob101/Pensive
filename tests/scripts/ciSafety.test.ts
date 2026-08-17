@@ -8,7 +8,7 @@ async function workflow(name: string) {
 }
 
 describe("CI test safety", () => {
-  it("runs the required test layers for pull requests and protected branch pushes", async () => {
+  it("runs the required test layers for pull requests and staging pushes", async () => {
     const contents = await workflow("test-suite.yml");
     expect(contents).toContain("pull_request:");
     expect(contents).toContain("- main");
@@ -19,7 +19,7 @@ describe("CI test safety", () => {
     expect(contents).toContain("npm run test:e2e");
     expect(contents).toContain("ios-tests:");
     expect(contents).toContain("./scripts/test-ios-stable.sh");
-    expect(contents).toContain("- hotfix");
+    expect(contents).not.toContain("      - hotfix");
   });
 
   it("does not hard-code the production deployment into the test workflow", async () => {
@@ -57,6 +57,12 @@ describe("CI test safety", () => {
     expect(contents).not.toContain(
       "gh workflow run deploy-convex-environments.yml",
     );
+  });
+
+  it("keeps the automatic main-to-hotfix reset as a guarded ref sync", async () => {
+    const contents = await workflow("sync-main-to-hotfix.yml");
+    expect(contents).toContain("--force-with-lease");
+    expect(contents).toContain('"${MAIN_SHA}:refs/heads/hotfix"');
   });
 
   it("requires the exact full Test Suite before hotfix promotion can update main", async () => {
