@@ -7,6 +7,10 @@ async function workflow(name: string) {
   return await readFile(new URL(`.github/workflows/${name}`, repoRoot), "utf8");
 }
 
+async function script(name: string) {
+  return await readFile(new URL(`scripts/${name}`, repoRoot), "utf8");
+}
+
 describe("CI test safety", () => {
   it("runs the required test layers for pull requests and staging pushes", async () => {
     const contents = await workflow("test-suite.yml");
@@ -64,6 +68,12 @@ describe("CI test safety", () => {
     expect(contents).not.toContain(
       "gh workflow run deploy-convex-environments.yml",
     );
+  });
+
+  it("does not combine the staging deploy key with an explicit deployment flag", async () => {
+    const contents = await script("convex-staging-compatibility.mjs");
+    expect(contents).toContain("CONVEX_DEPLOY_KEY: stagingDeployKey");
+    expect(contents).not.toContain('"--deployment"');
   });
 
   it("keeps the automatic main-to-hotfix reset as a guarded ref sync", async () => {

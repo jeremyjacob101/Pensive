@@ -80,8 +80,6 @@ function importSnapshot() {
   runConvex([
     "import",
     snapshotPath,
-    "--deployment",
-    "staging",
     "--replace-all",
     "--yes",
   ]);
@@ -89,12 +87,10 @@ function importSnapshot() {
 
 function exportAndReimportPostChangeState() {
   const postChangePath = join(temporaryRoot, "post-change-state.zip");
-  runConvex(["export", "--deployment", "staging", "--path", postChangePath]);
+  runConvex(["export", "--path", postChangePath]);
   runConvex([
     "import",
     postChangePath,
-    "--deployment",
-    "staging",
     "--replace-all",
     "--yes",
   ]);
