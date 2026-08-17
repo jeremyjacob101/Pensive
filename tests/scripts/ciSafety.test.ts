@@ -13,6 +13,7 @@ describe("CI test safety", () => {
     expect(contents).toContain("pull_request:");
     expect(contents).toContain("- main");
     expect(contents).toContain("- staging");
+    expect(contents).toContain("workflow_call:");
     expect(contents).toContain("behavior-tests:");
     expect(contents).toContain("npm test");
     expect(contents).toContain("browser-e2e:");
@@ -65,21 +66,16 @@ describe("CI test safety", () => {
     expect(contents).toContain('"${MAIN_SHA}:refs/heads/hotfix"');
   });
 
-  it("requires the exact full Test Suite before hotfix promotion can update main", async () => {
+  it("runs the exact hotfix through the full Test Suite before promotion", async () => {
     const contents = await workflow("promote-hotfix-to-main.yml");
-    expect(contents).toContain("checks: read");
+    expect(contents).toContain("Run full Test Suite on hotfix");
+    expect(contents).toContain("uses: ./.github/workflows/test-suite.yml");
     expect(contents).toContain(
-      "Require the complete Test Suite for the exact hotfix commit",
+      "checkout_ref: ${{ needs.verify-hotfix.outputs.hotfix_sha }}",
     );
-    for (const check of [
-      "Static quality",
-      "Web and Convex behavior tests",
-      "Browser E2E (non-production)",
-      "iOS unit, integration, and UI tests",
-    ]) {
-      expect(contents).toContain(check);
-    }
-    expect(contents).toContain("max_wait_seconds=1800");
-    expect(contents).toContain("exit 1");
+    expect(contents).toContain("secrets: inherit");
+    expect(contents).toMatch(
+      /needs:\s*[\r\n]+\s+- verify-hotfix[\r\n]+\s+- test-hotfix/,
+    );
   });
 });
