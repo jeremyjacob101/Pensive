@@ -12,6 +12,7 @@ struct SavingsFeatureView: View {
     @State private var interestOn = true
     @State private var totalVisible = true
     @State private var presentedSheet: SavingsSheetDestination?
+    @State private var showsAddMenu = false
     @State private var deleteTarget: SavingsDeleteTarget?
     @State private var showsAllEntries = false
 
@@ -50,30 +51,11 @@ struct SavingsFeatureView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        presentedSheet = .bank(nil)
-                    } label: {
-                        Label("Add bank", systemImage: "building.columns")
-                    }
-
-                    Button {
-                        presentedSheet = .entry(nil, initialBankID: selectedBankIDs.first)
-                    } label: {
-                        Label("Add balance", systemImage: "plus.circle")
-                    }
-                    .disabled(viewModel.banks.isEmpty)
-
-                    Divider()
-
-                    Button {
-                        presentedSheet = .currency
-                    } label: {
-                        Label("Currency & rate", systemImage: "dollarsign.arrow.circlepath")
-                    }
+                Button {
+                    showsAddMenu = true
                 } label: {
                     Image(systemName: "plus")
-                        // Keep the toolbar menu reliably tappable for VoiceOver and UI tests.
+                        // Keep the toolbar action reliably tappable for VoiceOver and UI tests.
                         // The intrinsic symbol size is smaller than the system's recommended
                         // control target and can produce an invalid accessibility hit point
                         // when the page is hosted in a scroll view.
@@ -83,6 +65,22 @@ struct SavingsFeatureView: View {
                 .accessibilityIdentifier("savings_add_menu")
                 .accessibilityLabel("Add savings item")
             }
+        }
+        .confirmationDialog("Add savings item", isPresented: $showsAddMenu, titleVisibility: .hidden) {
+            Button("Add bank") {
+                presentedSheet = .bank(nil)
+            }
+
+            Button("Add balance") {
+                presentedSheet = .entry(nil, initialBankID: selectedBankIDs.first)
+            }
+            .disabled(viewModel.banks.isEmpty)
+
+            Button("Currency & rate") {
+                presentedSheet = .currency
+            }
+
+            Button("Cancel", role: .cancel) {}
         }
         .task {
             await viewModel.load()
