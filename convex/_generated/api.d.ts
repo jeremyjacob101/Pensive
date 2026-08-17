@@ -21,6 +21,7 @@ import type * as notepad from "../notepad.js";
 import type * as paybackHelpers from "../paybackHelpers.js";
 import type * as paybackLinks from "../paybackLinks.js";
 import type * as recurrings from "../recurrings.js";
+import type * as savings from "../savings.js";
 import type * as summaries from "../summaries.js";
 import type * as tracking from "../tracking.js";
 import type * as userOptions from "../userOptions.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   paybackHelpers: typeof paybackHelpers;
   paybackLinks: typeof paybackLinks;
   recurrings: typeof recurrings;
+  savings: typeof savings;
   summaries: typeof summaries;
   tracking: typeof tracking;
   userOptions: typeof userOptions;

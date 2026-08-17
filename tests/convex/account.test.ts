@@ -44,9 +44,33 @@ describe("Convex account deletion", () => {
       testApi.expenses.create,
       expenseInput("preserved-expense"),
     );
+    await client.mutation(testApi.savings.createBank, {
+      name: "Alice savings",
+      color: "#4389FF",
+      interestEnabled: true,
+      annualInterestRate: 1,
+      compounding: "monthly",
+      currency: "ILS",
+      startingBalance: 100,
+      startingDate: "2026-01-01",
+    });
+    await client.mutation(testApi.savings.setCurrencySettings, {
+      displayCurrency: "USD",
+      manualUsdIlsRate: 3.5,
+    });
+    await bobClient.mutation(testApi.savings.createBank, {
+      name: "Bob savings",
+      color: "#FF6758",
+      interestEnabled: false,
+      annualInterestRate: 0,
+      compounding: "monthly",
+      currency: "USD",
+      startingBalance: 200,
+      startingDate: "2026-01-01",
+    });
 
     const result = await client.mutation(testApi.account.deleteMine, {});
-    expect(result.deleted).toBeGreaterThanOrEqual(7);
+    expect(result.deleted).toBeGreaterThanOrEqual(10);
 
     const remaining = await t.run(async (ctx) => ({
       user: await ctx.db.get(alice),
@@ -74,6 +98,18 @@ describe("Convex account deletion", () => {
         .query("notepadWorkspaces")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
+      savingsSettings: await ctx.db
+        .query("savingsSettings")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
+      savingsEntries: await ctx.db
+        .query("savingsEntries")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
+      savingsBanks: await ctx.db
+        .query("savingsBanks")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
     }));
     expect(remaining).toEqual({
       user: null,
@@ -83,11 +119,20 @@ describe("Convex account deletion", () => {
       recurrings: [],
       options: [],
       notepad: [],
+      savingsSettings: [],
+      savingsEntries: [],
+      savingsBanks: [],
     });
     expect(
       await bobClient.query(testApi.expenses.list, {
         paginationOpts: { cursor: null, numItems: 10 },
       }),
     ).toMatchObject({ page: [{ expenseId: "preserved-expense" }] });
+    expect(
+      (await bobClient.query(testApi.savings.list, {})).banks,
+    ).toHaveLength(1);
+    expect(
+      (await bobClient.query(testApi.savings.list, {})).entries,
+    ).toHaveLength(1);
   });
 });

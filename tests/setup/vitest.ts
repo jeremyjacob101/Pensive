@@ -6,9 +6,16 @@ afterEach(() => {
   cleanup();
 });
 
+const localStorageDescriptor =
+  typeof window === "undefined"
+    ? undefined
+    : Object.getOwnPropertyDescriptor(window, "localStorage");
+
 if (
   typeof window !== "undefined" &&
-  typeof window.localStorage?.getItem !== "function"
+  (!localStorageDescriptor ||
+    "get" in localStorageDescriptor ||
+    typeof localStorageDescriptor.value?.getItem !== "function")
 ) {
   const values = new Map<string, string>();
   Object.defineProperty(window, "localStorage", {

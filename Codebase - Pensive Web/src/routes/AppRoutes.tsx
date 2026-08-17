@@ -27,6 +27,10 @@ const Notepad = lazy(() =>
   import("../pages/Notepad").then(({ Notepad }) => ({
     default: Notepad,
   })));
+const Savings = lazy(() =>
+  import("../pages/Savings").then(({ Savings }) => ({
+    default: Savings,
+  })));
 const Options = lazy(() =>
   import("../pages/Options").then(({ Options }) => ({
     default: Options,
@@ -57,6 +61,7 @@ export function AppRoutes() {
             <Route path="/recurrings" element={<Recurrings />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/notepad" element={<Notepad />} />
+            <Route path="/savings" element={<Savings />} />
             <Route path="/options" element={<Options />} />
           </Route>
           <Route path="/app/*" element={<LegacyAppPathRedirect />} />

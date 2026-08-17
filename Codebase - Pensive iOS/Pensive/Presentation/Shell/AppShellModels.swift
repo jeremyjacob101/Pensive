@@ -8,6 +8,7 @@ enum AppTab: String, CaseIterable, Hashable {
     case recurrings
     case tracking
     case notepad
+    case savings
     case options
     case user
 
@@ -19,6 +20,7 @@ enum AppTab: String, CaseIterable, Hashable {
         case .recurrings: return "Recurrings"
         case .tracking: return "Tracking"
         case .notepad: return "Notepad"
+        case .savings: return "Savings"
         case .options: return "Options"
         case .user: return "User"
         }
@@ -32,6 +34,7 @@ enum AppTab: String, CaseIterable, Hashable {
         case .recurrings: return "repeat"
         case .tracking: return "scope"
         case .notepad: return "note.text"
+        case .savings: return "building.columns"
         case .options: return "gearshape"
         case .user: return "person.crop.circle"
         }
@@ -55,6 +58,8 @@ enum AppTab: String, CaseIterable, Hashable {
             return Color(red: 168.0 / 255.0, green: 85.0 / 255.0, blue: 247.0 / 255.0)
         case .notepad:
             return Color(red: 234.0 / 255.0, green: 179.0 / 255.0, blue: 8.0 / 255.0)
+        case .savings:
+            return Color(red: 21.0 / 255.0, green: 60.0 / 255.0, blue: 248.0 / 255.0)
         case .options:
             return Color(red: 236.0 / 255.0, green: 72.0 / 255.0, blue: 153.0 / 255.0)
         case .user:

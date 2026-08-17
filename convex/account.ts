@@ -14,7 +14,10 @@ type UserOwnedTable =
   | "incomings"
   | "recurrings"
   | "userOptions"
-  | "notepadWorkspaces";
+  | "notepadWorkspaces"
+  | "savingsSettings"
+  | "savingsEntries"
+  | "savingsBanks";
 
 async function userOwnedDocs(
   ctx: MutationCtx,
@@ -50,6 +53,21 @@ async function userOwnedDocs(
     case "notepadWorkspaces":
       return await ctx.db
         .query("notepadWorkspaces")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .collect();
+    case "savingsSettings":
+      return await ctx.db
+        .query("savingsSettings")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .collect();
+    case "savingsEntries":
+      return await ctx.db
+        .query("savingsEntries")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .collect();
+    case "savingsBanks":
+      return await ctx.db
+        .query("savingsBanks")
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .collect();
   }
@@ -125,6 +143,9 @@ export const deleteMine = mutation({
     deleted += await deleteByUserId(ctx, "recurrings", userId);
     deleted += await deleteByUserId(ctx, "userOptions", userId);
     deleted += await deleteByUserId(ctx, "notepadWorkspaces", userId);
+    deleted += await deleteByUserId(ctx, "savingsSettings", userId);
+    deleted += await deleteByUserId(ctx, "savingsEntries", userId);
+    deleted += await deleteByUserId(ctx, "savingsBanks", userId);
 
     await ctx.db.delete(userId);
     deleted += 1;

@@ -146,6 +146,49 @@ export default defineSchema({
     ),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
+  savingsBanks: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    color: v.string(),
+    currency: v.optional(v.union(v.literal("ILS"), v.literal("USD"))),
+    interestEnabled: v.boolean(),
+    annualInterestRate: v.number(),
+    compounding: v.union(v.literal("monthly"), v.literal("yearly")),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_sort", ["userId", "sortOrder"]),
+  savingsEntries: defineTable({
+    userId: v.id("users"),
+    bankId: v.id("savingsBanks"),
+    date: v.string(),
+    amount: v.number(),
+    currency: v.optional(v.union(v.literal("ILS"), v.literal("USD"))),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_user_date", ["userId", "date"])
+    .index("by_user_bank_date", ["userId", "bankId", "date"]),
+  savingsSettings: defineTable({
+    userId: v.id("users"),
+    displayCurrency: v.union(v.literal("ILS"), v.literal("USD")),
+    manualUsdIlsRate: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_user_id", ["userId"]),
+  savingsExchangeRates: defineTable({
+    pair: v.string(),
+    base: v.string(),
+    quote: v.string(),
+    rate: v.number(),
+    rateDate: v.string(),
+    source: v.string(),
+    fetchedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_pair", ["pair"]),
   backupSnapshots: defineTable({
     environment: v.literal("prod"),
     reason: v.literal("schema-change"),

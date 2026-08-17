@@ -13,6 +13,7 @@ struct AppShellView: View {
     @SceneStorage("shell.path.recurrings") private var recurringsPathData: Data?
     @SceneStorage("shell.path.tracking") private var trackingPathData: Data?
     @SceneStorage("shell.path.notepad") private var notepadPathData: Data?
+    @SceneStorage("shell.path.savings") private var savingsPathData: Data?
     @SceneStorage("shell.path.options") private var optionsPathData: Data?
     @SceneStorage("shell.path.user") private var userPathData: Data?
 
@@ -128,6 +129,7 @@ struct AppShellView: View {
         case .recurrings: return recurringsPathData
         case .tracking: return trackingPathData
         case .notepad: return notepadPathData
+        case .savings: return savingsPathData
         case .options: return optionsPathData
         case .user: return userPathData
         }
@@ -141,6 +143,7 @@ struct AppShellView: View {
         case .recurrings: recurringsPathData = value
         case .tracking: trackingPathData = value
         case .notepad: notepadPathData = value
+        case .savings: savingsPathData = value
         case .options: optionsPathData = value
         case .user: userPathData = value
         }

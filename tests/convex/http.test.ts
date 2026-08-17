@@ -23,8 +23,99 @@ describe("Convex HTTP routes", () => {
       "/api/notepad/get-mine",
       "/api/user-options/list",
       "/api/payback-links/list-incoming-candidates",
+      "/api/savings/list",
     ]) {
       const response = await t.fetch(path);
+      expect(response.status, path).toBe(401);
+      expect(await json(response), path).toMatchObject({
+        ok: false,
+        error: { code: "unauthorized" },
+      });
+    }
+  });
+
+  it("protects savings mutations and actions behind authentication", async () => {
+    const t = makeConvexTest();
+    const user = await createUser(t, "http-savings-user");
+    const ids = await t.run(async (ctx) => {
+      const bankId = await ctx.db.insert("savingsBanks", {
+        userId: user,
+        name: "Checking",
+        color: "#4389FF",
+        interestEnabled: false,
+        annualInterestRate: 0,
+        compounding: "monthly",
+        sortOrder: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const entryId = await ctx.db.insert("savingsEntries", {
+        userId: user,
+        bankId,
+        date: "2026-01-01",
+        amount: 100,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return { bankId, entryId };
+    });
+    const headers = { "content-type": "application/json" };
+    const requests = [
+      ["/api/savings/currency-settings", { displayCurrency: "ILS" }],
+      ["/api/savings/refresh-exchange-rate", { force: false }],
+      [
+        "/api/savings/create-bank",
+        {
+          name: "Checking",
+          color: "#4389FF",
+          interestEnabled: false,
+          annualInterestRate: 0,
+          compounding: "monthly",
+          currency: "ILS",
+        },
+      ],
+      [
+        "/api/savings/update-bank",
+        {
+          id: ids.bankId,
+          name: "Checking",
+          color: "#4389FF",
+          interestEnabled: false,
+          annualInterestRate: 0,
+          compounding: "monthly",
+          currency: "ILS",
+        },
+      ],
+      ["/api/savings/remove-bank", { id: ids.bankId }],
+      ["/api/savings/reorder-banks", { ids: [] }],
+      [
+        "/api/savings/create-entry",
+        {
+          bankId: ids.bankId,
+          date: "2026-01-01",
+          amount: 100,
+          currency: "ILS",
+        },
+      ],
+      [
+        "/api/savings/update-entry",
+        {
+          id: ids.entryId,
+          bankId: ids.bankId,
+          date: "2026-01-01",
+          amount: 100,
+          currency: "ILS",
+        },
+      ],
+      ["/api/savings/remove-entry", { id: ids.entryId }],
+    ] as const;
+
+    for (const [path, body] of requests) {
+      const response = await t.fetch(path, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
       expect(response.status, path).toBe(401);
       expect(await json(response), path).toMatchObject({
         ok: false,
