@@ -1,8 +1,11 @@
 import { convertSavingsAmount, formatSavingsDate, formatSavingsMoney, localIsoDate, otherSavingsCurrency, savingsCurrencySymbol } from "../helpers/savings";
-import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { SavingsBank, SavingsBankId, SavingsChartMode, SavingsChartPoint, SavingsCurrency } from "../types/savings";
+import { CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { SavingsBank, SavingsBankId, SavingsChartPoint, SavingsCurrency } from "../types/savings";
 import { Check } from "lucide-react";
 import { useMemo } from "react";
+
+const TOTAL_SERIES_COLOR = "#A855F7";
+const TOTAL_SERIES_GRADIENT_ID = "savings-total-stroke";
 
 type ChartRow = SavingsChartPoint &
   Record<string, number | string | boolean | Record<string, number>>;
@@ -22,12 +25,11 @@ function formatAxisMoney(value: number, currency: SavingsCurrency) {
   return `${savingsCurrencySymbol(currency)}${formatted}`;
 }
 
-export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mode, displayCurrency, usdIlsRate, emptyMessage, onToggleBank, onToggleTotal }: {
+export function SavingsChart({ points, banks, selectedBankIds, totalVisible, displayCurrency, usdIlsRate, emptyMessage, onToggleBank, onToggleTotal }: {
   points: SavingsChartPoint[];
   banks: SavingsBank[];
   selectedBankIds: Set<SavingsBankId>;
   totalVisible: boolean;
-  mode: SavingsChartMode;
   displayCurrency: SavingsCurrency;
   usdIlsRate: number | null;
   emptyMessage?: string;
@@ -57,7 +59,7 @@ export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mod
       <div className="savings-chart-legend" aria-label="Chart series">
         <SeriesToggle
           label="Total"
-          color="#153CF8"
+          color={TOTAL_SERIES_COLOR}
           selected={totalVisible}
           onClick={onToggleTotal}
         />
@@ -90,36 +92,20 @@ export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mod
               margin={{ top: 20, right: 14, bottom: 8, left: 4 }}
             >
               <defs>
-                {selectedBanks.map((bank) => (
-                  <linearGradient
-                    key={bank._id}
-                    id={`savings-fill-${bank._id}`}
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      stopColor={bank.color}
-                      stopOpacity={0.34}
-                    />
-                    <stop
-                      offset="100%"
-                      stopColor={bank.color}
-                      stopOpacity={0.08}
-                    />
-                  </linearGradient>
-                ))}
                 <linearGradient
-                  id="savings-total-fill"
+                  id={TOTAL_SERIES_GRADIENT_ID}
                   x1="0"
                   y1="0"
-                  x2="0"
-                  y2="1"
+                  x2="1"
+                  y2="0"
                 >
-                  <stop offset="0%" stopColor="#153CF8" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="#153CF8" stopOpacity={0.03} />
+                  <stop offset="0%" stopColor="#6D28D9" />
+                  <stop offset="20%" stopColor="#A855F7" />
+                  <stop offset="38%" stopColor="#D8B4FE" />
+                  <stop offset="54%" stopColor="#9333EA" />
+                  <stop offset="72%" stopColor="#E9D5FF" />
+                  <stop offset="86%" stopColor="#A855F7" />
+                  <stop offset="100%" stopColor="#7C3AED" />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -180,7 +166,7 @@ export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mod
                       <strong>{formatSavingsDate(row.date)}</strong>
                       <TooltipRow
                         label="Total"
-                        color="#153CF8"
+                        color={TOTAL_SERIES_COLOR}
                         value={row.total}
                         currency={displayCurrency}
                         usdIlsRate={usdIlsRate}
@@ -205,60 +191,62 @@ export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mod
                 }}
               />
 
-              {mode === "total" ? (
-                <Area
+              {selectedBanks.map((bank) => (
+                <Line
+                  key={bank._id}
                   type="monotone"
-                  dataKey="total"
-                  stroke="none"
-                  fill="url(#savings-total-fill)"
+                  dataKey={bankDataKey(bank._id)}
+                  stroke={bank.color}
+                  strokeWidth={2.2}
+                  dot={false}
+                  activeDot={{
+                    r: 4,
+                    strokeWidth: 2,
+                    fill: "var(--surface)",
+                  }}
                   isAnimationActive={false}
                 />
-              ) : null}
-
-              {mode === "stacked"
-                ? selectedBanks.map((bank) => (
-                    <Area
-                      key={bank._id}
-                      type="monotone"
-                      dataKey={bankDataKey(bank._id)}
-                      stackId="savings-banks"
-                      stroke={bank.color}
-                      strokeWidth={1.6}
-                      fill={`url(#savings-fill-${bank._id})`}
-                      isAnimationActive={false}
-                    />
-                  ))
-                : null}
-
-              {mode === "lines"
-                ? selectedBanks.map((bank) => (
-                    <Line
-                      key={bank._id}
-                      type="monotone"
-                      dataKey={bankDataKey(bank._id)}
-                      stroke={bank.color}
-                      strokeWidth={2.2}
-                      dot={false}
-                      activeDot={{
-                        r: 4,
-                        strokeWidth: 2,
-                        fill: "var(--surface)",
-                      }}
-                      isAnimationActive={false}
-                    />
-                  ))
-                : null}
+              ))}
 
               {totalVisible ? (
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#153CF8"
-                  strokeWidth={2.8}
-                  dot={false}
-                  activeDot={{ r: 5, strokeWidth: 2, fill: "var(--surface)" }}
-                  isAnimationActive={false}
-                />
+                <>
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="var(--savings-total-outline)"
+                    strokeWidth={5.35}
+                    strokeLinecap="round"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke={`url(#${TOTAL_SERIES_GRADIENT_ID})`}
+                    strokeWidth={4.1}
+                    strokeLinecap="round"
+                    dot={false}
+                    activeDot={{
+                      r: 5,
+                      strokeWidth: 2,
+                      fill: "var(--surface)",
+                    }}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#F3E8FF"
+                    strokeOpacity={0.82}
+                    strokeWidth={1.35}
+                    strokeDasharray="2 7"
+                    strokeLinecap="round"
+                    dot={false}
+                    activeDot={false}
+                    isAnimationActive={false}
+                  />
+                </>
               ) : null}
             </ComposedChart>
           </ResponsiveContainer>

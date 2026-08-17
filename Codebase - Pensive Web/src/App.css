@@ -16,6 +16,7 @@
   --savings-hairline: #e1e6ed;
   --savings-grid: #dfe6ef;
   --savings-grid-strong: #cfd7e3;
+  --savings-total-outline: #000000;
   --left-menu-transition-duration: 180ms;
   --left-menu-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -36,6 +37,7 @@ html.theme-dark {
   --savings-hairline: #273449;
   --savings-grid: #243147;
   --savings-grid-strong: #334155;
+  --savings-total-outline: #ffffff;
 }
 
 html,
@@ -4646,10 +4648,7 @@ thead th {
 
 .savings-chart-controls {
   display: grid;
-  grid-template-columns: minmax(250px, 0.8fr) minmax(180px, 0.5fr) minmax(
-      520px,
-      1.7fr
-    );
+  grid-template-columns: minmax(180px, 0.5fr) minmax(520px, 1.7fr);
   border-bottom: 1px solid var(--savings-hairline);
   margin-bottom: 12px;
 }

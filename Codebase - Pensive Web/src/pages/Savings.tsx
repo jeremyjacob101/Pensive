@@ -1,6 +1,6 @@
 import { buildSavingsSeries, convertSavingsAmount, formatSavingsDate, formatSavingsMoney, isUsableSavingsRate, latestEntriesByBank, otherSavingsCurrency, requiresSavingsExchangeRate, resolvedSavingsCurrency } from "../helpers/savings";
-import type { SavingsBank, SavingsBankDraft, SavingsBankId, SavingsChartMode, SavingsCurrency, SavingsCurrencySettings, SavingsEntry, SavingsEntryDraft, SavingsHorizon } from "../types/savings";
-import { ArrowDown, ArrowUp, CalendarPlus, Eye, Landmark, Pencil, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
+import type { SavingsBank, SavingsBankDraft, SavingsBankId, SavingsCurrency, SavingsCurrencySettings, SavingsEntry, SavingsEntryDraft, SavingsHorizon } from "../types/savings";
+import { CalendarPlus, Eye, Landmark, Pencil, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { SavingsCurrencySheet } from "../components/SavingsCurrencySheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SavingsEntrySheet } from "../components/SavingsEntrySheet";
@@ -226,7 +226,6 @@ export function Savings() {
   const createBank = useMutation(api.savings.createBank);
   const updateBank = useMutation(api.savings.updateBank);
   const removeBank = useMutation(api.savings.removeBank);
-  const reorderBanks = useMutation(api.savings.reorderBanks);
   const createEntry = useMutation(api.savings.createEntry);
   const updateEntry = useMutation(api.savings.updateEntry);
   const removeEntry = useMutation(api.savings.removeEntry);
@@ -245,7 +244,6 @@ export function Savings() {
       ),
     [banks, hiddenBankIds],
   );
-  const [chartMode, setChartMode] = useState<SavingsChartMode>("stacked");
   const [interestOn, setInterestOn] = useState(true);
   const [totalVisible, setTotalVisible] = useState(true);
   const [horizonYears, setHorizonYears] = useState<number>(20);
@@ -465,19 +463,6 @@ export function Savings() {
     );
   };
 
-  const moveBank = async (id: SavingsBankId, direction: -1 | 1) => {
-    const currentIndex = banks.findIndex((bank) => bank._id === id);
-    const targetIndex = currentIndex + direction;
-    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= banks.length)
-      return;
-    const ids = banks.map((bank) => bank._id);
-    [ids[currentIndex], ids[targetIndex]] = [
-      ids[targetIndex],
-      ids[currentIndex],
-    ];
-    await runMutation(() => reorderBanks({ ids }));
-  };
-
   const applyCustomHorizon = () => {
     const years = Math.round(Number(customHorizon));
     if (!Number.isFinite(years) || years < 1 || years > 100) {
@@ -613,21 +598,6 @@ export function Savings() {
             aria-label="Balance savings chart"
           >
             <div className="savings-chart-controls">
-              <ControlGroup label="Chart mode">
-                <div className="savings-segmented">
-                  {(["stacked", "lines", "total"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={chartMode === mode ? "active" : ""}
-                      onClick={() => setChartMode(mode)}
-                    >
-                      {mode[0].toUpperCase() + mode.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </ControlGroup>
-
               <ControlGroup label="Interest">
                 <label className="savings-inline-switch">
                   <input
@@ -711,7 +681,6 @@ export function Savings() {
               banks={banks}
               selectedBankIds={selectedBankIds}
               totalVisible={totalVisible}
-              mode={chartMode}
               displayCurrency={displayCurrency}
               usdIlsRate={effectiveUsdIlsRate}
               emptyMessage={
@@ -728,7 +697,9 @@ export function Savings() {
             <section className="savings-data-panel">
               <header>
                 <h2>Banks</h2>
-                <span>Reorder with the arrow controls</span>
+                <span>
+                  Each line follows its own balance and interest settings
+                </span>
               </header>
               <div className="savings-table-wrap">
                 <table className="savings-table">
@@ -742,7 +713,7 @@ export function Savings() {
                     </tr>
                   </thead>
                   <tbody>
-                    {banks.map((bank, index) => {
+                    {banks.map((bank) => {
                       const latest = latestByBank.get(bank._id);
                       return (
                         <tr key={bank._id}>
@@ -790,22 +761,6 @@ export function Savings() {
                                 aria-label={`${selectedBankIds.has(bank._id) ? "Hide" : "Show"} ${bank.name} on chart`}
                               >
                                 <Eye size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void moveBank(bank._id, -1)}
-                                disabled={saving || index === 0}
-                                aria-label={`Move ${bank.name} up`}
-                              >
-                                <ArrowUp size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void moveBank(bank._id, 1)}
-                                disabled={saving || index === banks.length - 1}
-                                aria-label={`Move ${bank.name} down`}
-                              >
-                                <ArrowDown size={15} />
                               </button>
                               <button
                                 type="button"

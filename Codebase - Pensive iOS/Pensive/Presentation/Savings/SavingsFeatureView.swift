@@ -1,11 +1,27 @@
 import Charts
 import SwiftUI
 
+private enum SavingsChartStyle {
+    static let totalPurple = Color(red: 168 / 255, green: 85 / 255, blue: 247 / 255)
+    static let totalStripeGradient = LinearGradient(
+        gradient: Gradient(stops: [
+            .init(color: Color(red: 109 / 255, green: 40 / 255, blue: 217 / 255), location: 0),
+            .init(color: Color(red: 168 / 255, green: 85 / 255, blue: 247 / 255), location: 0.2),
+            .init(color: Color(red: 216 / 255, green: 180 / 255, blue: 254 / 255), location: 0.38),
+            .init(color: Color(red: 147 / 255, green: 51 / 255, blue: 234 / 255), location: 0.54),
+            .init(color: Color(red: 233 / 255, green: 213 / 255, blue: 255 / 255), location: 0.72),
+            .init(color: Color(red: 168 / 255, green: 85 / 255, blue: 247 / 255), location: 0.86),
+            .init(color: Color(red: 124 / 255, green: 58 / 255, blue: 237 / 255), location: 1)
+        ]),
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+}
+
 struct SavingsFeatureView: View {
     @StateObject private var viewModel: SavingsFeatureViewModel
     @State private var selectedBankIDs: Set<String> = []
     @State private var knownBankIDs: Set<String> = []
-    @State private var chartMode: SavingsChartMode = .stacked
     @State private var horizon: SavingsHorizon = .twenty
     @State private var customHorizon = 12
     @State private var showsCustomHorizon = false
@@ -300,19 +316,10 @@ struct SavingsFeatureView: View {
 
             Divider()
 
-            HStack(spacing: 16) {
+            HStack {
                 Toggle("Interest on", isOn: $interestOn)
                     .font(.subheadline.weight(.medium))
                     .tint(Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255))
-
-                Divider().frame(height: 34)
-
-                Picker("Chart mode", selection: $chartMode) {
-                    ForEach(SavingsChartMode.allCases) { mode in
-                        Text(mode.title).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 13)
@@ -323,7 +330,7 @@ struct SavingsFeatureView: View {
                 HStack(spacing: 8) {
                     SavingsSeriesChip(
                         title: "Total",
-                        color: Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255),
+                        color: SavingsChartStyle.totalPurple,
                         isSelected: totalVisible
                     ) {
                         totalVisible.toggle()
@@ -355,7 +362,6 @@ struct SavingsFeatureView: View {
         SavingsChartView(
             points: series,
             banks: viewModel.banks.filter { selectedBankIDs.contains($0.id) },
-            mode: chartMode,
             totalVisible: totalVisible,
             currency: displayCurrency,
             usdIlsRate: effectiveUsdIlsRate,
@@ -377,15 +383,13 @@ struct SavingsFeatureView: View {
                     .font(.caption.weight(.semibold))
             }
 
-            ForEach(Array(viewModel.banks.enumerated()), id: \.element.id) { index, bank in
+            ForEach(viewModel.banks) { bank in
                 SavingsBankRow(
                     bank: bank,
                     latestEntry: latestByBank[bank.id],
                     displayCurrency: displayCurrency,
                     usdIlsRate: effectiveUsdIlsRate,
                     isSelected: selectedBankIDs.contains(bank.id),
-                    canMoveUp: index > 0,
-                    canMoveDown: index < viewModel.banks.count - 1,
                     onToggle: {
                         if selectedBankIDs.contains(bank.id) {
                             selectedBankIDs.remove(bank.id)
@@ -397,13 +401,11 @@ struct SavingsFeatureView: View {
                         presentedSheet = .entry(nil, initialBankID: bank.id)
                     },
                     onEdit: { presentedSheet = .bank(bank) },
-                    onMoveUp: { Task { await viewModel.moveBank(bank, offset: -1) } },
-                    onMoveDown: { Task { await viewModel.moveBank(bank, offset: 1) } },
                     onDelete: { deleteTarget = .bank(bank) }
                 )
                 .padding(.horizontal, 16)
 
-                if index < viewModel.banks.count - 1 {
+                if let lastBankID = viewModel.banks.last?.id, bank.id != lastBankID {
                     Divider().padding(.leading, 48)
                 }
             }
@@ -669,13 +671,9 @@ private struct SavingsBankRow: View {
     let displayCurrency: SavingsCurrency
     let usdIlsRate: Double?
     let isSelected: Bool
-    let canMoveUp: Bool
-    let canMoveDown: Bool
     let onToggle: () -> Void
     let onAddBalance: () -> Void
     let onEdit: () -> Void
-    let onMoveUp: () -> Void
-    let onMoveDown: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
@@ -717,10 +715,6 @@ private struct SavingsBankRow: View {
                 }
                 Button(action: onAddBalance) { Label("Add balance", systemImage: "plus.circle") }
                 Button(action: onEdit) { Label("Edit bank", systemImage: "pencil") }
-                Button(action: onMoveUp) { Label("Move up", systemImage: "arrow.up") }
-                    .disabled(!canMoveUp)
-                Button(action: onMoveDown) { Label("Move down", systemImage: "arrow.down") }
-                    .disabled(!canMoveDown)
                 Divider()
                 Button(role: .destructive, action: onDelete) { Label("Delete bank", systemImage: "trash") }
             } label: {
@@ -837,7 +831,6 @@ private struct SavingsMoneyPair: View {
 private struct SavingsChartView: View {
     let points: [SavingsChartPoint]
     let banks: [SavingsBankDTO]
-    let mode: SavingsChartMode
     let totalVisible: Bool
     let currency: SavingsCurrency
     let usdIlsRate: Double?
@@ -850,21 +843,6 @@ private struct SavingsChartView: View {
         return points.min { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }
     }
 
-    private var stackedValues: [String: [SavingsStackedPoint]] {
-        var result: [String: [SavingsStackedPoint]] = [:]
-        for point in points {
-            var lower = 0.0
-            for bank in banks {
-                let upper = lower + (point.values[bank.id] ?? 0)
-                result[bank.id, default: []].append(
-                    SavingsStackedPoint(point: point, lower: lower, upper: upper)
-                )
-                lower = upper
-            }
-        }
-        return result
-    }
-
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if points.isEmpty {
@@ -874,53 +852,16 @@ private struct SavingsChartView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Chart {
-                    if mode == .stacked {
-                        ForEach(banks) { bank in
-                            ForEach(stackedValues[bank.id] ?? []) { item in
-                                AreaMark(
-                                    x: .value("Date", item.point.date),
-                                    yStart: .value("Lower", item.lower),
-                                    yEnd: .value("Upper", item.upper)
-                                )
-                                .foregroundStyle(Color(savingsHex: bank.color).opacity(0.24))
-                                .interpolationMethod(.catmullRom)
-
-                                LineMark(
-                                    x: .value("Date", item.point.date),
-                                    y: .value("Cumulative balance", item.upper)
-                                )
-                                .foregroundStyle(Color(savingsHex: bank.color))
-                                .lineStyle(.init(lineWidth: 1.5))
-                                .interpolationMethod(.catmullRom)
-                            }
-                        }
-                    } else if mode == .lines {
-                        ForEach(banks) { bank in
-                            ForEach(points) { point in
-                                LineMark(
-                                    x: .value("Date", point.date),
-                                    y: .value(bank.name, point.values[bank.id] ?? 0),
-                                    series: .value("Bank", bank.name)
-                                )
-                                .foregroundStyle(Color(savingsHex: bank.color))
-                                .lineStyle(.init(lineWidth: 2))
-                                .interpolationMethod(.catmullRom)
-                            }
-                        }
-                    } else {
+                    ForEach(banks) { bank in
                         ForEach(points) { point in
-                            AreaMark(
+                            LineMark(
                                 x: .value("Date", point.date),
-                                y: .value("Total", point.total)
+                                y: .value(bank.name, point.values[bank.id] ?? 0),
+                                series: .value("Bank", bank.id)
                             )
-                            .foregroundStyle(
-                                .linearGradient(
-                                    colors: [Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255).opacity(0.2), .clear],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                            .interpolationMethod(.catmullRom)
+                            .foregroundStyle(Color(savingsHex: bank.color))
+                            .lineStyle(.init(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                            .interpolationMethod(.monotone)
                         }
                     }
 
@@ -928,11 +869,37 @@ private struct SavingsChartView: View {
                         ForEach(points) { point in
                             LineMark(
                                 x: .value("Date", point.date),
-                                y: .value("Total", point.total)
+                                y: .value("Total", point.total),
+                                series: .value("Series", "Total outline")
                             )
-                            .foregroundStyle(Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255))
-                            .lineStyle(.init(lineWidth: 2.6))
-                            .interpolationMethod(.catmullRom)
+                            .foregroundStyle(Color.primary)
+                            .lineStyle(.init(lineWidth: 5.35, lineCap: .round, lineJoin: .round))
+                            .interpolationMethod(.monotone)
+                            .zIndex(1)
+                        }
+
+                        ForEach(points) { point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Total", point.total),
+                                series: .value("Series", "Total gradient")
+                            )
+                            .foregroundStyle(SavingsChartStyle.totalStripeGradient)
+                            .lineStyle(.init(lineWidth: 4.1, lineCap: .round, lineJoin: .round))
+                            .interpolationMethod(.monotone)
+                            .zIndex(2)
+                        }
+
+                        ForEach(points) { point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Total", point.total),
+                                series: .value("Series", "Total highlight")
+                            )
+                            .foregroundStyle(Color(red: 243 / 255, green: 232 / 255, blue: 255 / 255).opacity(0.82))
+                            .lineStyle(.init(lineWidth: 1.35, lineCap: .round, dash: [2, 7]))
+                            .interpolationMethod(.monotone)
+                            .zIndex(3)
                         }
                     }
 
@@ -949,7 +916,7 @@ private struct SavingsChartView: View {
                             y: .value("Selected total", selectionPoint.total)
                         )
                         .symbolSize(55)
-                        .foregroundStyle(Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255))
+                        .foregroundStyle(SavingsChartStyle.totalPurple)
                     }
                 }
                 .chartLegend(.hidden)
@@ -1006,7 +973,7 @@ private struct SavingsChartCallout: View {
                 .font(.caption.weight(.semibold))
             SavingsCalloutRow(
                 title: "Total",
-                color: Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255),
+                color: SavingsChartStyle.totalPurple,
                 value: point.total,
                 currency: currency,
                 usdIlsRate: usdIlsRate
@@ -1026,14 +993,6 @@ private struct SavingsChartCallout: View {
         .overlay { RoundedRectangle(cornerRadius: 11).stroke(Color.secondary.opacity(0.16)) }
         .shadow(color: .black.opacity(0.1), radius: 12, y: 5)
     }
-}
-
-private struct SavingsStackedPoint: Identifiable {
-    let point: SavingsChartPoint
-    let lower: Double
-    let upper: Double
-
-    var id: Date { point.id }
 }
 
 private struct SavingsCalloutRow: View {

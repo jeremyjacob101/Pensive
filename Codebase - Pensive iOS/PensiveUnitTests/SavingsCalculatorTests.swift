@@ -29,6 +29,37 @@ final class SavingsCalculatorTests: XCTestCase {
         XCTAssertEqual(points.filter(\.isForecast).count, 60)
     }
 
+    func testEachBankForecastUsesItsOwnInterestSettingAndTotalSumsThem() {
+        let flatBank = savingsBank(id: "flat", rate: 0)
+        let growingBank = savingsBank(id: "growing", rate: 12)
+        let points = SavingsCalculator.series(
+            banks: [flatBank, growingBank],
+            entries: [
+                savingsEntry(id: "flat-entry", bankID: flatBank.id, amount: 1_000),
+                savingsEntry(id: "growing-entry", bankID: growingBank.id, amount: 1_000)
+            ],
+            selectedBankIDs: [flatBank.id, growingBank.id],
+            horizonYears: 1,
+            interestOn: true,
+            today: SavingsFormatting.isoDate.date(from: "2026-08-11")!
+        )
+
+        guard let forecast = points.last else {
+            XCTFail("Expected a forecast point")
+            return
+        }
+        let expectedGrowingValue = SavingsCalculator.futureBalance(
+            principal: 1_000,
+            annualRate: 12,
+            compounding: "monthly",
+            years: 1
+        )
+
+        XCTAssertEqual(forecast.values[flatBank.id] ?? 0, 1_000, accuracy: 0.001)
+        XCTAssertEqual(forecast.values[growingBank.id] ?? 0, expectedGrowingValue, accuracy: 0.001)
+        XCTAssertEqual(forecast.total, 1_000 + expectedGrowingValue, accuracy: 0.001)
+    }
+
     func testSeriesCombinesOnlySelectedBanksAndLatestSnapshots() {
         let checking = savingsBank(id: "checking", rate: 0)
         let savings = savingsBank(id: "savings", rate: 0)

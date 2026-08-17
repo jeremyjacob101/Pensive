@@ -26,15 +26,6 @@ struct SavingsCurrencySettings: Equatable {
     var usesManualRate: Bool { manualUsdIlsRate != nil }
 }
 
-enum SavingsChartMode: String, CaseIterable, Identifiable {
-    case stacked
-    case lines
-    case total
-
-    var id: String { rawValue }
-    var title: String { rawValue.capitalized }
-}
-
 enum SavingsHorizon: Int, CaseIterable, Identifiable {
     case one = 1
     case three = 3

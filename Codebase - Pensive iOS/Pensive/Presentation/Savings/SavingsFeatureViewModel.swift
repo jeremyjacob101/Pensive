@@ -160,22 +160,6 @@ final class SavingsFeatureViewModel: ObservableObject {
         }
     }
 
-    func moveBank(_ bank: SavingsBankDTO, offset: Int) async {
-        guard let index = banks.firstIndex(where: { $0.id == bank.id }) else { return }
-        let destination = index + offset
-        guard banks.indices.contains(destination) else { return }
-        var reordered = banks
-        reordered.swapAt(index, destination)
-        if usesPreviewData {
-            banks = reordered
-            return
-        }
-        _ = await performSave {
-            _ = try await self.api.savings.reorderBanks(ids: reordered.map(\.id))
-            await self.load()
-        }
-    }
-
     func saveCurrencySettings(
         displayCurrency: SavingsCurrency,
         manualUsdIlsRate: Double?

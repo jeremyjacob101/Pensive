@@ -220,6 +220,36 @@ describe("savings calculations", () => {
     expect(mixedWithRate.filter((point) => point.isForecast)).toHaveLength(24);
   });
 
+  it("keeps each bank trajectory independent and sums those trajectories into the total", () => {
+    const flatBank = bank("flat", {
+      interestEnabled: false,
+      annualInterestRate: 8,
+    });
+    const growingBank = bank("growing", {
+      interestEnabled: true,
+      annualInterestRate: 12,
+      compounding: "yearly",
+    });
+    const series = buildSavingsSeries({
+      banks: [flatBank, growingBank],
+      entries: [
+        entry("flat-entry", flatBank._id, "2026-01-01", 1_000),
+        entry("growing-entry", growingBank._id, "2026-01-01", 1_000),
+      ],
+      selectedBankIds: new Set([flatBank._id, growingBank._id]),
+      horizonYears: 1,
+      interestOn: true,
+      displayCurrency: "ILS",
+      usdIlsRate: null,
+      today: "2026-01-01",
+    });
+
+    const forecast = series.at(-1);
+    expect(forecast?.values[flatBank._id]).toBe(1_000);
+    expect(forecast?.values[growingBank._id]).toBeCloseTo(1_120, 0);
+    expect(forecast?.total).toBeCloseTo(2_120, 0);
+  });
+
   it("returns null instead of silently treating an unconvertible current total as zero", () => {
     const usdBank = bank("usd", { currency: "USD" });
     const total = currentSavingsTotal(

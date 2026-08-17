@@ -15,7 +15,6 @@ export type SavingsCurrencySettings = {
   rateSource: string;
 };
 
-export type SavingsChartMode = "stacked" | "lines" | "total";
 export type SavingsHorizon = 1 | 3 | 5 | 10 | 15 | 20 | 25 | 30 | 40 | 50;
 
 export type SavingsChartPoint = {

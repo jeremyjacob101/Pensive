@@ -25,6 +25,13 @@ describe("Savings page", () => {
     expect(screen.getAllByText("Everyday").length).toBeGreaterThan(0);
     expect(screen.getByText("3 of 3 selected")).toBeInTheDocument();
     expect(screen.getByText("Forecast · 20Y")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Stacked" })).toBeNull();
+    expect(screen.queryByText("Reorder with the arrow controls")).toBeNull();
+    expect(
+      screen.getByText(
+        "Each line follows its own balance and interest settings",
+      ),
+    ).toBeInTheDocument();
 
     await user.click(
       screen.getAllByRole("button", { name: "Hide Everyday on chart" })[0],
