@@ -17,7 +17,8 @@ if (!beforeCommit || !stagingDeployKey || !snapshotPath) {
 const workspace = process.cwd();
 const temporaryRoot = join(tmpdir(), `pensive-staging-compatibility-${runId}`);
 mkdirSync(temporaryRoot, { recursive: true });
-const stagingUrlPath = join(temporaryRoot, "staging-url.txt");
+const stagingCloudUrlPath = join(temporaryRoot, "staging-cloud-url.txt");
+const stagingSiteUrlPath = join(temporaryRoot, "staging-site-url.txt");
 const credentialsPath = join(temporaryRoot, "compatibility-credentials.json");
 const previousArchivePath = join(temporaryRoot, "previous-main.tar");
 const previousDirectory = join(temporaryRoot, "previous-main");
@@ -67,33 +68,26 @@ function deployCurrentCode() {
       "COMPAT_CONVEX_URL",
     ],
     {
-      env: { DEPLOYMENT_URL_OUTPUT: stagingUrlPath },
+      env: {
+        DEPLOYMENT_URL_OUTPUT: stagingCloudUrlPath,
+        DEPLOYMENT_SITE_URL_OUTPUT: stagingSiteUrlPath,
+      },
     },
   );
 
-  if (!existsSync(stagingUrlPath)) {
-    throw new Error("Staging deployment URL was not written");
+  if (!existsSync(stagingCloudUrlPath) || !existsSync(stagingSiteUrlPath)) {
+    throw new Error("Staging cloud and site deployment URLs were not written");
   }
 }
 
 function importSnapshot() {
-  runConvex([
-    "import",
-    snapshotPath,
-    "--replace-all",
-    "--yes",
-  ]);
+  runConvex(["import", snapshotPath, "--replace-all", "--yes"]);
 }
 
 function exportAndReimportPostChangeState() {
   const postChangePath = join(temporaryRoot, "post-change-state.zip");
   runConvex(["export", "--path", postChangePath]);
-  runConvex([
-    "import",
-    postChangePath,
-    "--replace-all",
-    "--yes",
-  ]);
+  runConvex(["import", postChangePath, "--replace-all", "--yes"]);
 }
 
 function preparePreviousRevision() {
@@ -111,7 +105,9 @@ function runCompatibilitySuite(cwd, keepData) {
     [
       "scripts/convex-compatibility.mjs",
       "--url-file",
-      stagingUrlPath,
+      stagingCloudUrlPath,
+      "--site-url-file",
+      stagingSiteUrlPath,
       "--credentials-file",
       credentialsPath,
     ],

@@ -5,23 +5,25 @@ import { api } from "../convex/_generated/api.js";
 
 const urlFileIndex = process.argv.indexOf("--url-file");
 const urlFile = urlFileIndex >= 0 ? process.argv[urlFileIndex + 1] : undefined;
+const siteUrlFileIndex = process.argv.indexOf("--site-url-file");
+const siteUrlFile =
+  siteUrlFileIndex >= 0 ? process.argv[siteUrlFileIndex + 1] : undefined;
 const credentialsFileIndex = process.argv.indexOf("--credentials-file");
 const credentialsFile =
   credentialsFileIndex >= 0
     ? process.argv[credentialsFileIndex + 1]
     : undefined;
 
-if (!urlFile) {
+if (!urlFile || !siteUrlFile) {
   throw new Error(
-    "Usage: node scripts/convex-compatibility.mjs --url-file <path>",
+    "Usage: node scripts/convex-compatibility.mjs --url-file <cloud path> --site-url-file <site path>",
   );
 }
 
-const baseUrl = readFileSync(urlFile, "utf8").trim().replace(/\/$/, "");
-if (!baseUrl.startsWith("https://")) {
-  throw new Error(
-    "Compatibility target must be an HTTPS Convex deployment URL",
-  );
+const cloudUrl = readFileSync(urlFile, "utf8").trim().replace(/\/$/, "");
+const siteUrl = readFileSync(siteUrlFile, "utf8").trim().replace(/\/$/, "");
+if (!cloudUrl.startsWith("https://") || !siteUrl.startsWith("https://")) {
+  throw new Error("Compatibility targets must be HTTPS Convex deployment URLs");
 }
 
 const suffix = randomUUID().slice(0, 8);
@@ -34,8 +36,16 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function responseSummary(result) {
+  const body =
+    result.payload === null
+      ? "<non-JSON response>"
+      : JSON.stringify(result.payload);
+  return `${result.response.status} ${result.response.statusText}: ${body.slice(0, 500)}`;
+}
+
 async function request(path, options = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${siteUrl}${path}`, {
     method: options.method ?? "GET",
     headers: {
       Accept: "application/json",
@@ -53,7 +63,7 @@ async function httpGet(path, token) {
   const result = await request(path, { token });
   assert(
     result.response.ok && result.payload?.ok === true,
-    `HTTP GET contract failed: ${path}`,
+    `HTTP GET contract failed: ${path} (${responseSummary(result)})`,
   );
   return result.payload.data;
 }
@@ -66,7 +76,7 @@ async function httpPost(path, body, token) {
   });
   assert(
     result.response.ok && result.payload?.ok === true,
-    `HTTP POST contract failed: ${path}`,
+    `HTTP POST contract failed: ${path} (${responseSummary(result)})`,
   );
   return result.payload.data;
 }
@@ -78,7 +88,7 @@ async function signUp() {
   });
   assert(
     result.response.ok && result.payload?.ok === true,
-    "Compatibility user creation failed",
+    `Compatibility user creation failed (${responseSummary(result)})`,
   );
   assert(
     typeof result.payload.data?.token === "string",
@@ -94,7 +104,7 @@ async function signIn() {
   });
   assert(
     result.response.ok && result.payload?.ok === true,
-    "Compatibility user sign-in failed",
+    `Compatibility user sign-in failed (${responseSummary(result)})`,
   );
   assert(
     typeof result.payload.data?.token === "string",
@@ -933,7 +943,7 @@ async function main() {
   const savedCredentials = loadSavedCredentials();
   const auth = savedCredentials ? await signIn() : await signUp();
   saveCredentials();
-  const client = new ConvexHttpClient(baseUrl);
+  const client = new ConvexHttpClient(cloudUrl);
   client.setAuth(auth.token);
 
   await runDirectConvexContracts(client);
