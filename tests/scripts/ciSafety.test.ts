@@ -14,6 +14,8 @@ describe("CI test safety", () => {
     expect(contents).toContain("- main");
     expect(contents).toContain("- staging");
     expect(contents).toContain("workflow_call:");
+    expect(contents).toContain("classify_staging_update:");
+    expect(contents).toContain("trusted_main_alignment");
     expect(contents).toContain("behavior-tests:");
     expect(contents).toContain("npm test");
     expect(contents).toContain("browser-e2e:");
@@ -41,20 +43,24 @@ describe("CI test safety", () => {
     expect(contents).not.toContain("Deploy Convex staging");
   });
 
-  it("deploys staging only after every Test Suite job passes", async () => {
+  it("deploys staging after the suite or a trusted main alignment", async () => {
     const contents = await workflow("test-suite.yml");
     expect(contents).toContain("deploy-staging:");
     expect(contents).toContain(
-      "Deploy Convex staging after the complete test suite",
+      "Deploy Convex staging after tests or trusted main alignment",
     );
     expect(contents).toMatch(
-      /needs:\s*[\r\n]+\s+- static-quality[\r\n]+\s+- behavior-tests[\r\n]+\s+- browser-e2e[\r\n]+\s+- ios-tests/,
+      /needs:\s*[\r\n]+\s+- classify_staging_update[\r\n]+\s+- static-quality[\r\n]+\s+- behavior-tests[\r\n]+\s+- browser-e2e[\r\n]+\s+- ios-tests/,
     );
     expect(contents).toContain("github.ref == 'refs/heads/staging'");
+    expect(contents).toContain("needs['static-quality'].result == 'success'");
   });
 
   it("does not start a second staging deployment from the sync workflow", async () => {
     const contents = await workflow("sync-main-to-staging.yml");
+    expect(contents).toContain("environment: Staging");
+    expect(contents).toContain("STAGING_SYNC_SSH_KEY");
+    expect(contents).toContain("git@github.com:${GITHUB_REPOSITORY}.git");
     expect(contents).not.toContain(
       "gh workflow run deploy-convex-environments.yml",
     );

@@ -24,8 +24,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify_staging_update:
+    name: Classify staging alignment
+    runs-on: ubuntu-latest
+
+    outputs:
+      trusted_main_alignment: ${{ steps.classify.outputs.trusted_main_alignment }}
+
+    steps:
+      - name: Check out staging history for push alignment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Classify exact main alignment
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          trusted_main_alignment=false
+
+          if [[ "$EVENT_NAME" == "push" && "$REF" == "refs/heads/staging" ]]; then
+            git fetch --no-tags origin main
+            main_sha="$(git rev-parse origin/main)"
+            if [[ "$SHA" == "$main_sha" ]]; then
+              trusted_main_alignment=true
+              echo "Staging is aligning to the already-tested main SHA ${SHA}; the full suite will not rerun."
+            fi
+          fi
+
+          echo "trusted_main_alignment=$trusted_main_alignment" >> "$GITHUB_OUTPUT"
+
   static-quality:
     name: Static quality
+    needs: classify_staging_update
+    if: needs.classify_staging_update.outputs.trusted_main_alignment != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -48,6 +85,8 @@ jobs:
 
   behavior-tests:
     name: Web and Convex behavior tests
+    needs: classify_staging_update
+    if: needs.classify_staging_update.outputs.trusted_main_alignment != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -82,6 +121,8 @@ jobs:
 
   browser-e2e:
     name: Browser E2E (non-production)
+    needs: classify_staging_update
+    if: needs.classify_staging_update.outputs.trusted_main_alignment != 'true'
     runs-on: ubuntu-latest
     environment: Testing
 
@@ -132,6 +173,8 @@ jobs:
 
   ios-tests:
     name: iOS unit, integration, and UI tests
+    needs: classify_staging_update
+    if: needs.classify_staging_update.outputs.trusted_main_alignment != 'true'
     runs-on: macos-15
     environment: Testing
 
@@ -165,9 +208,23 @@ jobs:
   deploy-staging:
     name: Deploy staging
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/staging') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging')
+      always() &&
+      github.ref == 'refs/heads/staging' &&
+      (
+        (
+          github.event_name == 'push' &&
+          needs.classify_staging_update.outputs.trusted_main_alignment == 'true'
+        ) ||
+        (
+          needs.classify_staging_update.outputs.trusted_main_alignment != 'true' &&
+          needs['static-quality'].result == 'success' &&
+          needs['behavior-tests'].result == 'success' &&
+          needs['browser-e2e'].result == 'success' &&
+          needs['ios-tests'].result == 'success'
+        )
+      )
     needs:
+      - classify_staging_update
       - static-quality
       - behavior-tests
       - browser-e2e
@@ -193,7 +250,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Deploy Convex staging after the complete test suite
+      - name: Deploy Convex staging after tests or trusted main alignment
         env:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
         run: npx convex deploy --message "Deploy $GITHUB_SHA to staging"

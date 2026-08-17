@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sync-main-to-staging
@@ -16,12 +16,30 @@ jobs:
   sync:
     name: Sync code to staging
     runs-on: ubuntu-latest
+    environment: Staging
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Configure trusted staging synchronization SSH
+        env:
+          STAGING_SYNC_SSH_KEY: ${{ secrets.STAGING_SYNC_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          [[ -n "$STAGING_SYNC_SSH_KEY" ]] || {
+            echo "::error::STAGING_SYNC_SSH_KEY is not configured in the Staging environment."
+            exit 1
+          }
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$STAGING_SYNC_SSH_KEY" > "$HOME/.ssh/pensive-staging-sync"
+          chmod 600 "$HOME/.ssh/pensive-staging-sync"
+          ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/pensive-staging-sync -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
 
       - name: Check staging alignment
         id: guard
