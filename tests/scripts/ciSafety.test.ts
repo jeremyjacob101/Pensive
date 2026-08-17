@@ -76,6 +76,20 @@ describe("CI test safety", () => {
     expect(contents).not.toContain('"--deployment"');
   });
 
+  it("passes separate Convex cloud and site URLs to compatibility contracts", async () => {
+    const stagingScript = await script("convex-staging-compatibility.mjs");
+    const compatibilityScript = await script("convex-compatibility.mjs");
+    const deploymentUrlScript = await script("write-deployment-url.mjs");
+
+    expect(stagingScript).toContain("DEPLOYMENT_SITE_URL_OUTPUT");
+    expect(stagingScript).toContain('"--site-url-file"');
+    expect(deploymentUrlScript).toContain("VITE_CONVEX_SITE_URL");
+    expect(compatibilityScript).toContain('"--site-url-file"');
+    expect(compatibilityScript).toContain("fetch(`${siteUrl}${path}`");
+    expect(compatibilityScript).toContain("new ConvexHttpClient(cloudUrl)");
+    expect(compatibilityScript).toContain("responseSummary(result)");
+  });
+
   it("keeps the automatic main-to-hotfix reset as a guarded ref sync", async () => {
     const contents = await workflow("sync-main-to-hotfix.yml");
     expect(contents).toContain("--force-with-lease");
