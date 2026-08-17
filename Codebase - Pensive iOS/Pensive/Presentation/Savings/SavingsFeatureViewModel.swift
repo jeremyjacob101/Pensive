@@ -1,10 +1,10 @@
 import Foundation
 
 @MainActor
-final class ProjectionsFeatureViewModel: ObservableObject {
-    @Published private(set) var banks: [ProjectionBankDTO] = []
-    @Published private(set) var entries: [ProjectionEntryDTO] = []
-    @Published private(set) var currencySettings = ProjectionCurrencySettings()
+final class SavingsFeatureViewModel: ObservableObject {
+    @Published private(set) var banks: [SavingsBankDTO] = []
+    @Published private(set) var entries: [SavingsEntryDTO] = []
+    @Published private(set) var currencySettings = SavingsCurrencySettings()
     @Published private(set) var isLoading = false
     @Published private(set) var isSaving = false
     @Published private(set) var isRefreshingRate = false
@@ -16,7 +16,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
     init(api: ConvexAPI) {
         self.api = api
         #if DEBUG
-        usesPreviewData = ProcessInfo.processInfo.environment["UI_TEST_PROJECTIONS_PREVIEW"] == "1"
+        usesPreviewData = ProcessInfo.processInfo.environment["UI_TEST_SAVINGS_PREVIEW"] == "1"
         if usesPreviewData {
             let fixture = Self.previewFixture
             banks = fixture.banks
@@ -33,7 +33,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response = try await api.projections.list()
+            let response = try await api.savings.list()
             banks = response.banks.sorted { $0.sortOrder < $1.sortOrder }
             entries = response.entries.sorted { $0.date < $1.date }
             currencySettings = Self.currencySettings(from: response.settings)
@@ -46,7 +46,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         }
     }
 
-    func saveBank(_ values: ProjectionBankFormValues, editing bank: ProjectionBankDTO?) async -> Bool {
+    func saveBank(_ values: SavingsBankFormValues, editing bank: SavingsBankDTO?) async -> Bool {
         guard !values.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             errorMessage = "Give this bank a name."
             return false
@@ -66,8 +66,8 @@ final class ProjectionsFeatureViewModel: ObservableObject {
             if self.usesPreviewData {
                 self.savePreviewBank(values, editing: bank)
             } else if let bank {
-                _ = try await self.api.projections.updateBank(
-                    ProjectionBankUpdateRequest(
+                _ = try await self.api.savings.updateBank(
+                    SavingsBankUpdateRequest(
                         id: bank.id,
                         name: values.name,
                         color: values.colorHex,
@@ -79,8 +79,8 @@ final class ProjectionsFeatureViewModel: ObservableObject {
                 )
                 await self.load()
             } else {
-                _ = try await self.api.projections.createBank(
-                    ProjectionBankCreateRequest(
+                _ = try await self.api.savings.createBank(
+                    SavingsBankCreateRequest(
                         name: values.name,
                         color: values.colorHex,
                         currency: values.currency.rawValue,
@@ -88,7 +88,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
                         annualInterestRate: values.annualInterestRate,
                         compounding: values.compounding,
                         startingBalance: values.startingBalance,
-                        startingDate: values.startingBalance == nil ? nil : ProjectionFormatting.isoDate.string(from: values.startingDate),
+                        startingDate: values.startingBalance == nil ? nil : SavingsFormatting.isoDate.string(from: values.startingDate),
                         startingNote: values.startingNote.nilIfBlank
                     )
                 )
@@ -97,7 +97,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         }
     }
 
-    func saveEntry(_ values: ProjectionEntryFormValues, editing entry: ProjectionEntryDTO?) async -> Bool {
+    func saveEntry(_ values: SavingsEntryFormValues, editing entry: SavingsEntryDTO?) async -> Bool {
         guard banks.contains(where: { $0.id == values.bankID }) else {
             errorMessage = "Choose a bank."
             return false
@@ -111,11 +111,11 @@ final class ProjectionsFeatureViewModel: ObservableObject {
             if self.usesPreviewData {
                 self.savePreviewEntry(values, editing: entry)
             } else if let entry {
-                _ = try await self.api.projections.updateEntry(
-                    ProjectionEntryUpdateRequest(
+                _ = try await self.api.savings.updateEntry(
+                    SavingsEntryUpdateRequest(
                         id: entry.id,
                         bankId: values.bankID,
-                        date: ProjectionFormatting.isoDate.string(from: values.date),
+                        date: SavingsFormatting.isoDate.string(from: values.date),
                         amount: values.amount,
                         currency: values.currency.rawValue,
                         note: values.note.nilIfBlank
@@ -123,10 +123,10 @@ final class ProjectionsFeatureViewModel: ObservableObject {
                 )
                 await self.load()
             } else {
-                _ = try await self.api.projections.createEntry(
-                    ProjectionEntryCreateRequest(
+                _ = try await self.api.savings.createEntry(
+                    SavingsEntryCreateRequest(
                         bankId: values.bankID,
-                        date: ProjectionFormatting.isoDate.string(from: values.date),
+                        date: SavingsFormatting.isoDate.string(from: values.date),
                         amount: values.amount,
                         currency: values.currency.rawValue,
                         note: values.note.nilIfBlank
@@ -137,30 +137,30 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         }
     }
 
-    func removeBank(_ bank: ProjectionBankDTO) async {
+    func removeBank(_ bank: SavingsBankDTO) async {
         _ = await performSave {
             if self.usesPreviewData {
                 self.banks.removeAll { $0.id == bank.id }
                 self.entries.removeAll { $0.bankId == bank.id }
             } else {
-                _ = try await self.api.projections.removeBank(id: bank.id)
+                _ = try await self.api.savings.removeBank(id: bank.id)
                 await self.load()
             }
         }
     }
 
-    func removeEntry(_ entry: ProjectionEntryDTO) async {
+    func removeEntry(_ entry: SavingsEntryDTO) async {
         _ = await performSave {
             if self.usesPreviewData {
                 self.entries.removeAll { $0.id == entry.id }
             } else {
-                _ = try await self.api.projections.removeEntry(id: entry.id)
+                _ = try await self.api.savings.removeEntry(id: entry.id)
                 await self.load()
             }
         }
     }
 
-    func moveBank(_ bank: ProjectionBankDTO, offset: Int) async {
+    func moveBank(_ bank: SavingsBankDTO, offset: Int) async {
         guard let index = banks.firstIndex(where: { $0.id == bank.id }) else { return }
         let destination = index + offset
         guard banks.indices.contains(destination) else { return }
@@ -171,13 +171,13 @@ final class ProjectionsFeatureViewModel: ObservableObject {
             return
         }
         _ = await performSave {
-            _ = try await self.api.projections.reorderBanks(ids: reordered.map(\.id))
+            _ = try await self.api.savings.reorderBanks(ids: reordered.map(\.id))
             await self.load()
         }
     }
 
     func saveCurrencySettings(
-        displayCurrency: ProjectionCurrency,
+        displayCurrency: SavingsCurrency,
         manualUsdIlsRate: Double?
     ) async -> Bool {
         if let manualUsdIlsRate,
@@ -191,8 +191,8 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         guard !usesPreviewData else { return true }
 
         let saved = await performSave {
-            _ = try await self.api.projections.setCurrencySettings(
-                ProjectionCurrencySettingsRequest(
+            _ = try await self.api.savings.setCurrencySettings(
+                SavingsCurrencySettingsRequest(
                     displayCurrency: displayCurrency.rawValue,
                     manualUsdIlsRate: manualUsdIlsRate
                 )
@@ -207,7 +207,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         isRefreshingRate = true
         defer { isRefreshingRate = false }
         do {
-            let response = try await api.projections.refreshExchangeRate(force: force)
+            let response = try await api.savings.refreshExchangeRate(force: force)
             currencySettings.liveUsdIlsRate = response.rate
             currencySettings.liveRateDate = response.rateDate
             currencySettings.liveRateFetchedAt = response.fetchedAt
@@ -223,9 +223,9 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         return Date().timeIntervalSince1970 * 1_000 - fetchedAt > 12 * 60 * 60 * 1_000
     }
 
-    private static func currencySettings(from dto: ProjectionSettingsDTO?) -> ProjectionCurrencySettings {
-        ProjectionCurrencySettings(
-            displayCurrency: ProjectionCurrency(rawValue: dto?.displayCurrency ?? "") ?? .ils,
+    private static func currencySettings(from dto: SavingsSettingsDTO?) -> SavingsCurrencySettings {
+        SavingsCurrencySettings(
+            displayCurrency: SavingsCurrency(rawValue: dto?.displayCurrency ?? "") ?? .ils,
             manualUsdIlsRate: dto?.manualUsdIlsRate,
             liveUsdIlsRate: dto?.liveUsdIlsRate,
             liveRateDate: dto?.liveRateDate,
@@ -247,10 +247,10 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         }
     }
 
-    private func savePreviewBank(_ values: ProjectionBankFormValues, editing bank: ProjectionBankDTO?) {
+    private func savePreviewBank(_ values: SavingsBankFormValues, editing bank: SavingsBankDTO?) {
         let now = Date().timeIntervalSince1970 * 1_000
         if let bank, let index = banks.firstIndex(where: { $0.id == bank.id }) {
-            banks[index] = ProjectionBankDTO(
+            banks[index] = SavingsBankDTO(
                 _id: bank.id,
                 _creationTime: bank._creationTime,
                 name: values.name,
@@ -268,7 +268,7 @@ final class ProjectionsFeatureViewModel: ObservableObject {
 
         let id = "preview-bank-\(UUID().uuidString)"
         banks.append(
-            ProjectionBankDTO(
+            SavingsBankDTO(
                 _id: id,
                 _creationTime: now,
                 name: values.name,
@@ -284,11 +284,11 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         )
         if let amount = values.startingBalance {
             entries.append(
-                ProjectionEntryDTO(
+                SavingsEntryDTO(
                     _id: "preview-entry-\(UUID().uuidString)",
                     _creationTime: now,
                     bankId: id,
-                    date: ProjectionFormatting.isoDate.string(from: values.startingDate),
+                    date: SavingsFormatting.isoDate.string(from: values.startingDate),
                     amount: amount,
                     currency: values.currency.rawValue,
                     note: values.startingNote.nilIfBlank,
@@ -299,13 +299,13 @@ final class ProjectionsFeatureViewModel: ObservableObject {
         }
     }
 
-    private func savePreviewEntry(_ values: ProjectionEntryFormValues, editing entry: ProjectionEntryDTO?) {
+    private func savePreviewEntry(_ values: SavingsEntryFormValues, editing entry: SavingsEntryDTO?) {
         let now = Date().timeIntervalSince1970 * 1_000
-        let replacement = ProjectionEntryDTO(
+        let replacement = SavingsEntryDTO(
             _id: entry?.id ?? "preview-entry-\(UUID().uuidString)",
             _creationTime: entry?._creationTime ?? now,
             bankId: values.bankID,
-            date: ProjectionFormatting.isoDate.string(from: values.date),
+            date: SavingsFormatting.isoDate.string(from: values.date),
             amount: values.amount,
             currency: values.currency.rawValue,
             note: values.note.nilIfBlank,
@@ -320,14 +320,14 @@ final class ProjectionsFeatureViewModel: ObservableObject {
     }
 
     #if DEBUG
-    private static var previewFixture: ProjectionResponse {
-        let bankValues: [(String, String, String, Double, ProjectionCurrency)] = [
+    private static var previewFixture: SavingsResponse {
+        let bankValues: [(String, String, String, Double, SavingsCurrency)] = [
             ("preview-everyday", "Everyday", "#4389FF", 0.5, .ils),
             ("preview-savings", "Savings", "#FF6758", 2, .usd),
             ("preview-investments", "Investments", "#5EAE8C", 6.5, .ils)
         ]
         let banks = bankValues.enumerated().map { index, value in
-            ProjectionBankDTO(
+            SavingsBankDTO(
                 _id: value.0,
                 _creationTime: Double(index),
                 name: value.1,
@@ -346,14 +346,14 @@ final class ProjectionsFeatureViewModel: ObservableObject {
             ("2024-08-31", [42_900, 20_400, 82_100]),
             ("2025-03-31", [61_300, 23_800, 101_500]),
             ("2025-10-31", [41_800, 25_600, 120_900]),
-            (ProjectionFormatting.isoDate.string(from: Date()), [54_760, 26_900, 135_720])
+            (SavingsFormatting.isoDate.string(from: Date()), [54_760, 26_900, 135_720])
         ]
-        var entries: [ProjectionEntryDTO] = []
+        var entries: [SavingsEntryDTO] = []
         for (dateIndex, row) in amounts.enumerated() {
             for (bankIndex, amount) in row.1.enumerated() {
                 let stamp = Double(dateIndex * 10 + bankIndex)
                 entries.append(
-                    ProjectionEntryDTO(
+                    SavingsEntryDTO(
                         _id: "preview-entry-\(dateIndex)-\(bankIndex)",
                         _creationTime: stamp,
                         bankId: banks[bankIndex].id,
@@ -367,10 +367,10 @@ final class ProjectionsFeatureViewModel: ObservableObject {
                 )
             }
         }
-        return ProjectionResponse(
+        return SavingsResponse(
             banks: banks,
             entries: entries,
-            settings: ProjectionSettingsDTO(
+            settings: SavingsSettingsDTO(
                 displayCurrency: "ILS",
                 manualUsdIlsRate: nil,
                 liveUsdIlsRate: 3.0009,

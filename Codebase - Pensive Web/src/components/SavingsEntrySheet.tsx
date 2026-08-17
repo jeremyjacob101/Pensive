@@ -1,16 +1,16 @@
-import type { ProjectionBank, ProjectionCurrency, ProjectionEntry, ProjectionEntryDraft } from "../types/projections";
-import { localIsoDate, projectionCurrencySymbol, resolvedProjectionCurrency } from "../helpers/projections";
+import type { SavingsBank, SavingsCurrency, SavingsEntry, SavingsEntryDraft } from "../types/savings";
+import { localIsoDate, savingsCurrencySymbol, resolvedSavingsCurrency } from "../helpers/savings";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useState } from "react";
 
-export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onClose, onSave }: {
-  banks: ProjectionBank[];
-  entry?: ProjectionEntry;
-  initialBankId?: ProjectionBank["_id"];
+export function SavingsEntrySheet({ banks, entry, initialBankId, saving, onClose, onSave }: {
+  banks: SavingsBank[];
+  entry?: SavingsEntry;
+  initialBankId?: SavingsBank["_id"];
   saving: boolean;
   onClose: () => void;
-  onSave: (draft: ProjectionEntryDraft) => Promise<void>;
+  onSave: (draft: SavingsEntryDraft) => Promise<void>;
 }) {
   const [bankId, setBankId] = useState(
     entry?.bankId ?? initialBankId ?? banks[0]?._id,
@@ -18,10 +18,10 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
   const initialBank =
     banks.find((bank) => bank._id === (entry?.bankId ?? initialBankId)) ??
     banks[0];
-  const [currency, setCurrency] = useState<ProjectionCurrency>(
+  const [currency, setCurrency] = useState<SavingsCurrency>(
     entry
-      ? resolvedProjectionCurrency(entry.currency)
-      : resolvedProjectionCurrency(initialBank?.currency),
+      ? resolvedSavingsCurrency(entry.currency)
+      : resolvedSavingsCurrency(initialBank?.currency),
   );
   const [amount, setAmount] = useState(entry ? String(entry.amount) : "");
   const [date, setDate] = useState(entry?.date ?? localIsoDate());
@@ -55,27 +55,27 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
 
   return createPortal(
     <div
-      className="projection-sheet-backdrop"
+      className="savings-sheet-backdrop"
       onMouseDown={saving ? undefined : onClose}
     >
       <aside
-        className="projection-sheet projection-entry-sheet"
+        className="savings-sheet savings-entry-sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="projection-entry-sheet-title"
+        aria-labelledby="savings-entry-sheet-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <form onSubmit={(event) => void submit(event)}>
-          <header className="projection-sheet-header">
+          <header className="savings-sheet-header">
             <div>
-              <h2 id="projection-entry-sheet-title">
+              <h2 id="savings-entry-sheet-title">
                 {entry ? "Edit balance" : "Add balance"}
               </h2>
               <p>Record the amount you had in a bank on a specific date.</p>
             </div>
             <button
               type="button"
-              className="projection-icon-button"
+              className="savings-icon-button"
               onClick={onClose}
               disabled={saving}
               aria-label="Close balance editor"
@@ -84,18 +84,18 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
             </button>
           </header>
 
-          <div className="projection-sheet-body">
-            <label className="projection-field">
+          <div className="savings-sheet-body">
+            <label className="savings-field">
               <span>Bank</span>
               <select
                 autoFocus
                 value={bankId ?? ""}
                 onChange={(event) => {
-                  const nextId = event.target.value as ProjectionBank["_id"];
+                  const nextId = event.target.value as SavingsBank["_id"];
                   setBankId(nextId);
                   if (!entry) {
                     const nextBank = banks.find((bank) => bank._id === nextId);
-                    setCurrency(resolvedProjectionCurrency(nextBank?.currency));
+                    setCurrency(resolvedSavingsCurrency(nextBank?.currency));
                   }
                 }}
               >
@@ -106,9 +106,9 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
                 ))}
               </select>
             </label>
-            <fieldset className="projection-segment-fieldset">
+            <fieldset className="savings-segment-fieldset">
               <legend>Entry currency</legend>
-              <div className="projection-segmented projection-segmented-wide">
+              <div className="savings-segmented savings-segmented-wide">
                 {(["ILS", "USD"] as const).map((option) => (
                   <button
                     key={option}
@@ -121,10 +121,10 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
                 ))}
               </div>
             </fieldset>
-            <label className="projection-field">
+            <label className="savings-field">
               <span>Balance</span>
-              <span className="projection-input-prefix">
-                <i>{projectionCurrencySymbol(currency)}</i>
+              <span className="savings-input-prefix">
+                <i>{savingsCurrencySymbol(currency)}</i>
                 <input
                   type="number"
                   step="0.01"
@@ -135,7 +135,7 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
                 />
               </span>
             </label>
-            <label className="projection-field">
+            <label className="savings-field">
               <span>As of date</span>
               <input
                 type="date"
@@ -143,7 +143,7 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
                 onChange={(event) => setDate(event.target.value)}
               />
             </label>
-            <label className="projection-field">
+            <label className="savings-field">
               <span>
                 Note <small>(optional)</small>
               </span>
@@ -156,16 +156,16 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
               />
             </label>
             {error ? (
-              <p className="projection-form-error" role="alert">
+              <p className="savings-form-error" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
 
-          <footer className="projection-sheet-footer">
+          <footer className="savings-sheet-footer">
             <button
               type="button"
-              className="projection-button secondary"
+              className="savings-button secondary"
               onClick={onClose}
               disabled={saving}
             >
@@ -173,7 +173,7 @@ export function ProjectionEntrySheet({ banks, entry, initialBankId, saving, onCl
             </button>
             <button
               type="submit"
-              className="projection-button primary"
+              className="savings-button primary"
               disabled={saving || banks.length === 0}
             >
               {saving ? "Saving…" : entry ? "Save changes" : "Add balance"}

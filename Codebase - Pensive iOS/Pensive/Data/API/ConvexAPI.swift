@@ -13,8 +13,8 @@ enum ConvexEntity {
     enum Incoming {}
     enum Recurring {}
     enum PaybackLink {}
-    enum ProjectionBank {}
-    enum ProjectionEntry {}
+    enum SavingsBank {}
+    enum SavingsEntry {}
     enum User {}
 }
 
@@ -90,7 +90,7 @@ protocol ConvexAPI {
     var recurrings: RecurringsAPI { get }
     var summaries: SummariesAPI { get }
     var tracking: TrackingAPI { get }
-    var projections: ProjectionsAPI { get }
+    var savings: SavingsAPI { get }
     var notepad: NotepadAPI { get }
     var userOptions: UserOptionsAPI { get }
     var paybackLinks: PaybackLinksAPI { get }
@@ -145,17 +145,17 @@ protocol RecurringsAPI {
 protocol SummariesAPI { func range(_ request: SummaryRangeRequest) async throws -> SummaryRangeResponse }
 protocol TrackingAPI { func list() async throws -> TrackingResponse }
 
-protocol ProjectionsAPI {
-    func list() async throws -> ProjectionResponse
-    func setCurrencySettings(_ request: ProjectionCurrencySettingsRequest) async throws -> ProjectionCurrencySettingsMutationResponse
-    func refreshExchangeRate(force: Bool?) async throws -> ProjectionExchangeRateResponse
-    func createBank(_ request: ProjectionBankCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank>
-    func updateBank(_ request: ProjectionBankUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank>
-    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.ProjectionBank>
+protocol SavingsAPI {
+    func list() async throws -> SavingsResponse
+    func setCurrencySettings(_ request: SavingsCurrencySettingsRequest) async throws -> SavingsCurrencySettingsMutationResponse
+    func refreshExchangeRate(force: Bool?) async throws -> SavingsExchangeRateResponse
+    func createBank(_ request: SavingsBankCreateRequest) async throws -> DocumentID<ConvexEntity.SavingsBank>
+    func updateBank(_ request: SavingsBankUpdateRequest) async throws -> DocumentID<ConvexEntity.SavingsBank>
+    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.SavingsBank>
     func reorderBanks(ids: [String]) async throws -> UpdatedCountResponse
-    func createEntry(_ request: ProjectionEntryCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
-    func updateEntry(_ request: ProjectionEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
-    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
+    func createEntry(_ request: SavingsEntryCreateRequest) async throws -> DocumentID<ConvexEntity.SavingsEntry>
+    func updateEntry(_ request: SavingsEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.SavingsEntry>
+    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.SavingsEntry>
 }
 
 protocol NotepadAPI {
@@ -443,13 +443,13 @@ struct SummaryBucket: Codable { let month: String; let rawExpenses: Double; let 
 struct TrackingResponse: Codable { let currentMonth: String; let rows: [TrackingRow] }
 struct TrackingRow: Codable { let key: String; let source: String; let kind: String; let value: String; let parentValue: String?; let color: String; let label: String; let paidMonths: [String]; let rangeMonths: [String]; let statusByMonth: [String: String] }
 
-struct ProjectionResponse: Codable {
-    let banks: [ProjectionBankDTO]
-    let entries: [ProjectionEntryDTO]
-    let settings: ProjectionSettingsDTO?
+struct SavingsResponse: Codable {
+    let banks: [SavingsBankDTO]
+    let entries: [SavingsEntryDTO]
+    let settings: SavingsSettingsDTO?
 }
 
-struct ProjectionSettingsDTO: Codable, Hashable {
+struct SavingsSettingsDTO: Codable, Hashable {
     let displayCurrency: String
     let manualUsdIlsRate: Double?
     let liveUsdIlsRate: Double?
@@ -458,7 +458,7 @@ struct ProjectionSettingsDTO: Codable, Hashable {
     let rateSource: String
 }
 
-struct ProjectionCurrencySettingsRequest: Codable {
+struct SavingsCurrencySettingsRequest: Codable {
     let displayCurrency: String
     let manualUsdIlsRate: Double?
 
@@ -476,12 +476,12 @@ struct ProjectionCurrencySettingsRequest: Codable {
     }
 }
 
-struct ProjectionCurrencySettingsMutationResponse: Codable {
+struct SavingsCurrencySettingsMutationResponse: Codable {
     let displayCurrency: String
     let manualUsdIlsRate: Double?
 }
 
-struct ProjectionExchangeRateResponse: Codable {
+struct SavingsExchangeRateResponse: Codable {
     let rate: Double
     let rateDate: String
     let fetchedAt: Double
@@ -489,7 +489,7 @@ struct ProjectionExchangeRateResponse: Codable {
     let isStale: Bool
 }
 
-struct ProjectionBankDTO: Codable, Identifiable, Hashable {
+struct SavingsBankDTO: Codable, Identifiable, Hashable {
     let _id: String
     let _creationTime: Double?
     let name: String
@@ -505,7 +505,7 @@ struct ProjectionBankDTO: Codable, Identifiable, Hashable {
     var id: String { _id }
 }
 
-struct ProjectionEntryDTO: Codable, Identifiable, Hashable {
+struct SavingsEntryDTO: Codable, Identifiable, Hashable {
     let _id: String
     let _creationTime: Double?
     let bankId: String
@@ -519,7 +519,7 @@ struct ProjectionEntryDTO: Codable, Identifiable, Hashable {
     var id: String { _id }
 }
 
-struct ProjectionBankCreateRequest: Codable {
+struct SavingsBankCreateRequest: Codable {
     let name: String
     let color: String
     let currency: String
@@ -531,7 +531,7 @@ struct ProjectionBankCreateRequest: Codable {
     let startingNote: String?
 }
 
-struct ProjectionBankUpdateRequest: Codable {
+struct SavingsBankUpdateRequest: Codable {
     let id: String
     let name: String
     let color: String
@@ -541,7 +541,7 @@ struct ProjectionBankUpdateRequest: Codable {
     let compounding: String
 }
 
-struct ProjectionEntryCreateRequest: Codable {
+struct SavingsEntryCreateRequest: Codable {
     let bankId: String
     let date: String
     let amount: Double
@@ -549,7 +549,7 @@ struct ProjectionEntryCreateRequest: Codable {
     let note: String?
 }
 
-struct ProjectionEntryUpdateRequest: Codable {
+struct SavingsEntryUpdateRequest: Codable {
     let id: String
     let bankId: String
     let date: String
@@ -631,7 +631,7 @@ final class ConvexService: ConvexAPI {
     let recurrings: RecurringsAPI
     let summaries: SummariesAPI
     let tracking: TrackingAPI
-    let projections: ProjectionsAPI
+    let savings: SavingsAPI
     let notepad: NotepadAPI
     let userOptions: UserOptionsAPI
     let paybackLinks: PaybackLinksAPI
@@ -643,7 +643,7 @@ final class ConvexService: ConvexAPI {
         recurrings = RecurringsClient(client: client)
         summaries = SummariesClient(client: client)
         tracking = TrackingClient(client: client)
-        projections = ProjectionsClient(client: client)
+        savings = SavingsClient(client: client)
         notepad = NotepadClient(client: client)
         userOptions = UserOptionsClient(client: client)
         paybackLinks = PaybackLinksClient(client: client)
@@ -733,20 +733,20 @@ private final class TrackingClient: TrackingAPI {
     func list() async throws -> TrackingResponse { try await client.send(Req.get("api/tracking/list"), body: Optional<EmptyBody>.none) }
 }
 
-private final class ProjectionsClient: ProjectionsAPI {
+private final class SavingsClient: SavingsAPI {
     private let client: HTTPClientProtocol
     init(client: HTTPClientProtocol) { self.client = client }
 
-    func list() async throws -> ProjectionResponse { try await client.send(Req.get("api/projections/list"), body: Optional<EmptyBody>.none) }
-    func setCurrencySettings(_ request: ProjectionCurrencySettingsRequest) async throws -> ProjectionCurrencySettingsMutationResponse { try await client.send(Req.mutation("api/projections/currency-settings"), body: request) }
-    func refreshExchangeRate(force: Bool?) async throws -> ProjectionExchangeRateResponse { try await client.send(Req.mutation("api/projections/refresh-exchange-rate"), body: ["force": force ?? false]) }
-    func createBank(_ request: ProjectionBankCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/create-bank"), body: request) as String) }
-    func updateBank(_ request: ProjectionBankUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/update-bank"), body: request) as String) }
-    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/remove-bank"), body: IDPayload(id: id)) as String) }
-    func reorderBanks(ids: [String]) async throws -> UpdatedCountResponse { try await client.send(Req.mutation("api/projections/reorder-banks"), body: ["ids": ids]) }
-    func createEntry(_ request: ProjectionEntryCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/create-entry"), body: request) as String) }
-    func updateEntry(_ request: ProjectionEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/update-entry"), body: request) as String) }
-    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/remove-entry"), body: IDPayload(id: id)) as String) }
+    func list() async throws -> SavingsResponse { try await client.send(Req.get("api/savings/list"), body: Optional<EmptyBody>.none) }
+    func setCurrencySettings(_ request: SavingsCurrencySettingsRequest) async throws -> SavingsCurrencySettingsMutationResponse { try await client.send(Req.mutation("api/savings/currency-settings"), body: request) }
+    func refreshExchangeRate(force: Bool?) async throws -> SavingsExchangeRateResponse { try await client.send(Req.mutation("api/savings/refresh-exchange-rate"), body: ["force": force ?? false]) }
+    func createBank(_ request: SavingsBankCreateRequest) async throws -> DocumentID<ConvexEntity.SavingsBank> { DocumentID(try await client.send(Req.mutation("api/savings/create-bank"), body: request) as String) }
+    func updateBank(_ request: SavingsBankUpdateRequest) async throws -> DocumentID<ConvexEntity.SavingsBank> { DocumentID(try await client.send(Req.mutation("api/savings/update-bank"), body: request) as String) }
+    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.SavingsBank> { DocumentID(try await client.send(Req.mutation("api/savings/remove-bank"), body: IDPayload(id: id)) as String) }
+    func reorderBanks(ids: [String]) async throws -> UpdatedCountResponse { try await client.send(Req.mutation("api/savings/reorder-banks"), body: ["ids": ids]) }
+    func createEntry(_ request: SavingsEntryCreateRequest) async throws -> DocumentID<ConvexEntity.SavingsEntry> { DocumentID(try await client.send(Req.mutation("api/savings/create-entry"), body: request) as String) }
+    func updateEntry(_ request: SavingsEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.SavingsEntry> { DocumentID(try await client.send(Req.mutation("api/savings/update-entry"), body: request) as String) }
+    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.SavingsEntry> { DocumentID(try await client.send(Req.mutation("api/savings/remove-entry"), body: IDPayload(id: id)) as String) }
 }
 
 private final class NotepadClient: NotepadAPI {

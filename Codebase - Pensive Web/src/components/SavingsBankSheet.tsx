@@ -1,5 +1,5 @@
-import { localIsoDate, projectionCurrencySymbol, resolvedProjectionCurrency } from "../helpers/projections";
-import type { ProjectionBank, ProjectionBankDraft, ProjectionCurrency } from "../types/projections";
+import { localIsoDate, savingsCurrencySymbol, resolvedSavingsCurrency } from "../helpers/savings";
+import type { SavingsBank, SavingsBankDraft, SavingsCurrency } from "../types/savings";
 import { Check, Pipette, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -15,17 +15,17 @@ const BANK_COLORS = [
   "#74829A",
 ];
 
-export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
-  bank?: ProjectionBank;
+export function SavingsBankSheet({ bank, saving, onClose, onSave }: {
+  bank?: SavingsBank;
   saving: boolean;
   onClose: () => void;
-  onSave: (draft: ProjectionBankDraft) => Promise<void>;
+  onSave: (draft: SavingsBankDraft) => Promise<void>;
 }) {
   const initial = useMemo(
     () => ({
       name: bank?.name ?? "",
       color: bank?.color ?? BANK_COLORS[1],
-      currency: resolvedProjectionCurrency(bank?.currency),
+      currency: resolvedSavingsCurrency(bank?.currency),
       interestEnabled: bank?.interestEnabled ?? false,
       annualInterestRate: String(bank?.annualInterestRate ?? ""),
       compounding: bank?.compounding ?? ("monthly" as const),
@@ -37,9 +37,7 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
   );
   const [name, setName] = useState(initial.name);
   const [color, setColor] = useState(initial.color);
-  const [currency, setCurrency] = useState<ProjectionCurrency>(
-    initial.currency,
-  );
+  const [currency, setCurrency] = useState<SavingsCurrency>(initial.currency);
   const [interestEnabled, setInterestEnabled] = useState(
     initial.interestEnabled,
   );
@@ -92,24 +90,24 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
 
   return createPortal(
     <div
-      className="projection-sheet-backdrop"
+      className="savings-sheet-backdrop"
       onMouseDown={saving ? undefined : onClose}
     >
       <aside
-        className="projection-sheet"
+        className="savings-sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="projection-bank-sheet-title"
+        aria-labelledby="savings-bank-sheet-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <form onSubmit={(event) => void submit(event)}>
-          <header className="projection-sheet-header">
-            <h2 id="projection-bank-sheet-title">
+          <header className="savings-sheet-header">
+            <h2 id="savings-bank-sheet-title">
               {bank ? "Edit bank" : "Add bank"}
             </h2>
             <button
               type="button"
-              className="projection-icon-button"
+              className="savings-icon-button"
               onClick={onClose}
               disabled={saving}
               aria-label="Close bank editor"
@@ -118,8 +116,8 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
             </button>
           </header>
 
-          <div className="projection-sheet-body">
-            <label className="projection-field">
+          <div className="savings-sheet-body">
+            <label className="savings-field">
               <span>Bank name</span>
               <input
                 autoFocus
@@ -130,9 +128,9 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
               />
             </label>
 
-            <fieldset className="projection-segment-fieldset">
+            <fieldset className="savings-segment-fieldset">
               <legend>Bank currency</legend>
-              <div className="projection-segmented projection-segmented-wide">
+              <div className="savings-segmented savings-segmented-wide">
                 {(["ILS", "USD"] as const).map((option) => (
                   <button
                     key={option}
@@ -144,20 +142,20 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
                   </button>
                 ))}
               </div>
-              <p className="projection-field-help">
+              <p className="savings-field-help">
                 Used by default for new balance entries. Existing entries keep
                 their saved currency.
               </p>
             </fieldset>
 
-            <fieldset className="projection-color-fieldset">
+            <fieldset className="savings-color-fieldset">
               <legend>Color</legend>
-              <div className="projection-color-swatches">
+              <div className="savings-color-swatches">
                 {BANK_COLORS.map((option) => (
                   <button
                     key={option}
                     type="button"
-                    className={`projection-color-swatch${color.toUpperCase() === option ? " selected" : ""}`}
+                    className={`savings-color-swatch${color.toUpperCase() === option ? " selected" : ""}`}
                     style={{ backgroundColor: option }}
                     onClick={() => setColor(option)}
                     aria-label={`Use color ${option}`}
@@ -169,7 +167,7 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
                   </button>
                 ))}
               </div>
-              <label className="projection-custom-color">
+              <label className="savings-custom-color">
                 <span style={{ backgroundColor: color }} />
                 <code>{color.toUpperCase()}</code>
                 <Pipette size={15} aria-hidden="true" />
@@ -184,9 +182,9 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
               </label>
             </fieldset>
 
-            <label className="projection-switch-row">
+            <label className="savings-switch-row">
               <span>
-                <strong>Project interest</strong>
+                <strong>Grow with interest</strong>
                 <small>Grow this bank beyond its latest balance.</small>
               </span>
               <input
@@ -196,9 +194,9 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
               />
             </label>
 
-            <label className="projection-field">
+            <label className="savings-field">
               <span>Annual rate</span>
-              <span className="projection-input-suffix">
+              <span className="savings-input-suffix">
                 <input
                   type="number"
                   min="0"
@@ -214,11 +212,11 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
             </label>
 
             <fieldset
-              className="projection-segment-fieldset"
+              className="savings-segment-fieldset"
               disabled={!interestEnabled}
             >
               <legend>Compounding</legend>
-              <div className="projection-segmented projection-segmented-wide">
+              <div className="savings-segmented savings-segmented-wide">
                 {(["monthly", "yearly"] as const).map((option) => (
                   <button
                     key={option}
@@ -233,12 +231,12 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
             </fieldset>
 
             {!bank ? (
-              <section className="projection-starting-balance">
+              <section className="savings-starting-balance">
                 <h3>Starting balance</h3>
-                <label className="projection-field">
+                <label className="savings-field">
                   <span>Amount</span>
-                  <span className="projection-input-prefix">
-                    <i>{projectionCurrencySymbol(currency)}</i>
+                  <span className="savings-input-prefix">
+                    <i>{savingsCurrencySymbol(currency)}</i>
                     <input
                       type="number"
                       step="0.01"
@@ -251,7 +249,7 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
                     />
                   </span>
                 </label>
-                <label className="projection-field">
+                <label className="savings-field">
                   <span>As of date</span>
                   <input
                     type="date"
@@ -260,7 +258,7 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
                     disabled={!startingBalance.trim()}
                   />
                 </label>
-                <label className="projection-field">
+                <label className="savings-field">
                   <span>
                     Note <small>(optional)</small>
                   </span>
@@ -277,16 +275,16 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
             ) : null}
 
             {error ? (
-              <p className="projection-form-error" role="alert">
+              <p className="savings-form-error" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
 
-          <footer className="projection-sheet-footer">
+          <footer className="savings-sheet-footer">
             <button
               type="button"
-              className="projection-button secondary"
+              className="savings-button secondary"
               onClick={onClose}
               disabled={saving}
             >
@@ -294,7 +292,7 @@ export function ProjectionBankSheet({ bank, saving, onClose, onSave }: {
             </button>
             <button
               type="submit"
-              className="projection-button primary"
+              className="savings-button primary"
               disabled={saving}
             >
               {saving ? "Saving…" : bank ? "Save changes" : "Add bank"}

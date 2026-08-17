@@ -1,22 +1,22 @@
 import Charts
 import SwiftUI
 
-struct ProjectionsFeatureView: View {
-    @StateObject private var viewModel: ProjectionsFeatureViewModel
+struct SavingsFeatureView: View {
+    @StateObject private var viewModel: SavingsFeatureViewModel
     @State private var selectedBankIDs: Set<String> = []
     @State private var knownBankIDs: Set<String> = []
-    @State private var chartMode: ProjectionChartMode = .stacked
-    @State private var horizon: ProjectionHorizon = .twenty
+    @State private var chartMode: SavingsChartMode = .stacked
+    @State private var horizon: SavingsHorizon = .twenty
     @State private var customHorizon = 12
     @State private var showsCustomHorizon = false
     @State private var interestOn = true
     @State private var totalVisible = true
-    @State private var presentedSheet: ProjectionSheetDestination?
-    @State private var deleteTarget: ProjectionDeleteTarget?
+    @State private var presentedSheet: SavingsSheetDestination?
+    @State private var deleteTarget: SavingsDeleteTarget?
     @State private var showsAllEntries = false
 
     init(api: ConvexAPI) {
-        _viewModel = StateObject(wrappedValue: ProjectionsFeatureViewModel(api: api))
+        _viewModel = StateObject(wrappedValue: SavingsFeatureViewModel(api: api))
     }
 
     var body: some View {
@@ -32,7 +32,7 @@ struct ProjectionsFeatureView: View {
                 }
 
                 if viewModel.isLoading && viewModel.banks.isEmpty {
-                    ProgressView("Loading projections…")
+                    ProgressView("Loading savings…")
                         .frame(maxWidth: .infinity, minHeight: 360)
                 } else if viewModel.banks.isEmpty {
                     emptyState
@@ -46,7 +46,7 @@ struct ProjectionsFeatureView: View {
             .padding(.bottom, 30)
         }
         .background(Color(uiColor: .systemBackground))
-        .navigationTitle("Projections")
+        .navigationTitle("Savings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -74,8 +74,8 @@ struct ProjectionsFeatureView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
-                .accessibilityIdentifier("projection_add_menu")
-                .accessibilityLabel("Add projection item")
+                .accessibilityIdentifier("savings_add_menu")
+                .accessibilityLabel("Add savings item")
             }
         }
         .task {
@@ -88,15 +88,15 @@ struct ProjectionsFeatureView: View {
         .sheet(item: $presentedSheet) { destination in
             switch destination {
             case .bank(let bank):
-                ProjectionBankEditorSheet(viewModel: viewModel, bank: bank)
+                SavingsBankEditorSheet(viewModel: viewModel, bank: bank)
             case .entry(let entry, let initialBankID):
-                ProjectionEntryEditorSheet(
+                SavingsEntryEditorSheet(
                     viewModel: viewModel,
                     entry: entry,
                     initialBankID: initialBankID
                 )
             case .currency:
-                ProjectionCurrencySettingsSheet(viewModel: viewModel)
+                SavingsCurrencySettingsSheet(viewModel: viewModel)
             }
         }
         .alert(item: $deleteTarget) { target in
@@ -127,8 +127,8 @@ struct ProjectionsFeatureView: View {
         showsCustomHorizon ? customHorizon : horizon.rawValue
     }
 
-    private var series: [ProjectionChartPoint] {
-        ProjectionCalculator.series(
+    private var series: [SavingsChartPoint] {
+        SavingsCalculator.series(
             banks: viewModel.banks,
             entries: viewModel.entries,
             selectedBankIDs: selectedBankIDs,
@@ -139,7 +139,7 @@ struct ProjectionsFeatureView: View {
         )
     }
 
-    private var displayCurrency: ProjectionCurrency {
+    private var displayCurrency: SavingsCurrency {
         viewModel.currencySettings.displayCurrency
     }
 
@@ -153,7 +153,7 @@ struct ProjectionsFeatureView: View {
     }
 
     private var conversionBlocked: Bool {
-        !hasUsableExchangeRate && ProjectionCalculator.requiresExchangeRate(
+        !hasUsableExchangeRate && SavingsCalculator.requiresExchangeRate(
             banks: viewModel.banks,
             entries: viewModel.entries,
             selectedBankIDs: selectedBankIDs,
@@ -161,8 +161,8 @@ struct ProjectionsFeatureView: View {
         )
     }
 
-    private var latestByBank: [String: ProjectionEntryDTO] {
-        ProjectionCalculator.latestEntries(
+    private var latestByBank: [String: SavingsEntryDTO] {
+        SavingsCalculator.latestEntries(
             banks: viewModel.banks,
             entries: viewModel.entries
         )
@@ -170,44 +170,44 @@ struct ProjectionsFeatureView: View {
 
     private var todayTotal: Double? {
         guard !conversionBlocked else { return nil }
-        return series.last(where: { !$0.isProjected })?.total ?? 0
+        return series.last(where: { !$0.isForecast })?.total ?? 0
     }
 
-    private var projectedTotal: Double? {
+    private var forecastTotal: Double? {
         guard !conversionBlocked else { return nil }
         return series.last?.total ?? todayTotal ?? 0
     }
 
     private var summarySection: some View {
         HStack(spacing: 0) {
-            ProjectionSummaryMetric(
+            SavingsSummaryMetric(
                 value: todayTotal,
                 label: "Today",
                 currency: displayCurrency,
                 usdIlsRate: effectiveUsdIlsRate
             )
             Divider().frame(height: 46)
-            ProjectionSummaryMetric(
-                value: projectedTotal,
-                label: "Projected · \(selectedHorizonYears)Y",
+            SavingsSummaryMetric(
+                value: forecastTotal,
+                label: "Forecast · \(selectedHorizonYears)Y",
                 currency: displayCurrency,
                 usdIlsRate: effectiveUsdIlsRate
             )
             Divider().frame(height: 46)
-            ProjectionSummaryMetric(
-                value: projectedTotal.flatMap { projected in
-                    todayTotal.map { projected - $0 }
+            SavingsSummaryMetric(
+                value: forecastTotal.flatMap { forecast in
+                    todayTotal.map { forecast - $0 }
                 },
                 label: "Growth",
                 currency: displayCurrency,
                 usdIlsRate: effectiveUsdIlsRate,
-                tint: (projectedTotal ?? 0) >= (todayTotal ?? 0) ? .green : .red
+                tint: (forecastTotal ?? 0) >= (todayTotal ?? 0) ? .green : .red
             )
         }
         .padding(.vertical, 14)
         .overlay(alignment: .bottom) { Divider() }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("projection_summary")
+        .accessibilityIdentifier("savings_summary")
     }
 
     private var controlsSection: some View {
@@ -227,7 +227,7 @@ struct ProjectionsFeatureView: View {
                         }
                     )
                 ) {
-                    ForEach(ProjectionCurrency.allCases) { currency in
+                    ForEach(SavingsCurrency.allCases) { currency in
                         Text(currency.title).tag(currency)
                     }
                 }
@@ -257,14 +257,14 @@ struct ProjectionsFeatureView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Projection horizon")
+                Text("Savings horizon")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 7) {
-                        ForEach(ProjectionHorizon.allCases) { option in
-                            ProjectionChoiceButton(
+                        ForEach(SavingsHorizon.allCases) { option in
+                            SavingsChoiceButton(
                                 title: option.title,
                                 isSelected: !showsCustomHorizon && option == horizon
                             ) {
@@ -272,7 +272,7 @@ struct ProjectionsFeatureView: View {
                                 showsCustomHorizon = false
                             }
                         }
-                        ProjectionChoiceButton(
+                        SavingsChoiceButton(
                             title: "Custom",
                             isSelected: showsCustomHorizon
                         ) {
@@ -304,7 +304,7 @@ struct ProjectionsFeatureView: View {
                 Divider().frame(height: 34)
 
                 Picker("Chart mode", selection: $chartMode) {
-                    ForEach(ProjectionChartMode.allCases) { mode in
+                    ForEach(SavingsChartMode.allCases) { mode in
                         Text(mode.title).tag(mode)
                     }
                 }
@@ -317,7 +317,7 @@ struct ProjectionsFeatureView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ProjectionSeriesChip(
+                    SavingsSeriesChip(
                         title: "Total",
                         color: Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255),
                         isSelected: totalVisible
@@ -326,9 +326,9 @@ struct ProjectionsFeatureView: View {
                     }
 
                     ForEach(viewModel.banks) { bank in
-                        ProjectionSeriesChip(
+                        SavingsSeriesChip(
                             title: bank.name,
-                            color: Color(projectionHex: bank.color),
+                            color: Color(savingsHex: bank.color),
                             isSelected: selectedBankIDs.contains(bank.id)
                         ) {
                             if selectedBankIDs.contains(bank.id) {
@@ -348,7 +348,7 @@ struct ProjectionsFeatureView: View {
     }
 
     private var chartSection: some View {
-        ProjectionChartView(
+        SavingsChartView(
             points: series,
             banks: viewModel.banks.filter { selectedBankIDs.contains($0.id) },
             mode: chartMode,
@@ -363,18 +363,18 @@ struct ProjectionsFeatureView: View {
         .padding(.horizontal, 8)
         .padding(.bottom, 12)
         .overlay(alignment: .bottom) { Divider() }
-        .accessibilityIdentifier("projection_chart")
+        .accessibilityIdentifier("savings_chart")
     }
 
     private var banksSection: some View {
         VStack(spacing: 0) {
-            ProjectionSectionHeader(title: "Banks") {
+            SavingsSectionHeader(title: "Banks") {
                 Button("Add bank") { presentedSheet = .bank(nil) }
                     .font(.caption.weight(.semibold))
             }
 
             ForEach(Array(viewModel.banks.enumerated()), id: \.element.id) { index, bank in
-                ProjectionBankRow(
+                SavingsBankRow(
                     bank: bank,
                     latestEntry: latestByBank[bank.id],
                     displayCurrency: displayCurrency,
@@ -415,7 +415,7 @@ struct ProjectionsFeatureView: View {
         let visible = showsAllEntries ? sorted : Array(sorted.prefix(6))
 
         return VStack(spacing: 0) {
-            ProjectionSectionHeader(title: "Recent balances") {
+            SavingsSectionHeader(title: "Recent balances") {
                 if sorted.count > 6 {
                     Button(showsAllEntries ? "Show recent" : "View all") {
                         showsAllEntries.toggle()
@@ -432,7 +432,7 @@ struct ProjectionsFeatureView: View {
             } else {
                 ForEach(Array(visible.enumerated()), id: \.element.id) { index, entry in
                     if let bank = viewModel.banks.first(where: { $0.id == entry.bankId }) {
-                        ProjectionEntryRow(
+                        SavingsEntryRow(
                             entry: entry,
                             bank: bank,
                             displayCurrency: displayCurrency,
@@ -473,10 +473,10 @@ struct ProjectionsFeatureView: View {
                 .frame(width: 58, height: 58)
                 .background(Color(red: 238 / 255, green: 242 / 255, blue: 1), in: RoundedRectangle(cornerRadius: 16))
 
-            Text("Build your first projection")
+            Text("Build your first savings")
                 .font(.title3.weight(.semibold))
 
-            Text("Add a bank and its first balance. Projection banks stay separate from the accounts used by expenses and incomings.")
+            Text("Add a bank and its first balance. Savings banks stay separate from the accounts used by expenses and incomings.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -520,9 +520,9 @@ struct ProjectionsFeatureView: View {
     }
 }
 
-private enum ProjectionSheetDestination: Identifiable {
-    case bank(ProjectionBankDTO?)
-    case entry(ProjectionEntryDTO?, initialBankID: String?)
+private enum SavingsSheetDestination: Identifiable {
+    case bank(SavingsBankDTO?)
+    case entry(SavingsEntryDTO?, initialBankID: String?)
     case currency
 
     var id: String {
@@ -534,9 +534,9 @@ private enum ProjectionSheetDestination: Identifiable {
     }
 }
 
-private enum ProjectionDeleteTarget: Identifiable {
-    case bank(ProjectionBankDTO)
-    case entry(ProjectionEntryDTO)
+private enum SavingsDeleteTarget: Identifiable {
+    case bank(SavingsBankDTO)
+    case entry(SavingsEntryDTO)
 
     var id: String {
         switch self {
@@ -546,16 +546,16 @@ private enum ProjectionDeleteTarget: Identifiable {
     }
 }
 
-private struct ProjectionSummaryMetric: View {
+private struct SavingsSummaryMetric: View {
     let value: Double?
     let label: String
-    let currency: ProjectionCurrency
+    let currency: SavingsCurrency
     let usdIlsRate: Double?
     var tint: Color = .primary
 
     private var secondaryValue: Double? {
         guard let value else { return nil }
-        return ProjectionCalculator.convert(
+        return SavingsCalculator.convert(
             value,
             from: currency,
             to: currency.other,
@@ -565,7 +565,7 @@ private struct ProjectionSummaryMetric: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            Text(value.map { ProjectionFormatting.money($0, currency: currency) } ?? "Rate needed")
+            Text(value.map { SavingsFormatting.money($0, currency: currency) } ?? "Rate needed")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(tint)
                 .contentTransition(.numericText())
@@ -576,7 +576,7 @@ private struct ProjectionSummaryMetric: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             if let secondaryValue {
-                Text("≈ \(ProjectionFormatting.money(secondaryValue, currency: currency.other))")
+                Text("≈ \(SavingsFormatting.money(secondaryValue, currency: currency.other))")
                     .font(.system(size: 8))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -588,7 +588,7 @@ private struct ProjectionSummaryMetric: View {
     }
 }
 
-private struct ProjectionChoiceButton: View {
+private struct SavingsChoiceButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -611,7 +611,7 @@ private struct ProjectionChoiceButton: View {
     }
 }
 
-private struct ProjectionSeriesChip: View {
+private struct SavingsSeriesChip: View {
     let title: String
     let color: Color
     let isSelected: Bool
@@ -637,7 +637,7 @@ private struct ProjectionSeriesChip: View {
     }
 }
 
-private struct ProjectionSectionHeader<Accessory: View>: View {
+private struct SavingsSectionHeader<Accessory: View>: View {
     let title: String
     let accessory: Accessory
 
@@ -659,10 +659,10 @@ private struct ProjectionSectionHeader<Accessory: View>: View {
     }
 }
 
-private struct ProjectionBankRow: View {
-    let bank: ProjectionBankDTO
-    let latestEntry: ProjectionEntryDTO?
-    let displayCurrency: ProjectionCurrency
+private struct SavingsBankRow: View {
+    let bank: SavingsBankDTO
+    let latestEntry: SavingsEntryDTO?
+    let displayCurrency: SavingsCurrency
     let usdIlsRate: Double?
     let isSelected: Bool
     let canMoveUp: Bool
@@ -677,13 +677,13 @@ private struct ProjectionBankRow: View {
     var body: some View {
         HStack(spacing: 11) {
             Circle()
-                .fill(Color(projectionHex: bank.color))
+                .fill(Color(savingsHex: bank.color))
                 .frame(width: 10, height: 10)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(bank.name)
                     .font(.subheadline.weight(.semibold))
-                Text("\(bank.projectionCurrency.rawValue) · \(bank.interestEnabled ? "\(bank.annualInterestRate.formatted(.number.precision(.fractionLength(2))))% · \(bank.compounding)" : "Interest off")")
+                Text("\(bank.savingsCurrency.rawValue) · \(bank.interestEnabled ? "\(bank.annualInterestRate.formatted(.number.precision(.fractionLength(2))))% · \(bank.compounding)" : "Interest off")")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -692,9 +692,9 @@ private struct ProjectionBankRow: View {
 
             VStack(alignment: .trailing, spacing: 4) {
                 if let latestEntry {
-                    ProjectionMoneyPair(
+                    SavingsMoneyPair(
                         amount: latestEntry.amount,
-                        enteredCurrency: latestEntry.projectionCurrency,
+                        enteredCurrency: latestEntry.savingsCurrency,
                         displayCurrency: displayCurrency,
                         usdIlsRate: usdIlsRate
                     )
@@ -702,7 +702,7 @@ private struct ProjectionBankRow: View {
                     Text("—")
                         .font(.subheadline.weight(.semibold))
                 }
-                Text(latestEntry.flatMap { ProjectionFormatting.isoDate.date(from: $0.date) }.map { ProjectionFormatting.displayDate.string(from: $0) } ?? "No balance yet")
+                Text(latestEntry.flatMap { SavingsFormatting.isoDate.date(from: $0.date) }.map { SavingsFormatting.displayDate.string(from: $0) } ?? "No balance yet")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -730,10 +730,10 @@ private struct ProjectionBankRow: View {
     }
 }
 
-private struct ProjectionEntryRow: View {
-    let entry: ProjectionEntryDTO
-    let bank: ProjectionBankDTO
-    let displayCurrency: ProjectionCurrency
+private struct SavingsEntryRow: View {
+    let entry: SavingsEntryDTO
+    let bank: SavingsBankDTO
+    let displayCurrency: SavingsCurrency
     let usdIlsRate: Double?
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -741,7 +741,7 @@ private struct ProjectionEntryRow: View {
     var body: some View {
         HStack(spacing: 11) {
             Circle()
-                .fill(Color(projectionHex: bank.color))
+                .fill(Color(savingsHex: bank.color))
                 .frame(width: 10, height: 10)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -756,13 +756,13 @@ private struct ProjectionEntryRow: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 4) {
-                ProjectionMoneyPair(
+                SavingsMoneyPair(
                     amount: entry.amount,
-                    enteredCurrency: entry.projectionCurrency,
+                    enteredCurrency: entry.savingsCurrency,
                     displayCurrency: displayCurrency,
                     usdIlsRate: usdIlsRate
                 )
-                Text(ProjectionFormatting.isoDate.date(from: entry.date).map { ProjectionFormatting.displayDate.string(from: $0) } ?? entry.date)
+                Text(SavingsFormatting.isoDate.date(from: entry.date).map { SavingsFormatting.displayDate.string(from: $0) } ?? entry.date)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -781,14 +781,14 @@ private struct ProjectionEntryRow: View {
     }
 }
 
-private struct ProjectionMoneyPair: View {
+private struct SavingsMoneyPair: View {
     let amount: Double
-    let enteredCurrency: ProjectionCurrency
-    let displayCurrency: ProjectionCurrency
+    let enteredCurrency: SavingsCurrency
+    let displayCurrency: SavingsCurrency
     let usdIlsRate: Double?
 
     private var displayValue: Double? {
-        ProjectionCalculator.convert(
+        SavingsCalculator.convert(
             amount,
             from: enteredCurrency,
             to: displayCurrency,
@@ -798,7 +798,7 @@ private struct ProjectionMoneyPair: View {
 
     private var secondaryValue: Double? {
         guard displayValue != nil else { return nil }
-        return ProjectionCalculator.convert(
+        return SavingsCalculator.convert(
             amount,
             from: enteredCurrency,
             to: displayCurrency.other,
@@ -810,14 +810,14 @@ private struct ProjectionMoneyPair: View {
         VStack(alignment: .trailing, spacing: 2) {
             Text(
                 displayValue.map {
-                    ProjectionFormatting.money($0, currency: displayCurrency, cents: true)
-                } ?? ProjectionFormatting.money(amount, currency: enteredCurrency, cents: true)
+                    SavingsFormatting.money($0, currency: displayCurrency, cents: true)
+                } ?? SavingsFormatting.money(amount, currency: enteredCurrency, cents: true)
             )
             .font(.subheadline.weight(.semibold))
             .monospacedDigit()
 
             if let secondaryValue {
-                Text("≈ \(ProjectionFormatting.money(secondaryValue, currency: displayCurrency.other, cents: true))")
+                Text("≈ \(SavingsFormatting.money(secondaryValue, currency: displayCurrency.other, cents: true))")
                     .font(.system(size: 8))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -830,30 +830,30 @@ private struct ProjectionMoneyPair: View {
     }
 }
 
-private struct ProjectionChartView: View {
-    let points: [ProjectionChartPoint]
-    let banks: [ProjectionBankDTO]
-    let mode: ProjectionChartMode
+private struct SavingsChartView: View {
+    let points: [SavingsChartPoint]
+    let banks: [SavingsBankDTO]
+    let mode: SavingsChartMode
     let totalVisible: Bool
-    let currency: ProjectionCurrency
+    let currency: SavingsCurrency
     let usdIlsRate: Double?
     let emptyMessage: String?
 
     @State private var selectedDate: Date?
 
-    private var selectionPoint: ProjectionChartPoint? {
+    private var selectionPoint: SavingsChartPoint? {
         guard let selectedDate else { return nil }
         return points.min { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }
     }
 
-    private var stackedValues: [String: [ProjectionStackedPoint]] {
-        var result: [String: [ProjectionStackedPoint]] = [:]
+    private var stackedValues: [String: [SavingsStackedPoint]] {
+        var result: [String: [SavingsStackedPoint]] = [:]
         for point in points {
             var lower = 0.0
             for bank in banks {
                 let upper = lower + (point.values[bank.id] ?? 0)
                 result[bank.id, default: []].append(
-                    ProjectionStackedPoint(point: point, lower: lower, upper: upper)
+                    SavingsStackedPoint(point: point, lower: lower, upper: upper)
                 )
                 lower = upper
             }
@@ -864,7 +864,7 @@ private struct ProjectionChartView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             if points.isEmpty {
-                Text(emptyMessage ?? "Select at least one bank to draw its projection.")
+                Text(emptyMessage ?? "Select at least one bank to draw its savings.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -878,14 +878,14 @@ private struct ProjectionChartView: View {
                                     yStart: .value("Lower", item.lower),
                                     yEnd: .value("Upper", item.upper)
                                 )
-                                .foregroundStyle(Color(projectionHex: bank.color).opacity(0.24))
+                                .foregroundStyle(Color(savingsHex: bank.color).opacity(0.24))
                                 .interpolationMethod(.catmullRom)
 
                                 LineMark(
                                     x: .value("Date", item.point.date),
                                     y: .value("Cumulative balance", item.upper)
                                 )
-                                .foregroundStyle(Color(projectionHex: bank.color))
+                                .foregroundStyle(Color(savingsHex: bank.color))
                                 .lineStyle(.init(lineWidth: 1.5))
                                 .interpolationMethod(.catmullRom)
                             }
@@ -898,7 +898,7 @@ private struct ProjectionChartView: View {
                                     y: .value(bank.name, point.values[bank.id] ?? 0),
                                     series: .value("Bank", bank.name)
                                 )
-                                .foregroundStyle(Color(projectionHex: bank.color))
+                                .foregroundStyle(Color(savingsHex: bank.color))
                                 .lineStyle(.init(lineWidth: 2))
                                 .interpolationMethod(.catmullRom)
                             }
@@ -976,7 +976,7 @@ private struct ProjectionChartView: View {
             }
 
             if let selectionPoint {
-                ProjectionChartCallout(
+                SavingsChartCallout(
                     point: selectionPoint,
                     banks: banks,
                     currency: currency,
@@ -990,17 +990,17 @@ private struct ProjectionChartView: View {
     }
 }
 
-private struct ProjectionChartCallout: View {
-    let point: ProjectionChartPoint
-    let banks: [ProjectionBankDTO]
-    let currency: ProjectionCurrency
+private struct SavingsChartCallout: View {
+    let point: SavingsChartPoint
+    let banks: [SavingsBankDTO]
+    let currency: SavingsCurrency
     let usdIlsRate: Double?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(ProjectionFormatting.displayDate.string(from: point.date))
+            Text(SavingsFormatting.displayDate.string(from: point.date))
                 .font(.caption.weight(.semibold))
-            ProjectionCalloutRow(
+            SavingsCalloutRow(
                 title: "Total",
                 color: Color(red: 21 / 255, green: 60 / 255, blue: 248 / 255),
                 value: point.total,
@@ -1008,9 +1008,9 @@ private struct ProjectionChartCallout: View {
                 usdIlsRate: usdIlsRate
             )
             ForEach(Array(banks.reversed())) { bank in
-                ProjectionCalloutRow(
+                SavingsCalloutRow(
                     title: bank.name,
-                    color: Color(projectionHex: bank.color),
+                    color: Color(savingsHex: bank.color),
                     value: point.values[bank.id] ?? 0,
                     currency: currency,
                     usdIlsRate: usdIlsRate
@@ -1024,19 +1024,19 @@ private struct ProjectionChartCallout: View {
     }
 }
 
-private struct ProjectionStackedPoint: Identifiable {
-    let point: ProjectionChartPoint
+private struct SavingsStackedPoint: Identifiable {
+    let point: SavingsChartPoint
     let lower: Double
     let upper: Double
 
     var id: Date { point.id }
 }
 
-private struct ProjectionCalloutRow: View {
+private struct SavingsCalloutRow: View {
     let title: String
     let color: Color
     let value: Double
-    let currency: ProjectionCurrency
+    let currency: SavingsCurrency
     let usdIlsRate: Double?
 
     var body: some View {
@@ -1046,16 +1046,16 @@ private struct ProjectionCalloutRow: View {
                 .foregroundStyle(.secondary)
             Spacer(minLength: 12)
             VStack(alignment: .trailing, spacing: 1) {
-                Text(ProjectionFormatting.money(value, currency: currency))
+                Text(SavingsFormatting.money(value, currency: currency))
                     .fontWeight(.semibold)
                     .monospacedDigit()
-                if let converted = ProjectionCalculator.convert(
+                if let converted = SavingsCalculator.convert(
                     value,
                     from: currency,
                     to: currency.other,
                     usdIlsRate: usdIlsRate
                 ) {
-                    Text("≈ \(ProjectionFormatting.money(converted, currency: currency.other))")
+                    Text("≈ \(SavingsFormatting.money(converted, currency: currency.other))")
                         .font(.system(size: 8))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()

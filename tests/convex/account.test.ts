@@ -44,8 +44,8 @@ describe("Convex account deletion", () => {
       testApi.expenses.create,
       expenseInput("preserved-expense"),
     );
-    await client.mutation(testApi.projections.createBank, {
-      name: "Alice projections",
+    await client.mutation(testApi.savings.createBank, {
+      name: "Alice savings",
       color: "#4389FF",
       interestEnabled: true,
       annualInterestRate: 1,
@@ -54,12 +54,12 @@ describe("Convex account deletion", () => {
       startingBalance: 100,
       startingDate: "2026-01-01",
     });
-    await client.mutation(testApi.projections.setCurrencySettings, {
+    await client.mutation(testApi.savings.setCurrencySettings, {
       displayCurrency: "USD",
       manualUsdIlsRate: 3.5,
     });
-    await bobClient.mutation(testApi.projections.createBank, {
-      name: "Bob projections",
+    await bobClient.mutation(testApi.savings.createBank, {
+      name: "Bob savings",
       color: "#FF6758",
       interestEnabled: false,
       annualInterestRate: 0,
@@ -98,16 +98,16 @@ describe("Convex account deletion", () => {
         .query("notepadWorkspaces")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
-      projectionSettings: await ctx.db
-        .query("projectionSettings")
+      savingsSettings: await ctx.db
+        .query("savingsSettings")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
-      projectionEntries: await ctx.db
-        .query("projectionEntries")
+      savingsEntries: await ctx.db
+        .query("savingsEntries")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
-      projectionBanks: await ctx.db
-        .query("projectionBanks")
+      savingsBanks: await ctx.db
+        .query("savingsBanks")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
     }));
@@ -119,9 +119,9 @@ describe("Convex account deletion", () => {
       recurrings: [],
       options: [],
       notepad: [],
-      projectionSettings: [],
-      projectionEntries: [],
-      projectionBanks: [],
+      savingsSettings: [],
+      savingsEntries: [],
+      savingsBanks: [],
     });
     expect(
       await bobClient.query(testApi.expenses.list, {
@@ -129,10 +129,10 @@ describe("Convex account deletion", () => {
       }),
     ).toMatchObject({ page: [{ expenseId: "preserved-expense" }] });
     expect(
-      (await bobClient.query(testApi.projections.list, {})).banks,
+      (await bobClient.query(testApi.savings.list, {})).banks,
     ).toHaveLength(1);
     expect(
-      (await bobClient.query(testApi.projections.list, {})).entries,
+      (await bobClient.query(testApi.savings.list, {})).entries,
     ).toHaveLength(1);
   });
 });

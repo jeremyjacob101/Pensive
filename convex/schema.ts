@@ -146,7 +146,7 @@ export default defineSchema({
     ),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
-  projectionBanks: defineTable({
+  savingsBanks: defineTable({
     userId: v.id("users"),
     name: v.string(),
     color: v.string(),
@@ -160,9 +160,9 @@ export default defineSchema({
   })
     .index("by_user_id", ["userId"])
     .index("by_user_sort", ["userId", "sortOrder"]),
-  projectionEntries: defineTable({
+  savingsEntries: defineTable({
     userId: v.id("users"),
-    bankId: v.id("projectionBanks"),
+    bankId: v.id("savingsBanks"),
     date: v.string(),
     amount: v.number(),
     currency: v.optional(v.union(v.literal("ILS"), v.literal("USD"))),
@@ -173,13 +173,13 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_user_date", ["userId", "date"])
     .index("by_user_bank_date", ["userId", "bankId", "date"]),
-  projectionSettings: defineTable({
+  savingsSettings: defineTable({
     userId: v.id("users"),
     displayCurrency: v.union(v.literal("ILS"), v.literal("USD")),
     manualUsdIlsRate: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
-  projectionExchangeRates: defineTable({
+  savingsExchangeRates: defineTable({
     pair: v.string(),
     base: v.string(),
     quote: v.string(),

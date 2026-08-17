@@ -27,7 +27,7 @@ function bankInput(
 }
 
 function entryInput(
-  bankId: Id<"projectionBanks">,
+  bankId: Id<"savingsBanks">,
   overrides: Partial<{
     date: string;
     amount: number;
@@ -44,15 +44,15 @@ function entryInput(
   };
 }
 
-describe("Convex projections", () => {
-  it("requires authentication for projection reads and writes", async () => {
+describe("Convex savings", () => {
+  it("requires authentication for savings reads and writes", async () => {
     const t = makeConvexTest();
 
-    await expect(t.query(testApi.projections.list, {})).rejects.toThrow(
+    await expect(t.query(testApi.savings.list, {})).rejects.toThrow(
       "Unauthenticated",
     );
     await expect(
-      t.mutation(testApi.projections.setCurrencySettings, {
+      t.mutation(testApi.savings.setCurrencySettings, {
         displayCurrency: "ILS",
       }),
     ).rejects.toThrow("Unauthenticated");
@@ -60,11 +60,11 @@ describe("Convex projections", () => {
 
   it("creates, lists, edits, reorders, and stores currency settings", async () => {
     const t = makeConvexTest();
-    const user = await createUser(t, "projection-crud");
+    const user = await createUser(t, "savings-crud");
     const client = asUser(t, user);
 
     const checking = await client.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({
         name: " Checking ",
         startingBalance: 1_000,
@@ -73,7 +73,7 @@ describe("Convex projections", () => {
       }),
     );
     const savings = await client.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({
         name: "Savings",
         color: "#ff6758",
@@ -84,7 +84,7 @@ describe("Convex projections", () => {
       }),
     );
     const entry = await client.mutation(
-      testApi.projections.createEntry,
+      testApi.savings.createEntry,
       entryInput(checking, {
         date: "2026-03-01",
         amount: 1_250,
@@ -92,7 +92,7 @@ describe("Convex projections", () => {
       }),
     );
 
-    await client.mutation(testApi.projections.updateBank, {
+    await client.mutation(testApi.savings.updateBank, {
       id: checking,
       name: "Daily checking",
       color: "#153CF8",
@@ -101,7 +101,7 @@ describe("Convex projections", () => {
       compounding: "yearly",
       currency: "ILS",
     });
-    await client.mutation(testApi.projections.updateEntry, {
+    await client.mutation(testApi.savings.updateEntry, {
       id: entry,
       bankId: savings,
       date: "2026-04-01",
@@ -109,15 +109,15 @@ describe("Convex projections", () => {
       currency: "USD",
       note: "moved snapshot",
     });
-    await client.mutation(testApi.projections.reorderBanks, {
+    await client.mutation(testApi.savings.reorderBanks, {
       ids: [savings, checking],
     });
-    await client.mutation(testApi.projections.setCurrencySettings, {
+    await client.mutation(testApi.savings.setCurrencySettings, {
       displayCurrency: "USD",
       manualUsdIlsRate: 3.5,
     });
 
-    const result = await client.query(testApi.projections.list, {});
+    const result = await client.query(testApi.savings.list, {});
     expect(result.banks.map((bank) => bank.name)).toEqual([
       "Savings",
       "Daily checking",
@@ -160,12 +160,12 @@ describe("Convex projections", () => {
 
   it("isolates users and cascades a bank deletion to its entries", async () => {
     const t = makeConvexTest();
-    const alice = await createUser(t, "projection-alice");
-    const bob = await createUser(t, "projection-bob");
+    const alice = await createUser(t, "savings-alice");
+    const bob = await createUser(t, "savings-bob");
     const aliceClient = asUser(t, alice);
     const bobClient = asUser(t, bob);
     const aliceBank = await aliceClient.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({
         name: "Alice bank",
         startingBalance: 10,
@@ -173,7 +173,7 @@ describe("Convex projections", () => {
       }),
     );
     const bobBank = await bobClient.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({
         name: "Bob bank",
         startingBalance: 20,
@@ -182,10 +182,10 @@ describe("Convex projections", () => {
     );
 
     await expect(
-      aliceClient.mutation(testApi.projections.removeBank, { id: bobBank }),
-    ).rejects.toThrow("Projection bank not found");
+      aliceClient.mutation(testApi.savings.removeBank, { id: bobBank }),
+    ).rejects.toThrow("Savings bank not found");
     await expect(
-      aliceClient.mutation(testApi.projections.updateBank, {
+      aliceClient.mutation(testApi.savings.updateBank, {
         id: bobBank,
         name: "No access",
         color: "#153CF8",
@@ -194,26 +194,26 @@ describe("Convex projections", () => {
         compounding: "monthly",
         currency: "ILS",
       }),
-    ).rejects.toThrow("Projection bank not found");
+    ).rejects.toThrow("Savings bank not found");
 
-    await aliceClient.mutation(testApi.projections.removeBank, {
+    await aliceClient.mutation(testApi.savings.removeBank, {
       id: aliceBank,
     });
     const remaining = await t.run(async (ctx) => ({
       aliceBanks: await ctx.db
-        .query("projectionBanks")
+        .query("savingsBanks")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
       aliceEntries: await ctx.db
-        .query("projectionEntries")
+        .query("savingsEntries")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
       bobBanks: await ctx.db
-        .query("projectionBanks")
+        .query("savingsBanks")
         .withIndex("by_user_id", (q) => q.eq("userId", bob))
         .collect(),
       bobEntries: await ctx.db
-        .query("projectionEntries")
+        .query("savingsEntries")
         .withIndex("by_user_id", (q) => q.eq("userId", bob))
         .collect(),
     }));
@@ -226,66 +226,63 @@ describe("Convex projections", () => {
 
   it("rejects invalid values and incomplete reorder requests", async () => {
     const t = makeConvexTest();
-    const user = await createUser(t, "projection-validation");
+    const user = await createUser(t, "savings-validation");
     const client = asUser(t, user);
 
     await expect(
-      client.mutation(testApi.projections.createBank, bankInput({ name: " " })),
+      client.mutation(testApi.savings.createBank, bankInput({ name: " " })),
     ).rejects.toThrow("Bank name is required");
     await expect(
-      client.mutation(
-        testApi.projections.createBank,
-        bankInput({ color: "blue" }),
-      ),
+      client.mutation(testApi.savings.createBank, bankInput({ color: "blue" })),
     ).rejects.toThrow("six-digit hex");
     await expect(
       client.mutation(
-        testApi.projections.createBank,
+        testApi.savings.createBank,
         bankInput({ annualInterestRate: 101 }),
       ),
     ).rejects.toThrow("between 0 and 100");
     await expect(
       client.mutation(
-        testApi.projections.createBank,
+        testApi.savings.createBank,
         bankInput({ startingBalance: 10 }),
       ),
     ).rejects.toThrow("Starting balance date is required");
     await expect(
       client.mutation(
-        testApi.projections.createBank,
+        testApi.savings.createBank,
         bankInput({ startingBalance: 10, startingDate: "2026-02-30" }),
       ),
     ).rejects.toThrow("real calendar date");
 
     const first = await client.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({ name: "First" }),
     );
     const second = await client.mutation(
-      testApi.projections.createBank,
+      testApi.savings.createBank,
       bankInput({ name: "Second" }),
     );
     await expect(
-      client.mutation(testApi.projections.reorderBanks, {
+      client.mutation(testApi.savings.reorderBanks, {
         ids: [first, first],
       }),
     ).rejects.toThrow("duplicates");
     await expect(
-      client.mutation(testApi.projections.reorderBanks, { ids: [first] }),
+      client.mutation(testApi.savings.reorderBanks, { ids: [first] }),
     ).rejects.toThrow("every bank exactly once");
-    expect(
-      (await client.query(testApi.projections.list, {})).banks,
-    ).toHaveLength(2);
+    expect((await client.query(testApi.savings.list, {})).banks).toHaveLength(
+      2,
+    );
     void second;
   });
 
   it("defaults legacy rows to ILS and keeps the global cache outside account ownership", async () => {
     const t = makeConvexTest();
-    const user = await createUser(t, "projection-legacy");
+    const user = await createUser(t, "savings-legacy");
     const client = asUser(t, user);
     const ids = await t.run(async (ctx) => {
       const now = 1_000;
-      const bankId = await ctx.db.insert("projectionBanks", {
+      const bankId = await ctx.db.insert("savingsBanks", {
         userId: user,
         name: "Legacy bank",
         color: "#4389FF",
@@ -296,7 +293,7 @@ describe("Convex projections", () => {
         createdAt: now,
         updatedAt: now,
       });
-      const entryId = await ctx.db.insert("projectionEntries", {
+      const entryId = await ctx.db.insert("savingsEntries", {
         userId: user,
         bankId,
         date: "2026-01-01",
@@ -307,7 +304,7 @@ describe("Convex projections", () => {
       return { bankId, entryId };
     });
 
-    const result = await client.query(testApi.projections.list, {});
+    const result = await client.query(testApi.savings.list, {});
     expect(result.settings).toMatchObject({
       displayCurrency: "ILS",
       manualUsdIlsRate: null,
@@ -318,15 +315,12 @@ describe("Convex projections", () => {
       currency: "ILS",
     });
 
-    await t.mutation(internalApi.projections.storeExchangeRate, {
+    await t.mutation(internalApi.savings.storeExchangeRate, {
       rate: 3.25,
       rateDate: "2026-08-11",
       fetchedAt: 2_000,
     });
-    const cached = await t.query(
-      internalApi.projections.getCachedExchangeRate,
-      {},
-    );
+    const cached = await t.query(internalApi.savings.getCachedExchangeRate, {});
     expect(cached).toMatchObject({
       pair: "USD_ILS",
       rate: 3.25,

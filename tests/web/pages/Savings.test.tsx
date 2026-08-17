@@ -2,7 +2,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Projections } from "../../../Codebase - Pensive Web/src/pages/Projections";
+import { Savings } from "../../../Codebase - Pensive Web/src/pages/Savings";
 
 vi.mock("convex/react", () => ({
   useAction: () => vi.fn(),
@@ -10,21 +10,21 @@ vi.mock("convex/react", () => ({
   useQuery: () => undefined,
 }));
 
-describe("Projections page", () => {
+describe("Savings page", () => {
   beforeEach(() => {
-    window.history.replaceState({}, "", "/projections?preview=1");
+    window.history.replaceState({}, "", "/savings?preview=1");
   });
 
   it("renders the preview fixture and updates bank selection", async () => {
     const user = userEvent.setup();
-    render(<Projections />);
+    render(<Savings />);
 
     expect(
-      screen.getByRole("heading", { name: "Projections" }),
+      screen.getByRole("heading", { name: "Savings" }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Everyday").length).toBeGreaterThan(0);
     expect(screen.getByText("3 of 3 selected")).toBeInTheDocument();
-    expect(screen.getByText("Projected · 20Y")).toBeInTheDocument();
+    expect(screen.getByText("Forecast · 20Y")).toBeInTheDocument();
 
     await user.click(
       screen.getAllByRole("button", { name: "Hide Everyday on chart" })[0],

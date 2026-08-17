@@ -1,24 +1,24 @@
 import SwiftUI
 
-struct ProjectionBankEditorSheet: View {
-    @ObservedObject var viewModel: ProjectionsFeatureViewModel
-    let bank: ProjectionBankDTO?
+struct SavingsBankEditorSheet: View {
+    @ObservedObject var viewModel: SavingsFeatureViewModel
+    let bank: SavingsBankDTO?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var values: ProjectionBankFormValues
+    @State private var values: SavingsBankFormValues
     @State private var startingBalanceText: String
     @FocusState private var focusedField: Field?
 
     private enum Field { case name, balance, note }
     private let colors = ["#153CF8", "#4389FF", "#FF6758", "#FB8B24", "#5EAE8C", "#8C62E3", "#27A9AE", "#74829A"]
 
-    init(viewModel: ProjectionsFeatureViewModel, bank: ProjectionBankDTO?) {
+    init(viewModel: SavingsFeatureViewModel, bank: SavingsBankDTO?) {
         self.viewModel = viewModel
         self.bank = bank
-        _values = State(initialValue: ProjectionBankFormValues(
+        _values = State(initialValue: SavingsBankFormValues(
             name: bank?.name ?? "",
             colorHex: bank?.color ?? "#4389FF",
-            currency: bank?.projectionCurrency ?? .ils,
+            currency: bank?.savingsCurrency ?? .ils,
             interestEnabled: bank?.interestEnabled ?? false,
             annualInterestRate: bank?.annualInterestRate ?? 0,
             compounding: bank?.compounding ?? "monthly"
@@ -34,7 +34,7 @@ struct ProjectionBankEditorSheet: View {
                         .focused($focusedField, equals: .name)
 
                     Picker("Bank currency", selection: $values.currency) {
-                        ForEach(ProjectionCurrency.allCases) { currency in
+                        ForEach(SavingsCurrency.allCases) { currency in
                             Text(currency.title).tag(currency)
                         }
                     }
@@ -50,7 +50,7 @@ struct ProjectionBankEditorSheet: View {
                                         values.colorHex = hex
                                     } label: {
                                         Circle()
-                                            .fill(Color(projectionHex: hex))
+                                            .fill(Color(savingsHex: hex))
                                             .frame(width: 28, height: 28)
                                             .overlay {
                                                 if values.colorHex.uppercased() == hex {
@@ -77,7 +77,7 @@ struct ProjectionBankEditorSheet: View {
                 }
 
                 Section("Growth") {
-                    Toggle("Project interest", isOn: $values.interestEnabled)
+                    Toggle("Grow with interest", isOn: $values.interestEnabled)
 
                     TextField(
                         "Annual rate",
@@ -170,31 +170,31 @@ struct ProjectionBankEditorSheet: View {
     }
 }
 
-struct ProjectionEntryEditorSheet: View {
-    @ObservedObject var viewModel: ProjectionsFeatureViewModel
-    let entry: ProjectionEntryDTO?
+struct SavingsEntryEditorSheet: View {
+    @ObservedObject var viewModel: SavingsFeatureViewModel
+    let entry: SavingsEntryDTO?
 
     @Environment(\.dismiss) private var dismiss
-    @State private var values: ProjectionEntryFormValues
+    @State private var values: SavingsEntryFormValues
     @State private var amountText: String
     @FocusState private var focusedField: Field?
 
     private enum Field { case amount, note }
 
     init(
-        viewModel: ProjectionsFeatureViewModel,
-        entry: ProjectionEntryDTO?,
+        viewModel: SavingsFeatureViewModel,
+        entry: SavingsEntryDTO?,
         initialBankID: String?
     ) {
         self.viewModel = viewModel
         self.entry = entry
-        let date = entry.flatMap { ProjectionFormatting.isoDate.date(from: $0.date) } ?? Date()
-        _values = State(initialValue: ProjectionEntryFormValues(
+        let date = entry.flatMap { SavingsFormatting.isoDate.date(from: $0.date) } ?? Date()
+        _values = State(initialValue: SavingsEntryFormValues(
             bankID: entry?.bankId ?? initialBankID ?? viewModel.banks.first?.id ?? "",
             amount: entry?.amount ?? 0,
-            currency: entry?.projectionCurrency ?? viewModel.banks.first(where: {
+            currency: entry?.savingsCurrency ?? viewModel.banks.first(where: {
                 $0.id == (initialBankID ?? viewModel.banks.first?.id)
-            })?.projectionCurrency ?? .ils,
+            })?.savingsCurrency ?? .ils,
             date: date,
             note: entry?.note ?? ""
         ))
@@ -211,7 +211,7 @@ struct ProjectionEntryEditorSheet: View {
                                 Text(bank.name)
                             } icon: {
                                 Circle()
-                                    .fill(Color(projectionHex: bank.color))
+                                    .fill(Color(savingsHex: bank.color))
                             }
                             .tag(bank.id)
                         }
@@ -219,11 +219,11 @@ struct ProjectionEntryEditorSheet: View {
                     .onChange(of: values.bankID) { _, newBankID in
                         guard entry == nil,
                               let bank = viewModel.banks.first(where: { $0.id == newBankID }) else { return }
-                        values.currency = bank.projectionCurrency
+                        values.currency = bank.savingsCurrency
                     }
 
                     Picker("Entry currency", selection: $values.currency) {
-                        ForEach(ProjectionCurrency.allCases) { currency in
+                        ForEach(SavingsCurrency.allCases) { currency in
                             Text(currency.title).tag(currency)
                         }
                     }
@@ -296,11 +296,11 @@ struct ProjectionEntryEditorSheet: View {
     }
 }
 
-struct ProjectionCurrencySettingsSheet: View {
-    @ObservedObject var viewModel: ProjectionsFeatureViewModel
+struct SavingsCurrencySettingsSheet: View {
+    @ObservedObject var viewModel: SavingsFeatureViewModel
 
     @Environment(\.dismiss) private var dismiss
-    @State private var displayCurrency: ProjectionCurrency
+    @State private var displayCurrency: SavingsCurrency
     @State private var rateMode: RateMode
     @State private var manualRateText: String
     @State private var validationMessage: String?
@@ -313,7 +313,7 @@ struct ProjectionCurrencySettingsSheet: View {
         var title: String { rawValue.capitalized }
     }
 
-    init(viewModel: ProjectionsFeatureViewModel) {
+    init(viewModel: SavingsFeatureViewModel) {
         self.viewModel = viewModel
         let settings = viewModel.currencySettings
         _displayCurrency = State(initialValue: settings.displayCurrency)
@@ -328,7 +328,7 @@ struct ProjectionCurrencySettingsSheet: View {
             Form {
                 Section("Display currency") {
                     Picker("Display currency", selection: $displayCurrency) {
-                        ForEach(ProjectionCurrency.allCases) { currency in
+                        ForEach(SavingsCurrency.allCases) { currency in
                             Text(currency.title).tag(currency)
                         }
                     }
@@ -351,8 +351,8 @@ struct ProjectionCurrencySettingsSheet: View {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(viewModel.currencySettings.rateSource)
                             if let key = viewModel.currencySettings.liveRateDate,
-                               let date = ProjectionFormatting.isoDate.date(from: key) {
-                                Text(ProjectionFormatting.displayDate.string(from: date))
+                               let date = SavingsFormatting.isoDate.date(from: key) {
+                                Text(SavingsFormatting.displayDate.string(from: date))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -375,7 +375,7 @@ struct ProjectionCurrencySettingsSheet: View {
                     Text("Daily USD/ILS reference rate from Frankfurter. The last successful rate stays available offline.")
                 }
 
-                Section("Rate used for projections") {
+                Section("Rate used for savings") {
                     Picker("Rate mode", selection: $rateMode) {
                         ForEach(RateMode.allCases) { mode in
                             Text(mode.title).tag(mode)

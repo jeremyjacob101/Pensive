@@ -1,19 +1,19 @@
-import { buildProjectionSeries, convertProjectionAmount, formatProjectionDate, formatProjectionMoney, isUsableProjectionRate, latestEntriesByBank, otherProjectionCurrency, requiresProjectionExchangeRate, resolvedProjectionCurrency } from "../helpers/projections";
-import type { ProjectionBank, ProjectionBankDraft, ProjectionBankId, ProjectionChartMode, ProjectionCurrency, ProjectionCurrencySettings, ProjectionEntry, ProjectionEntryDraft, ProjectionHorizon } from "../types/projections";
-import { ArrowDown, ArrowUp, Banknote, CalendarPlus, Eye, Pencil, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
-import { ProjectionCurrencySheet } from "../components/ProjectionCurrencySheet";
-import { ProjectionEntrySheet } from "../components/ProjectionEntrySheet";
+import { buildSavingsSeries, convertSavingsAmount, formatSavingsDate, formatSavingsMoney, isUsableSavingsRate, latestEntriesByBank, otherSavingsCurrency, requiresSavingsExchangeRate, resolvedSavingsCurrency } from "../helpers/savings";
+import type { SavingsBank, SavingsBankDraft, SavingsBankId, SavingsChartMode, SavingsCurrency, SavingsCurrencySettings, SavingsEntry, SavingsEntryDraft, SavingsHorizon } from "../types/savings";
+import { ArrowDown, ArrowUp, CalendarPlus, Eye, Landmark, Pencil, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
+import { SavingsCurrencySheet } from "../components/SavingsCurrencySheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ProjectionBankSheet } from "../components/ProjectionBankSheet";
-import { ProjectionChart } from "../components/ProjectionChart";
+import { SavingsEntrySheet } from "../components/SavingsEntrySheet";
+import { SavingsBankSheet } from "../components/SavingsBankSheet";
 import { useAction, useMutation, useQuery } from "convex/react";
+import { SavingsChart } from "../components/SavingsChart";
 import { api } from "@pensive/convex-api";
 import { createPortal } from "react-dom";
 
-const HORIZONS: ProjectionHorizon[] = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50];
-const EMPTY_BANKS: ProjectionBank[] = [];
-const EMPTY_ENTRIES: ProjectionEntry[] = [];
-const DEFAULT_CURRENCY_SETTINGS: ProjectionCurrencySettings = {
+const HORIZONS: SavingsHorizon[] = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50];
+const EMPTY_BANKS: SavingsBank[] = [];
+const EMPTY_ENTRIES: SavingsEntry[] = [];
+const DEFAULT_CURRENCY_SETTINGS: SavingsCurrencySettings = {
   displayCurrency: "ILS",
   manualUsdIlsRate: null,
   liveUsdIlsRate: null,
@@ -21,10 +21,10 @@ const DEFAULT_CURRENCY_SETTINGS: ProjectionCurrencySettings = {
   liveRateFetchedAt: null,
   rateSource: "Frankfurter",
 };
-const PREVIEW_USER_ID = "projection-preview-user" as ProjectionBank["userId"];
-const previewBankId = (value: string) => value as ProjectionBankId;
-const previewEntryId = (value: string) => value as ProjectionEntry["_id"];
-const PREVIEW_BANKS: ProjectionBank[] = [
+const PREVIEW_USER_ID = "savings-preview-user" as SavingsBank["userId"];
+const previewBankId = (value: string) => value as SavingsBankId;
+const previewEntryId = (value: string) => value as SavingsEntry["_id"];
+const PREVIEW_BANKS: SavingsBank[] = [
   {
     _id: previewBankId("preview-everyday"),
     _creationTime: 1,
@@ -69,7 +69,7 @@ const PREVIEW_BANKS: ProjectionBank[] = [
   },
 ];
 const PREVIEW_ENTRY_VALUES: Array<
-  [string, ProjectionBankId, string, number, string]
+  [string, SavingsBankId, string, number, string]
 > = [
   [
     "preview-entry-1",
@@ -177,7 +177,7 @@ const PREVIEW_ENTRY_VALUES: Array<
     "Market close",
   ],
 ];
-const PREVIEW_ENTRIES: ProjectionEntry[] = PREVIEW_ENTRY_VALUES.map((
+const PREVIEW_ENTRIES: SavingsEntry[] = PREVIEW_ENTRY_VALUES.map((
   [id, bankId, date, amount, note],
   index,
 ) => ({
@@ -187,14 +187,14 @@ const PREVIEW_ENTRIES: ProjectionEntry[] = PREVIEW_ENTRY_VALUES.map((
   bankId,
   date,
   amount,
-  currency: resolvedProjectionCurrency(
+  currency: resolvedSavingsCurrency(
     PREVIEW_BANKS.find((bank) => bank._id === bankId)?.currency,
   ),
   note,
   createdAt: 100 + index,
   updatedAt: 100 + index,
 }));
-const PROJECTION_PREVIEW_DATA = {
+const SAVINGS_PREVIEW_DATA = {
   banks: PREVIEW_BANKS,
   entries: PREVIEW_ENTRIES,
   settings: {
@@ -208,36 +208,34 @@ const PROJECTION_PREVIEW_DATA = {
 };
 
 type EditorState =
-  | { kind: "bank"; bank?: ProjectionBank }
-  | { kind: "entry"; entry?: ProjectionEntry; initialBankId?: ProjectionBankId }
+  | { kind: "bank"; bank?: SavingsBank }
+  | { kind: "entry"; entry?: SavingsEntry; initialBankId?: SavingsBankId }
   | null;
 
 type ConfirmState =
-  | { kind: "bank"; id: ProjectionBankId; title: string }
-  | { kind: "entry"; id: ProjectionEntry["_id"]; title: string }
+  | { kind: "bank"; id: SavingsBankId; title: string }
+  | { kind: "entry"; id: SavingsEntry["_id"]; title: string }
   | null;
 
-export function Projections() {
+export function Savings() {
   const previewMode =
     import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get("preview") === "1";
-  const remoteData = useQuery(api.projections.list, previewMode ? "skip" : {});
-  const data = previewMode ? PROJECTION_PREVIEW_DATA : remoteData;
-  const createBank = useMutation(api.projections.createBank);
-  const updateBank = useMutation(api.projections.updateBank);
-  const removeBank = useMutation(api.projections.removeBank);
-  const reorderBanks = useMutation(api.projections.reorderBanks);
-  const createEntry = useMutation(api.projections.createEntry);
-  const updateEntry = useMutation(api.projections.updateEntry);
-  const removeEntry = useMutation(api.projections.removeEntry);
-  const updateCurrencySettings = useMutation(
-    api.projections.setCurrencySettings,
-  );
-  const refreshRateAction = useAction(api.projections.refreshExchangeRate);
+  const remoteData = useQuery(api.savings.list, previewMode ? "skip" : {});
+  const data = previewMode ? SAVINGS_PREVIEW_DATA : remoteData;
+  const createBank = useMutation(api.savings.createBank);
+  const updateBank = useMutation(api.savings.updateBank);
+  const removeBank = useMutation(api.savings.removeBank);
+  const reorderBanks = useMutation(api.savings.reorderBanks);
+  const createEntry = useMutation(api.savings.createEntry);
+  const updateEntry = useMutation(api.savings.updateEntry);
+  const removeEntry = useMutation(api.savings.removeEntry);
+  const updateCurrencySettings = useMutation(api.savings.setCurrencySettings);
+  const refreshRateAction = useAction(api.savings.refreshExchangeRate);
 
   const banks = data?.banks ?? EMPTY_BANKS;
   const entries = data?.entries ?? EMPTY_ENTRIES;
-  const [hiddenBankIds, setHiddenBankIds] = useState<Set<ProjectionBankId>>(
+  const [hiddenBankIds, setHiddenBankIds] = useState<Set<SavingsBankId>>(
     () => new Set(),
   );
   const selectedBankIds = useMemo(
@@ -247,7 +245,7 @@ export function Projections() {
       ),
     [banks, hiddenBankIds],
   );
-  const [chartMode, setChartMode] = useState<ProjectionChartMode>("stacked");
+  const [chartMode, setChartMode] = useState<SavingsChartMode>("stacked");
   const [interestOn, setInterestOn] = useState(true);
   const [totalVisible, setTotalVisible] = useState(true);
   const [horizonYears, setHorizonYears] = useState<number>(20);
@@ -261,11 +259,11 @@ export function Projections() {
   const [showAllEntries, setShowAllEntries] = useState(false);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [currencyOverride, setCurrencyOverride] =
-    useState<ProjectionCurrencySettings | null>(null);
+    useState<SavingsCurrencySettings | null>(null);
   const rateRequested = useRef(false);
   const currencySettings =
     currencyOverride ??
-    (data?.settings as ProjectionCurrencySettings | undefined) ??
+    (data?.settings as SavingsCurrencySettings | undefined) ??
     DEFAULT_CURRENCY_SETTINGS;
 
   const effectiveUsdIlsRate =
@@ -282,8 +280,8 @@ export function Projections() {
   );
   const conversionBlocked = useMemo(
     () =>
-      !isUsableProjectionRate(effectiveUsdIlsRate) &&
-      requiresProjectionExchangeRate(
+      !isUsableSavingsRate(effectiveUsdIlsRate) &&
+      requiresSavingsExchangeRate(
         banks,
         entries,
         selectedBankIds,
@@ -293,7 +291,7 @@ export function Projections() {
   );
   const series = useMemo(
     () =>
-      buildProjectionSeries({
+      buildSavingsSeries({
         banks,
         entries,
         selectedBankIds,
@@ -324,16 +322,16 @@ export function Projections() {
     : recentEntries.slice(0, 6);
   const todayTotal = conversionBlocked
     ? null
-    : (series.findLast((point) => !point.isProjected)?.total ?? 0);
-  const projectedTotal = conversionBlocked
+    : (series.findLast((point) => !point.isForecast)?.total ?? 0);
+  const forecastTotal = conversionBlocked
     ? null
     : (series.at(-1)?.total ?? todayTotal ?? 0);
   const growth =
-    todayTotal === null || projectedTotal === null
+    todayTotal === null || forecastTotal === null
       ? null
-      : projectedTotal - todayTotal;
+      : forecastTotal - todayTotal;
 
-  const toggleBank = (id: ProjectionBankId) => {
+  const toggleBank = (id: SavingsBankId) => {
     setHiddenBankIds((previous) => {
       const next = new Set(previous);
       if (next.has(id)) next.delete(id);
@@ -373,7 +371,7 @@ export function Projections() {
         const result = await refreshRateAction({ force });
         setCurrencyOverride((previous) => ({
           ...(previous ??
-            (data?.settings as ProjectionCurrencySettings | undefined) ??
+            (data?.settings as SavingsCurrencySettings | undefined) ??
             DEFAULT_CURRENCY_SETTINGS),
           liveUsdIlsRate: result.rate,
           liveRateDate: result.rateDate,
@@ -402,7 +400,7 @@ export function Projections() {
   }, [previewMode, refreshExchangeRate, remoteData]);
 
   const saveCurrencySettings = async (
-    nextDisplayCurrency: ProjectionCurrency,
+    nextDisplayCurrency: SavingsCurrency,
     manualUsdIlsRate: number | null,
   ) => {
     const previous = currencySettings;
@@ -426,7 +424,7 @@ export function Projections() {
     if (!saved) setCurrencyOverride(previous);
   };
 
-  const saveBank = async (draft: ProjectionBankDraft) => {
+  const saveBank = async (draft: SavingsBankDraft) => {
     const activeBank = editor?.kind === "bank" ? editor.bank : undefined;
     await runMutation(
       () =>
@@ -445,7 +443,7 @@ export function Projections() {
     );
   };
 
-  const saveEntry = async (draft: ProjectionEntryDraft) => {
+  const saveEntry = async (draft: SavingsEntryDraft) => {
     const activeEntry = editor?.kind === "entry" ? editor.entry : undefined;
     await runMutation(
       () =>
@@ -467,7 +465,7 @@ export function Projections() {
     );
   };
 
-  const moveBank = async (id: ProjectionBankId, direction: -1 | 1) => {
+  const moveBank = async (id: SavingsBankId, direction: -1 | 1) => {
     const currentIndex = banks.findIndex((bank) => bank._id === id);
     const targetIndex = currentIndex + direction;
     if (currentIndex < 0 || targetIndex < 0 || targetIndex >= banks.length)
@@ -483,7 +481,7 @@ export function Projections() {
   const applyCustomHorizon = () => {
     const years = Math.round(Number(customHorizon));
     if (!Number.isFinite(years) || years < 1 || years > 100) {
-      setError("Custom projection horizon must be between 1 and 100 years.");
+      setError("Custom savings horizon must be between 1 and 100 years.");
       return;
     }
     setHorizonYears(years);
@@ -492,16 +490,16 @@ export function Projections() {
   };
 
   return (
-    <section className="projections-page">
-      <header className="projections-header">
+    <section className="savings-page">
+      <header className="savings-header">
         <div>
-          <h1>Projections</h1>
+          <h1>Savings</h1>
           <p>Model your balances and see where they could grow.</p>
         </div>
-        <div className="projections-header-actions">
-          <div className="projection-currency-toolbar">
+        <div className="savings-header-actions">
+          <div className="savings-currency-toolbar">
             <div
-              className="projection-currency-toggle"
+              className="savings-currency-toggle"
               aria-label="Display currency"
             >
               {(["ILS", "USD"] as const).map((currency) => (
@@ -523,11 +521,11 @@ export function Projections() {
             </div>
             <button
               type="button"
-              className="projection-rate-button"
+              className="savings-rate-button"
               onClick={() => setCurrencySheetOpen(true)}
             >
               {refreshingRate ? (
-                <RefreshCw size={14} className="projection-spinning" />
+                <RefreshCw size={14} className="savings-spinning" />
               ) : (
                 <Settings2 size={14} />
               )}
@@ -547,15 +545,15 @@ export function Projections() {
           </div>
           <button
             type="button"
-            className="projection-button secondary"
+            className="savings-button secondary"
             onClick={() => setEditor({ kind: "bank" })}
           >
-            <Banknote size={16} />
+            <Landmark size={16} />
             Add bank
           </button>
           <button
             type="button"
-            className="projection-button primary"
+            className="savings-button primary"
             disabled={banks.length === 0}
             onClick={() => setEditor({ kind: "entry" })}
           >
@@ -565,7 +563,7 @@ export function Projections() {
         </div>
       </header>
 
-      <div className="projection-summary" aria-label="Projection summary">
+      <div className="savings-summary" aria-label="Savings summary">
         <SummaryMetric
           label="Today"
           value={todayTotal}
@@ -573,8 +571,8 @@ export function Projections() {
           usdIlsRate={effectiveUsdIlsRate}
         />
         <SummaryMetric
-          label={`Projected · ${horizonYears}Y`}
-          value={projectedTotal}
+          label={`Forecast · ${horizonYears}Y`}
+          value={forecastTotal}
           currency={displayCurrency}
           usdIlsRate={effectiveUsdIlsRate}
         />
@@ -588,7 +586,7 @@ export function Projections() {
       </div>
 
       {error ? (
-        <div className="projection-error-banner" role="alert">
+        <div className="savings-error-banner" role="alert">
           <span>{error}</span>
           <button
             type="button"
@@ -601,22 +599,22 @@ export function Projections() {
       ) : null}
 
       {data === undefined ? (
-        <div className="projection-loading" aria-live="polite">
+        <div className="savings-loading" aria-live="polite">
           <span />
           <span />
           <span />
         </div>
       ) : banks.length === 0 ? (
-        <ProjectionEmptyState onAdd={() => setEditor({ kind: "bank" })} />
+        <SavingsEmptyState onAdd={() => setEditor({ kind: "bank" })} />
       ) : (
         <>
           <section
-            className="projection-chart-section"
-            aria-label="Balance projection chart"
+            className="savings-chart-section"
+            aria-label="Balance savings chart"
           >
-            <div className="projection-chart-controls">
+            <div className="savings-chart-controls">
               <ControlGroup label="Chart mode">
-                <div className="projection-segmented">
+                <div className="savings-segmented">
                   {(["stacked", "lines", "total"] as const).map((mode) => (
                     <button
                       key={mode}
@@ -631,7 +629,7 @@ export function Projections() {
               </ControlGroup>
 
               <ControlGroup label="Interest">
-                <label className="projection-inline-switch">
+                <label className="savings-inline-switch">
                   <input
                     type="checkbox"
                     checked={interestOn}
@@ -642,10 +640,10 @@ export function Projections() {
               </ControlGroup>
 
               <ControlGroup
-                label="Projection horizon"
-                className="projection-horizon-group"
+                label="Savings horizon"
+                className="savings-horizon-group"
               >
-                <div className="projection-horizon-scroll">
+                <div className="savings-horizon-scroll">
                   {HORIZONS.map((years) => (
                     <button
                       key={years}
@@ -667,7 +665,7 @@ export function Projections() {
                     type="button"
                     className={
                       customHorizonOpen ||
-                      !HORIZONS.includes(horizonYears as ProjectionHorizon)
+                      !HORIZONS.includes(horizonYears as SavingsHorizon)
                         ? "active"
                         : ""
                     }
@@ -677,7 +675,7 @@ export function Projections() {
                   </button>
                 </div>
                 {customHorizonOpen ? (
-                  <div className="projection-custom-horizon">
+                  <div className="savings-custom-horizon">
                     <input
                       type="number"
                       min="1"
@@ -695,7 +693,7 @@ export function Projections() {
               </ControlGroup>
             </div>
 
-            <div className="projection-select-all-row">
+            <div className="savings-select-all-row">
               <button
                 type="button"
                 onClick={() => setHiddenBankIds(new Set())}
@@ -708,7 +706,7 @@ export function Projections() {
               </span>
             </div>
 
-            <ProjectionChart
+            <SavingsChart
               points={series}
               banks={banks}
               selectedBankIds={selectedBankIds}
@@ -726,21 +724,21 @@ export function Projections() {
             />
           </section>
 
-          <div className="projection-data-panels">
-            <section className="projection-data-panel">
+          <div className="savings-data-panels">
+            <section className="savings-data-panel">
               <header>
                 <h2>Banks</h2>
                 <span>Reorder with the arrow controls</span>
               </header>
-              <div className="projection-table-wrap">
-                <table className="projection-table">
+              <div className="savings-table-wrap">
+                <table className="savings-table">
                   <thead>
                     <tr>
                       <th>Bank</th>
                       <th>Current balance</th>
                       <th>Annual rate</th>
                       <th>Last updated</th>
-                      <th className="projection-actions-column">Actions</th>
+                      <th className="savings-actions-column">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -749,19 +747,19 @@ export function Projections() {
                       return (
                         <tr key={bank._id}>
                           <td>
-                            <span className="projection-bank-name">
+                            <span className="savings-bank-name">
                               <i style={{ backgroundColor: bank.color }} />
                               {bank.name}
-                              <small className="projection-currency-badge">
-                                {resolvedProjectionCurrency(bank.currency)}
+                              <small className="savings-currency-badge">
+                                {resolvedSavingsCurrency(bank.currency)}
                               </small>
                             </span>
                           </td>
                           <td>
                             {latest ? (
-                              <ProjectionMoneyPair
+                              <SavingsMoneyPair
                                 amount={latest.amount}
-                                enteredCurrency={resolvedProjectionCurrency(
+                                enteredCurrency={resolvedSavingsCurrency(
                                   latest.currency,
                                 )}
                                 displayCurrency={displayCurrency}
@@ -778,11 +776,11 @@ export function Projections() {
                           </td>
                           <td>
                             {latest
-                              ? formatProjectionDate(latest.date)
+                              ? formatSavingsDate(latest.date)
                               : "No balance yet"}
                           </td>
                           <td>
-                            <div className="projection-row-actions">
+                            <div className="savings-row-actions">
                               <button
                                 type="button"
                                 onClick={() => toggleBank(bank._id)}
@@ -842,14 +840,14 @@ export function Projections() {
               </div>
               <button
                 type="button"
-                className="projection-panel-add"
+                className="savings-panel-add"
                 onClick={() => setEditor({ kind: "bank" })}
               >
                 <Plus size={15} /> Add bank
               </button>
             </section>
 
-            <section className="projection-data-panel">
+            <section className="savings-data-panel">
               <header>
                 <h2>Recent balance history</h2>
                 {recentEntries.length > 6 ? (
@@ -862,19 +860,19 @@ export function Projections() {
                 ) : null}
               </header>
               {visibleEntries.length === 0 ? (
-                <div className="projection-panel-empty">
+                <div className="savings-panel-empty">
                   Add a balance to start the history for your banks.
                 </div>
               ) : (
-                <div className="projection-table-wrap">
-                  <table className="projection-table">
+                <div className="savings-table-wrap">
+                  <table className="savings-table">
                     <thead>
                       <tr>
                         <th>Date</th>
                         <th>Bank</th>
                         <th>Amount</th>
                         <th>Note</th>
-                        <th className="projection-actions-column">Actions</th>
+                        <th className="savings-actions-column">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -883,31 +881,31 @@ export function Projections() {
                         if (!bank) return null;
                         return (
                           <tr key={entry._id}>
-                            <td>{formatProjectionDate(entry.date)}</td>
+                            <td>{formatSavingsDate(entry.date)}</td>
                             <td>
-                              <span className="projection-bank-name">
+                              <span className="savings-bank-name">
                                 <i style={{ backgroundColor: bank.color }} />
                                 {bank.name}
-                                <small className="projection-currency-badge">
-                                  {resolvedProjectionCurrency(entry.currency)}
+                                <small className="savings-currency-badge">
+                                  {resolvedSavingsCurrency(entry.currency)}
                                 </small>
                               </span>
                             </td>
                             <td>
-                              <ProjectionMoneyPair
+                              <SavingsMoneyPair
                                 amount={entry.amount}
-                                enteredCurrency={resolvedProjectionCurrency(
+                                enteredCurrency={resolvedSavingsCurrency(
                                   entry.currency,
                                 )}
                                 displayCurrency={displayCurrency}
                                 usdIlsRate={effectiveUsdIlsRate}
                               />
                             </td>
-                            <td className="projection-entry-note">
+                            <td className="savings-entry-note">
                               {entry.note || "—"}
                             </td>
                             <td>
-                              <div className="projection-row-actions">
+                              <div className="savings-row-actions">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -924,7 +922,7 @@ export function Projections() {
                                     setConfirm({
                                       kind: "entry",
                                       id: entry._id,
-                                      title: `${bank.name} balance from ${formatProjectionDate(entry.date)}`,
+                                      title: `${bank.name} balance from ${formatSavingsDate(entry.date)}`,
                                     })
                                   }
                                   aria-label={`Delete ${bank.name} balance from ${entry.date}`}
@@ -942,7 +940,7 @@ export function Projections() {
               )}
               <button
                 type="button"
-                className="projection-panel-add"
+                className="savings-panel-add"
                 onClick={() => setEditor({ kind: "entry" })}
               >
                 <Plus size={15} /> Add balance
@@ -953,7 +951,7 @@ export function Projections() {
       )}
 
       {editor?.kind === "bank" ? (
-        <ProjectionBankSheet
+        <SavingsBankSheet
           bank={editor.bank}
           saving={saving}
           onClose={() => setEditor(null)}
@@ -961,7 +959,7 @@ export function Projections() {
         />
       ) : null}
       {editor?.kind === "entry" ? (
-        <ProjectionEntrySheet
+        <SavingsEntrySheet
           banks={banks}
           entry={editor.entry}
           initialBankId={editor.initialBankId}
@@ -971,7 +969,7 @@ export function Projections() {
         />
       ) : null}
       {currencySheetOpen ? (
-        <ProjectionCurrencySheet
+        <SavingsCurrencySheet
           settings={currencySettings}
           displayCurrency={displayCurrency}
           saving={saving}
@@ -982,7 +980,7 @@ export function Projections() {
         />
       ) : null}
       {confirm ? (
-        <ProjectionConfirmDialog
+        <SavingsConfirmDialog
           state={confirm}
           saving={saving}
           onCancel={() => setConfirm(null)}
@@ -996,15 +994,15 @@ export function Projections() {
 function SummaryMetric({ label, value, currency, usdIlsRate, positive }: {
   label: string;
   value: number | null;
-  currency: ProjectionCurrency;
+  currency: SavingsCurrency;
   usdIlsRate: number | null;
   positive?: boolean;
 }) {
-  const secondaryCurrency = otherProjectionCurrency(currency);
+  const secondaryCurrency = otherSavingsCurrency(currency);
   const secondaryValue =
     value === null
       ? null
-      : convertProjectionAmount(value, currency, secondaryCurrency, usdIlsRate);
+      : convertSavingsAmount(value, currency, secondaryCurrency, usdIlsRate);
   return (
     <div
       className={
@@ -1012,15 +1010,13 @@ function SummaryMetric({ label, value, currency, usdIlsRate, positive }: {
       }
     >
       <strong>
-        {value === null
-          ? "Rate needed"
-          : formatProjectionMoney(value, currency)}
+        {value === null ? "Rate needed" : formatSavingsMoney(value, currency)}
       </strong>
       <span>
         {label}
         {secondaryValue === null ? null : (
           <small>
-            ≈ {formatProjectionMoney(secondaryValue, secondaryCurrency)}
+            ≈ {formatSavingsMoney(secondaryValue, secondaryCurrency)}
           </small>
         )}
       </span>
@@ -1028,25 +1024,25 @@ function SummaryMetric({ label, value, currency, usdIlsRate, positive }: {
   );
 }
 
-function ProjectionMoneyPair({ amount, enteredCurrency, displayCurrency, usdIlsRate }: {
+function SavingsMoneyPair({ amount, enteredCurrency, displayCurrency, usdIlsRate }: {
   amount: number;
-  enteredCurrency: ProjectionCurrency;
-  displayCurrency: ProjectionCurrency;
+  enteredCurrency: SavingsCurrency;
+  displayCurrency: SavingsCurrency;
   usdIlsRate: number | null;
 }) {
-  const converted = convertProjectionAmount(
+  const converted = convertSavingsAmount(
     amount,
     enteredCurrency,
-    otherProjectionCurrency(enteredCurrency),
+    otherSavingsCurrency(enteredCurrency),
     usdIlsRate,
   );
-  const displayValue = convertProjectionAmount(
+  const displayValue = convertSavingsAmount(
     amount,
     enteredCurrency,
     displayCurrency,
     usdIlsRate,
   );
-  const secondaryCurrency = otherProjectionCurrency(displayCurrency);
+  const secondaryCurrency = otherSavingsCurrency(displayCurrency);
   const secondaryValue =
     displayValue === null
       ? null
@@ -1054,17 +1050,17 @@ function ProjectionMoneyPair({ amount, enteredCurrency, displayCurrency, usdIlsR
         ? amount
         : converted;
   return (
-    <span className="projection-money-pair">
+    <span className="savings-money-pair">
       <strong>
         {displayValue === null
-          ? formatProjectionMoney(amount, enteredCurrency, true)
-          : formatProjectionMoney(displayValue, displayCurrency, true)}
+          ? formatSavingsMoney(amount, enteredCurrency, true)
+          : formatSavingsMoney(displayValue, displayCurrency, true)}
       </strong>
       {secondaryValue === null ? (
         <small>Exchange rate unavailable</small>
       ) : (
         <small>
-          ≈ {formatProjectionMoney(secondaryValue, secondaryCurrency, true)}
+          ≈ {formatSavingsMoney(secondaryValue, secondaryCurrency, true)}
         </small>
       )}
     </span>
@@ -1077,36 +1073,32 @@ function ControlGroup({ label, className = "", children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className={`projection-control-group ${className}`}>
+    <div className={`savings-control-group ${className}`}>
       <span>{label}</span>
       {children}
     </div>
   );
 }
 
-function ProjectionEmptyState({ onAdd }: { onAdd: () => void }) {
+function SavingsEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="projection-empty-state">
+    <div className="savings-empty-state">
       <span>
         <CalendarPlus size={26} />
       </span>
-      <h2>Build your first projection</h2>
+      <h2>Build your first savings</h2>
       <p>
         Add a bank and its first balance. These banks stay separate from the
         accounts used by your expenses and incomings.
       </p>
-      <button
-        type="button"
-        className="projection-button primary"
-        onClick={onAdd}
-      >
+      <button type="button" className="savings-button primary" onClick={onAdd}>
         <Plus size={16} /> Add your first bank
       </button>
     </div>
   );
 }
 
-function ProjectionConfirmDialog({ state, saving, onCancel, onConfirm }: {
+function SavingsConfirmDialog({ state, saving, onCancel, onConfirm }: {
   state: Exclude<ConfirmState, null>;
   saving: boolean;
   onCancel: () => void;
@@ -1114,11 +1106,11 @@ function ProjectionConfirmDialog({ state, saving, onCancel, onConfirm }: {
 }) {
   return createPortal(
     <div
-      className="projection-confirm-backdrop"
+      className="savings-confirm-backdrop"
       onMouseDown={saving ? undefined : onCancel}
     >
       <div
-        className="projection-confirm-dialog"
+        className="savings-confirm-dialog"
         role="alertdialog"
         aria-modal="true"
         onMouseDown={(event) => event.stopPropagation()}
@@ -1132,7 +1124,7 @@ function ProjectionConfirmDialog({ state, saving, onCancel, onConfirm }: {
         <div>
           <button
             type="button"
-            className="projection-button secondary"
+            className="savings-button secondary"
             onClick={onCancel}
             disabled={saving}
           >
@@ -1140,7 +1132,7 @@ function ProjectionConfirmDialog({ state, saving, onCancel, onConfirm }: {
           </button>
           <button
             type="button"
-            className="projection-button danger"
+            className="savings-button danger"
             onClick={onConfirm}
             disabled={saving}
           >

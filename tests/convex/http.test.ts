@@ -23,7 +23,7 @@ describe("Convex HTTP routes", () => {
       "/api/notepad/get-mine",
       "/api/user-options/list",
       "/api/payback-links/list-incoming-candidates",
-      "/api/projections/list",
+      "/api/savings/list",
     ]) {
       const response = await t.fetch(path);
       expect(response.status, path).toBe(401);
@@ -34,11 +34,11 @@ describe("Convex HTTP routes", () => {
     }
   });
 
-  it("protects projection mutations and actions behind authentication", async () => {
+  it("protects savings mutations and actions behind authentication", async () => {
     const t = makeConvexTest();
-    const user = await createUser(t, "http-projection-user");
+    const user = await createUser(t, "http-savings-user");
     const ids = await t.run(async (ctx) => {
-      const bankId = await ctx.db.insert("projectionBanks", {
+      const bankId = await ctx.db.insert("savingsBanks", {
         userId: user,
         name: "Checking",
         color: "#4389FF",
@@ -49,7 +49,7 @@ describe("Convex HTTP routes", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      const entryId = await ctx.db.insert("projectionEntries", {
+      const entryId = await ctx.db.insert("savingsEntries", {
         userId: user,
         bankId,
         date: "2026-01-01",
@@ -61,10 +61,10 @@ describe("Convex HTTP routes", () => {
     });
     const headers = { "content-type": "application/json" };
     const requests = [
-      ["/api/projections/currency-settings", { displayCurrency: "ILS" }],
-      ["/api/projections/refresh-exchange-rate", { force: false }],
+      ["/api/savings/currency-settings", { displayCurrency: "ILS" }],
+      ["/api/savings/refresh-exchange-rate", { force: false }],
       [
-        "/api/projections/create-bank",
+        "/api/savings/create-bank",
         {
           name: "Checking",
           color: "#4389FF",
@@ -75,7 +75,7 @@ describe("Convex HTTP routes", () => {
         },
       ],
       [
-        "/api/projections/update-bank",
+        "/api/savings/update-bank",
         {
           id: ids.bankId,
           name: "Checking",
@@ -86,10 +86,10 @@ describe("Convex HTTP routes", () => {
           currency: "ILS",
         },
       ],
-      ["/api/projections/remove-bank", { id: ids.bankId }],
-      ["/api/projections/reorder-banks", { ids: [] }],
+      ["/api/savings/remove-bank", { id: ids.bankId }],
+      ["/api/savings/reorder-banks", { ids: [] }],
       [
-        "/api/projections/create-entry",
+        "/api/savings/create-entry",
         {
           bankId: ids.bankId,
           date: "2026-01-01",
@@ -98,7 +98,7 @@ describe("Convex HTTP routes", () => {
         },
       ],
       [
-        "/api/projections/update-entry",
+        "/api/savings/update-entry",
         {
           id: ids.entryId,
           bankId: ids.bankId,
@@ -107,7 +107,7 @@ describe("Convex HTTP routes", () => {
           currency: "ILS",
         },
       ],
-      ["/api/projections/remove-entry", { id: ids.entryId }],
+      ["/api/savings/remove-entry", { id: ids.entryId }],
     ] as const;
 
     for (const [path, body] of requests) {

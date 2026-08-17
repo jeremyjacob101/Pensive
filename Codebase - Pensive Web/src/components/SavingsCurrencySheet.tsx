@@ -1,18 +1,18 @@
-import type { ProjectionCurrency, ProjectionCurrencySettings } from "../types/projections";
-import { formatProjectionDate } from "../helpers/projections";
+import type { SavingsCurrency, SavingsCurrencySettings } from "../types/savings";
+import { formatSavingsDate } from "../helpers/savings";
 import { RefreshCw, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useState } from "react";
 
-export function ProjectionCurrencySheet({ settings, displayCurrency, saving, refreshing, onClose, onRefresh, onSave }: {
-  settings: ProjectionCurrencySettings;
-  displayCurrency: ProjectionCurrency;
+export function SavingsCurrencySheet({ settings, displayCurrency, saving, refreshing, onClose, onRefresh, onSave }: {
+  settings: SavingsCurrencySettings;
+  displayCurrency: SavingsCurrency;
   saving: boolean;
   refreshing: boolean;
   onClose: () => void;
   onRefresh: () => Promise<void>;
   onSave: (
-    displayCurrency: ProjectionCurrency,
+    displayCurrency: SavingsCurrency,
     manualUsdIlsRate: number | null,
   ) => Promise<void>;
 }) {
@@ -46,25 +46,25 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
 
   return createPortal(
     <div
-      className="projection-sheet-backdrop"
+      className="savings-sheet-backdrop"
       onMouseDown={saving || refreshing ? undefined : onClose}
     >
       <aside
-        className="projection-sheet projection-currency-sheet"
+        className="savings-sheet savings-currency-sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="projection-currency-sheet-title"
+        aria-labelledby="savings-currency-sheet-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <form onSubmit={(event) => void submit(event)}>
-          <header className="projection-sheet-header">
+          <header className="savings-sheet-header">
             <div>
-              <h2 id="projection-currency-sheet-title">Currency & rate</h2>
-              <p>Choose how every projection total is displayed.</p>
+              <h2 id="savings-currency-sheet-title">Currency & rate</h2>
+              <p>Choose how every savings total is displayed.</p>
             </div>
             <button
               type="button"
-              className="projection-icon-button"
+              className="savings-icon-button"
               onClick={onClose}
               disabled={saving || refreshing}
               aria-label="Close currency settings"
@@ -73,10 +73,10 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
             </button>
           </header>
 
-          <div className="projection-sheet-body">
-            <fieldset className="projection-segment-fieldset">
+          <div className="savings-sheet-body">
+            <fieldset className="savings-segment-fieldset">
               <legend>Display currency</legend>
-              <div className="projection-segmented projection-segmented-wide">
+              <div className="savings-segmented savings-segmented-wide">
                 {(["ILS", "USD"] as const).map((option) => (
                   <button
                     key={option}
@@ -90,7 +90,7 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
               </div>
             </fieldset>
 
-            <section className="projection-live-rate-card">
+            <section className="savings-live-rate-card">
               <div>
                 <span>Live USD → ILS</span>
                 <strong>
@@ -100,7 +100,7 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
                 </strong>
                 <small>
                   {settings.liveRateDate
-                    ? `${settings.rateSource} · ${formatProjectionDate(settings.liveRateDate)}`
+                    ? `${settings.rateSource} · ${formatSavingsDate(settings.liveRateDate)}`
                     : `${settings.rateSource} · daily reference rate`}
                 </small>
               </div>
@@ -111,15 +111,15 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
               >
                 <RefreshCw
                   size={15}
-                  className={refreshing ? "projection-spinning" : ""}
+                  className={refreshing ? "savings-spinning" : ""}
                 />
                 {refreshing ? "Refreshing…" : "Refresh"}
               </button>
             </section>
 
-            <fieldset className="projection-segment-fieldset">
-              <legend>Rate used for projections</legend>
-              <div className="projection-segmented projection-segmented-wide">
+            <fieldset className="savings-segment-fieldset">
+              <legend>Rate used for savings</legend>
+              <div className="savings-segmented savings-segmented-wide">
                 <button
                   type="button"
                   className={rateMode === "live" ? "active" : ""}
@@ -138,9 +138,9 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
             </fieldset>
 
             {rateMode === "custom" ? (
-              <label className="projection-field">
+              <label className="savings-field">
                 <span>ILS for 1 USD</span>
-                <span className="projection-input-prefix">
+                <span className="savings-input-prefix">
                   <i>₪</i>
                   <input
                     autoFocus
@@ -157,23 +157,23 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
               </label>
             ) : null}
 
-            <p className="projection-currency-explainer">
+            <p className="savings-currency-explainer">
               Your entries keep the currency and amount you originally saved.
               Changing this rate only changes conversions, totals, and the
               chart.
             </p>
 
             {error ? (
-              <p className="projection-form-error" role="alert">
+              <p className="savings-form-error" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
 
-          <footer className="projection-sheet-footer">
+          <footer className="savings-sheet-footer">
             <button
               type="button"
-              className="projection-button secondary"
+              className="savings-button secondary"
               onClick={onClose}
               disabled={saving || refreshing}
             >
@@ -181,7 +181,7 @@ export function ProjectionCurrencySheet({ settings, displayCurrency, saving, ref
             </button>
             <button
               type="submit"
-              className="projection-button primary"
+              className="savings-button primary"
               disabled={saving || refreshing}
             >
               {saving ? "Saving…" : "Save settings"}

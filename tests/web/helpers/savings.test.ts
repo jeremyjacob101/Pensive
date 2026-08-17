@@ -1,19 +1,13 @@
 // @vitest-environment jsdom
-import type {
-  ProjectionBank,
-  ProjectionEntry,
-} from "@pensive/web/types/projections";
-import { buildProjectionSeries, calculateProjectedBalance, convertProjectionAmount, currentProjectionTotal, latestEntriesByBank, requiresProjectionExchangeRate } from "@pensive/web/helpers/projections";
+import type { SavingsBank, SavingsEntry } from "@pensive/web/types/savings";
+import { buildSavingsSeries, calculateForecastBalance, convertSavingsAmount, currentSavingsTotal, latestEntriesByBank, requiresSavingsExchangeRate } from "@pensive/web/helpers/savings";
 import { describe, expect, it } from "vitest";
 
-function bank(
-  id: string,
-  overrides: Partial<ProjectionBank> = {},
-): ProjectionBank {
+function bank(id: string, overrides: Partial<SavingsBank> = {}): SavingsBank {
   return {
     _id: id,
     _creationTime: 1,
-    userId: "projection-user",
+    userId: "savings-user",
     name: id,
     color: "#4389FF",
     currency: "ILS",
@@ -24,7 +18,7 @@ function bank(
     createdAt: 1,
     updatedAt: 1,
     ...overrides,
-  } as ProjectionBank;
+  } as SavingsBank;
 }
 
 function entry(
@@ -32,12 +26,12 @@ function entry(
   bankId: string,
   date: string,
   amount: number,
-  overrides: Partial<ProjectionEntry> = {},
-): ProjectionEntry {
+  overrides: Partial<SavingsEntry> = {},
+): SavingsEntry {
   return {
     _id: id,
     _creationTime: 1,
-    userId: "projection-user",
+    userId: "savings-user",
     bankId,
     date,
     amount,
@@ -46,29 +40,29 @@ function entry(
     createdAt: 1,
     updatedAt: 1,
     ...overrides,
-  } as ProjectionEntry;
+  } as SavingsEntry;
 }
 
-describe("projection calculations", () => {
+describe("savings calculations", () => {
   it("converts mixed currencies and blocks unusable rates", () => {
-    expect(convertProjectionAmount(100, "ILS", "ILS", null)).toBe(100);
-    expect(convertProjectionAmount(100, "USD", "ILS", 3.5)).toBe(350);
-    expect(convertProjectionAmount(350, "ILS", "USD", 3.5)).toBe(100);
-    expect(convertProjectionAmount(100, "USD", "ILS", null)).toBeNull();
-    expect(convertProjectionAmount(100, "USD", "ILS", 0)).toBeNull();
-    expect(convertProjectionAmount(100, "USD", "ILS", Number.NaN)).toBeNull();
+    expect(convertSavingsAmount(100, "ILS", "ILS", null)).toBe(100);
+    expect(convertSavingsAmount(100, "USD", "ILS", 3.5)).toBe(350);
+    expect(convertSavingsAmount(350, "ILS", "USD", 3.5)).toBe(100);
+    expect(convertSavingsAmount(100, "USD", "ILS", null)).toBeNull();
+    expect(convertSavingsAmount(100, "USD", "ILS", 0)).toBeNull();
+    expect(convertSavingsAmount(100, "USD", "ILS", Number.NaN)).toBeNull();
   });
 
   it("matches monthly and yearly compound interest math", () => {
-    expect(calculateProjectedBalance(1_000, 12, "monthly", 1)).toBeCloseTo(
+    expect(calculateForecastBalance(1_000, 12, "monthly", 1)).toBeCloseTo(
       1_126.83,
       2,
     );
-    expect(calculateProjectedBalance(1_000, 12, "yearly", 2)).toBeCloseTo(
+    expect(calculateForecastBalance(1_000, 12, "yearly", 2)).toBeCloseTo(
       1_254.4,
       2,
     );
-    expect(calculateProjectedBalance(1_000, 0, "monthly", 10)).toBe(1_000);
+    expect(calculateForecastBalance(1_000, 0, "monthly", 10)).toBe(1_000);
   });
 
   it("selects the latest relevant snapshot with deterministic tie-breaking", () => {
@@ -108,7 +102,7 @@ describe("projection calculations", () => {
     const latest = latestEntriesByBank([checking], entries, "2026-04-01");
     expect(latest.get(checking._id)?.currency).toBe("ILS");
     expect(
-      requiresProjectionExchangeRate(
+      requiresSavingsExchangeRate(
         [checking],
         entries,
         new Set([checking._id]),
@@ -118,7 +112,7 @@ describe("projection calculations", () => {
     ).toBe(false);
 
     expect(
-      requiresProjectionExchangeRate(
+      requiresSavingsExchangeRate(
         [checking],
         [
           entry("current-usd", checking._id, "2026-03-01", 100, {
@@ -132,7 +126,7 @@ describe("projection calculations", () => {
     ).toBe(true);
   });
 
-  it("keeps current and projected totals when only history needs conversion", () => {
+  it("keeps current and forecast totals when only history needs conversion", () => {
     const checking = bank("checking");
     const entries = [
       entry("old-usd", checking._id, "2026-01-01", 100, {
@@ -141,7 +135,7 @@ describe("projection calculations", () => {
       entry("current-ils", checking._id, "2026-03-01", 350),
     ];
 
-    const series = buildProjectionSeries({
+    const series = buildSavingsSeries({
       banks: [checking],
       entries,
       selectedBankIds: new Set([checking._id]),
@@ -154,7 +148,7 @@ describe("projection calculations", () => {
 
     expect(series.at(-13)).toMatchObject({
       date: "2026-04-01",
-      isProjected: false,
+      isForecast: false,
       total: 350,
     });
     expect(series.at(-1)?.total).toBe(350);
@@ -176,7 +170,7 @@ describe("projection calculations", () => {
     ];
     const selected = new Set([ilsBank._id]);
 
-    const oneYear = buildProjectionSeries({
+    const oneYear = buildSavingsSeries({
       banks,
       entries: historical,
       selectedBankIds: selected,
@@ -190,7 +184,7 @@ describe("projection calculations", () => {
     expect(oneYear[0]).toMatchObject({ date: "2026-01-01", total: 1_000 });
     expect(oneYear.at(-1)?.total).toBeCloseTo(1_120, 0);
 
-    const mixedWithoutRate = buildProjectionSeries({
+    const mixedWithoutRate = buildSavingsSeries({
       banks,
       entries: [
         ...historical,
@@ -207,7 +201,7 @@ describe("projection calculations", () => {
     });
     expect(mixedWithoutRate).toEqual([]);
 
-    const mixedWithRate = buildProjectionSeries({
+    const mixedWithRate = buildSavingsSeries({
       banks,
       entries: [
         entry("ils-today", ilsBank._id, "2026-01-01", 1_000),
@@ -223,12 +217,12 @@ describe("projection calculations", () => {
       today: "2026-01-01",
     });
     expect(mixedWithRate.at(-1)?.total).toBe(1_350);
-    expect(mixedWithRate.filter((point) => point.isProjected)).toHaveLength(24);
+    expect(mixedWithRate.filter((point) => point.isForecast)).toHaveLength(24);
   });
 
   it("returns null instead of silently treating an unconvertible current total as zero", () => {
     const usdBank = bank("usd", { currency: "USD" });
-    const total = currentProjectionTotal(
+    const total = currentSavingsTotal(
       [usdBank],
       [entry("usd-entry", usdBank._id, "2026-01-01", 100, { currency: "USD" })],
       new Set([usdBank._id]),

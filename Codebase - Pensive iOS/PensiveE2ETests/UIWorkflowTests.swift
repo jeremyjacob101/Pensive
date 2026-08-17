@@ -50,7 +50,7 @@ final class UIWorkflowTests: XCTestCase {
 
     func testAuthenticatedUserCanNavigateEveryPrimaryFeature() {
         let app = launchedAuthenticatedApp(ledger: true, tracking: true, notepad: true)
-        for tab in ["Expenses", "Incomings", "Breakdown", "Recurrings", "Tracking", "Notepad", "Projections", "Options"] {
+        for tab in ["Expenses", "Incomings", "Breakdown", "Recurrings", "Tracking", "Notepad", "Savings", "Options"] {
             openTab(named: tab, app: app)
             XCTAssertTrue(element(id: "tab_\(normalizedTabName(tab))", app: app).exists)
         }
@@ -95,19 +95,19 @@ final class UIWorkflowTests: XCTestCase {
         ).firstMatch.waitForExistence(timeout: 10))
     }
 
-    func testProjectionsFeatureRendersPreviewAndOpensBalanceEditor() {
-        let app = launchedAuthenticatedApp(projections: true)
-        openTab(named: "Projections", app: app)
+    func testSavingsFeatureRendersPreviewAndOpensBalanceEditor() {
+        let app = launchedAuthenticatedApp(savings: true)
+        openTab(named: "Savings", app: app)
 
-        XCTAssertTrue(element(id: "projection_summary", app: app).waitForExistence(timeout: 10))
-        XCTAssertTrue(element(id: "projection_chart", app: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(element(id: "savings_summary", app: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(element(id: "savings_chart", app: app).waitForExistence(timeout: 10))
 
         let fiveYears = app.buttons["5Y"]
         XCTAssertTrue(fiveYears.waitForExistence(timeout: 3))
         fiveYears.tap()
-        XCTAssertTrue(app.staticTexts["Projected · 5Y"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Forecast · 5Y"].waitForExistence(timeout: 3))
 
-        let addMenu = app.buttons["projection_add_menu"]
+        let addMenu = app.buttons["savings_add_menu"]
         XCTAssertTrue(addMenu.waitForExistence(timeout: 3))
         addMenu.tap()
         let addBalance = app.buttons["Add balance"]
@@ -120,14 +120,14 @@ final class UIWorkflowTests: XCTestCase {
         ledger: Bool = false,
         tracking: Bool = false,
         notepad: Bool = false,
-        projections: Bool = false
+        savings: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         configure(app)
         if ledger { app.launchEnvironment["UI_TEST_LEDGER_FIXTURE"] = "1" }
         if tracking { app.launchEnvironment["UI_TEST_TRACKING_FIXTURE"] = "1" }
         if notepad { app.launchEnvironment["UI_TEST_NOTEPAD_FIXTURE"] = "1" }
-        if projections { app.launchEnvironment["UI_TEST_PROJECTIONS_PREVIEW"] = "1" }
+        if savings { app.launchEnvironment["UI_TEST_SAVINGS_PREVIEW"] = "1" }
         app.launch()
         XCTAssertTrue(element(id: "root_view", app: app).waitForExistence(timeout: 10))
         return app

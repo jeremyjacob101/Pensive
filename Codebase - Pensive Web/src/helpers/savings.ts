@@ -1,8 +1,8 @@
-import type { ProjectionBank, ProjectionBankId, ProjectionChartPoint, ProjectionCurrency, ProjectionEntry } from "../types/projections";
+import type { SavingsBank, SavingsBankId, SavingsChartPoint, SavingsCurrency, SavingsEntry } from "../types/savings";
 
 const DAY_MS = 86_400_000;
-const PROJECTION_MONEY_FORMATTERS: Record<
-  ProjectionCurrency,
+const SAVINGS_MONEY_FORMATTERS: Record<
+  SavingsCurrency,
   { whole: Intl.NumberFormat; cents: Intl.NumberFormat }
 > = Object.fromEntries(
   (["ILS", "USD"] as const).map((currency) => [
@@ -24,7 +24,7 @@ const PROJECTION_MONEY_FORMATTERS: Record<
     },
   ]),
 ) as Record<
-  ProjectionCurrency,
+  SavingsCurrency,
   { whole: Intl.NumberFormat; cents: Intl.NumberFormat }
 >;
 
@@ -39,7 +39,7 @@ export function parseIsoDate(value: string) {
   return new Date(`${value}T00:00:00`);
 }
 
-export function formatProjectionDate(value: string, includeYear = true) {
+export function formatSavingsDate(value: string, includeYear = true) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -47,34 +47,34 @@ export function formatProjectionDate(value: string, includeYear = true) {
   }).format(parseIsoDate(value));
 }
 
-export function resolvedProjectionCurrency(value?: string): ProjectionCurrency {
+export function resolvedSavingsCurrency(value?: string): SavingsCurrency {
   return value === "USD" ? "USD" : "ILS";
 }
 
-export function otherProjectionCurrency(
-  currency: ProjectionCurrency,
-): ProjectionCurrency {
+export function otherSavingsCurrency(
+  currency: SavingsCurrency,
+): SavingsCurrency {
   return currency === "ILS" ? "USD" : "ILS";
 }
 
-export function projectionCurrencySymbol(currency: ProjectionCurrency) {
+export function savingsCurrencySymbol(currency: SavingsCurrency) {
   return currency === "ILS" ? "₪" : "$";
 }
 
-export function formatProjectionMoney(
+export function formatSavingsMoney(
   value: number,
-  currency: ProjectionCurrency,
+  currency: SavingsCurrency,
   cents = false,
 ) {
-  return PROJECTION_MONEY_FORMATTERS[currency][
-    cents ? "cents" : "whole"
-  ].format(value);
+  return SAVINGS_MONEY_FORMATTERS[currency][cents ? "cents" : "whole"].format(
+    value,
+  );
 }
 
-export function convertProjectionAmount(
+export function convertSavingsAmount(
   amount: number,
-  from: ProjectionCurrency,
-  to: ProjectionCurrency,
+  from: SavingsCurrency,
+  to: SavingsCurrency,
   usdIlsRate: number | null | undefined,
 ): number | null {
   if (from === to) return amount;
@@ -84,7 +84,7 @@ export function convertProjectionAmount(
   return from === "USD" ? amount * usdIlsRate : amount / usdIlsRate;
 }
 
-export function isUsableProjectionRate(
+export function isUsableSavingsRate(
   rate: number | null | undefined,
 ): rate is number {
   return (
@@ -93,11 +93,11 @@ export function isUsableProjectionRate(
 }
 
 export function latestEntriesByBank(
-  banks: ProjectionBank[],
-  entries: ProjectionEntry[],
+  banks: SavingsBank[],
+  entries: SavingsEntry[],
   asOf = localIsoDate(),
 ) {
-  const result = new Map<ProjectionBankId, ProjectionEntry>();
+  const result = new Map<SavingsBankId, SavingsEntry>();
   const validBankIds = new Set(banks.map((bank) => bank._id));
   for (const entry of entries) {
     if (!validBankIds.has(entry.bankId) || entry.date > asOf) continue;
@@ -116,20 +116,20 @@ export function latestEntriesByBank(
   return result;
 }
 
-export function requiresProjectionExchangeRate(
-  banks: ProjectionBank[],
-  entries: ProjectionEntry[],
-  selectedBankIds: Set<ProjectionBankId>,
-  displayCurrency: ProjectionCurrency,
+export function requiresSavingsExchangeRate(
+  banks: SavingsBank[],
+  entries: SavingsEntry[],
+  selectedBankIds: Set<SavingsBankId>,
+  displayCurrency: SavingsCurrency,
   asOf = localIsoDate(),
 ) {
   const selectedBanks = banks.filter((bank) => selectedBankIds.has(bank._id));
   return [...latestEntriesByBank(selectedBanks, entries, asOf).values()].some(
-    (entry) => resolvedProjectionCurrency(entry.currency) !== displayCurrency,
+    (entry) => resolvedSavingsCurrency(entry.currency) !== displayCurrency,
   );
 }
 
-export function calculateProjectedBalance(
+export function calculateForecastBalance(
   principal: number,
   annualRate: number,
   compounding: "monthly" | "yearly",
@@ -158,16 +158,16 @@ function yearsBetween(start: Date, end: Date) {
   return Math.max(0, (end.getTime() - start.getTime()) / (365.2425 * DAY_MS));
 }
 
-export function buildProjectionSeries({ banks, entries, selectedBankIds, horizonYears, interestOn, displayCurrency, usdIlsRate, today = localIsoDate() }: {
-  banks: ProjectionBank[];
-  entries: ProjectionEntry[];
-  selectedBankIds: Set<ProjectionBankId>;
+export function buildSavingsSeries({ banks, entries, selectedBankIds, horizonYears, interestOn, displayCurrency, usdIlsRate, today = localIsoDate() }: {
+  banks: SavingsBank[];
+  entries: SavingsEntry[];
+  selectedBankIds: Set<SavingsBankId>;
   horizonYears: number;
   interestOn: boolean;
-  displayCurrency: ProjectionCurrency;
+  displayCurrency: SavingsCurrency;
   usdIlsRate: number | null;
   today?: string;
-}): ProjectionChartPoint[] {
+}): SavingsChartPoint[] {
   const selectedBanks = banks.filter((bank) => selectedBankIds.has(bank._id));
   if (selectedBanks.length === 0) return [];
 
@@ -186,14 +186,14 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
     today,
   );
   const currentRequiresRate = [...currentByBank.values()].some(
-    (entry) => resolvedProjectionCurrency(entry.currency) !== displayCurrency,
+    (entry) => resolvedSavingsCurrency(entry.currency) !== displayCurrency,
   );
-  if (currentRequiresRate && !isUsableProjectionRate(usdIlsRate)) return [];
+  if (currentRequiresRate && !isUsableSavingsRate(usdIlsRate)) return [];
   const dates = [
     ...new Set([...selectedEntries.map((entry) => entry.date), today]),
   ].toSorted();
-  const latest = new Map<ProjectionBankId, ProjectionEntry>();
-  const historical: ProjectionChartPoint[] = [];
+  const latest = new Map<SavingsBankId, SavingsEntry>();
+  const historical: SavingsChartPoint[] = [];
 
   for (const date of dates) {
     for (const entry of selectedEntries) {
@@ -219,9 +219,9 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
         values[bank._id] = 0;
         continue;
       }
-      const amount = convertProjectionAmount(
+      const amount = convertSavingsAmount(
         entry.amount,
-        resolvedProjectionCurrency(entry.currency),
+        resolvedSavingsCurrency(entry.currency),
         displayCurrency,
         usdIlsRate,
       );
@@ -236,7 +236,7 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
       historical.push({
         date,
         timestamp: parseIsoDate(date).getTime(),
-        isProjected: false,
+        isForecast: false,
         total,
         values,
       });
@@ -244,7 +244,7 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
   }
 
   const anchor = parseIsoDate(today);
-  const projection: ProjectionChartPoint[] = [];
+  const savings: SavingsChartPoint[] = [];
   const monthCount = Math.max(1, Math.round(horizonYears * 12));
   for (let month = 1; month <= monthCount; month += 1) {
     const date = addMonths(anchor, month);
@@ -255,9 +255,9 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
     for (const bank of selectedBanks) {
       const entry = currentByBank.get(bank._id);
       const principal = entry
-        ? convertProjectionAmount(
+        ? convertSavingsAmount(
             entry.amount,
-            resolvedProjectionCurrency(entry.currency),
+            resolvedSavingsCurrency(entry.currency),
             displayCurrency,
             usdIlsRate,
           )
@@ -265,7 +265,7 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
       if (principal === null) return [];
       const value =
         interestOn && bank.interestEnabled
-          ? calculateProjectedBalance(
+          ? calculateForecastBalance(
               principal,
               bank.annualInterestRate,
               bank.compounding,
@@ -275,23 +275,23 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
       values[bank._id] = value;
       total += value;
     }
-    projection.push({
+    savings.push({
       date: iso,
       timestamp: date.getTime(),
-      isProjected: true,
+      isForecast: true,
       total,
       values,
     });
   }
 
-  return [...historical, ...projection];
+  return [...historical, ...savings];
 }
 
-export function currentProjectionTotal(
-  banks: ProjectionBank[],
-  entries: ProjectionEntry[],
-  selectedBankIds: Set<ProjectionBankId>,
-  displayCurrency: ProjectionCurrency,
+export function currentSavingsTotal(
+  banks: SavingsBank[],
+  entries: SavingsEntry[],
+  selectedBankIds: Set<SavingsBankId>,
+  displayCurrency: SavingsCurrency,
   usdIlsRate: number | null,
 ) {
   const selected = banks.filter((bank) => selectedBankIds.has(bank._id));
@@ -300,9 +300,9 @@ export function currentProjectionTotal(
   for (const bank of selected) {
     const entry = latest.get(bank._id);
     if (!entry) continue;
-    const converted = convertProjectionAmount(
+    const converted = convertSavingsAmount(
       entry.amount,
-      resolvedProjectionCurrency(entry.currency),
+      resolvedSavingsCurrency(entry.currency),
       displayCurrency,
       usdIlsRate,
     );

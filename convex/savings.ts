@@ -17,7 +17,7 @@ type ExchangeRateResult = {
   isStale: boolean;
 };
 
-type ProjectionCtx = QueryCtx | MutationCtx;
+type SavingsCtx = QueryCtx | MutationCtx;
 
 async function requireUserId(ctx: Parameters<typeof getAuthUserId>[0]) {
   const userId = await getAuthUserId(ctx);
@@ -87,13 +87,13 @@ function normalizedNote(value?: string) {
 }
 
 async function requireOwnedBank(
-  ctx: ProjectionCtx,
-  bankId: Id<"projectionBanks">,
+  ctx: SavingsCtx,
+  bankId: Id<"savingsBanks">,
   userId: Id<"users">,
 ) {
   const bank = await ctx.db.get(bankId);
   if (!bank || bank.userId !== userId) {
-    throw new Error("Projection bank not found");
+    throw new Error("Savings bank not found");
   }
   return bank;
 }
@@ -111,19 +111,19 @@ export const list = query({
     const userId = await requireUserId(ctx);
     const [banks, entries, settings, liveRate] = await Promise.all([
       ctx.db
-        .query("projectionBanks")
+        .query("savingsBanks")
         .withIndex("by_user_sort", (q) => q.eq("userId", userId))
         .collect(),
       ctx.db
-        .query("projectionEntries")
+        .query("savingsEntries")
         .withIndex("by_user_date", (q) => q.eq("userId", userId))
         .collect(),
       ctx.db
-        .query("projectionSettings")
+        .query("savingsSettings")
         .withIndex("by_user_id", (q) => q.eq("userId", userId))
         .first(),
       ctx.db
-        .query("projectionExchangeRates")
+        .query("savingsExchangeRates")
         .withIndex("by_pair", (q) => q.eq("pair", USD_ILS_PAIR))
         .order("desc")
         .first(),
@@ -164,7 +164,7 @@ export const setCurrencySettings = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db
-      .query("projectionSettings")
+      .query("savingsSettings")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .first();
     const now = Date.now();
@@ -180,7 +180,7 @@ export const setCurrencySettings = mutation({
         updatedAt: now,
       });
     } else {
-      await ctx.db.insert("projectionSettings", {
+      await ctx.db.insert("savingsSettings", {
         userId,
         displayCurrency: args.displayCurrency,
         ...(manualUsdIlsRate === undefined ? {} : { manualUsdIlsRate }),
@@ -199,7 +199,7 @@ export const getCachedExchangeRate = internalQuery({
   args: {},
   handler: async (ctx) =>
     await ctx.db
-      .query("projectionExchangeRates")
+      .query("savingsExchangeRates")
       .withIndex("by_pair", (q) => q.eq("pair", USD_ILS_PAIR))
       .order("desc")
       .first(),
@@ -213,7 +213,7 @@ export const storeExchangeRate = internalMutation({
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("projectionExchangeRates")
+      .query("savingsExchangeRates")
       .withIndex("by_pair", (q) => q.eq("pair", USD_ILS_PAIR))
       .order("desc")
       .first();
@@ -231,7 +231,7 @@ export const storeExchangeRate = internalMutation({
       await ctx.db.patch(existing._id, value);
       return existing._id;
     }
-    return await ctx.db.insert("projectionExchangeRates", value);
+    return await ctx.db.insert("savingsExchangeRates", value);
   },
 });
 
@@ -239,8 +239,8 @@ export const refreshExchangeRate = action({
   args: { force: v.optional(v.boolean()) },
   handler: async (ctx, args): Promise<ExchangeRateResult> => {
     await requireUserId(ctx);
-    const cached: Doc<"projectionExchangeRates"> | null = await ctx.runQuery(
-      internal.projections.getCachedExchangeRate,
+    const cached: Doc<"savingsExchangeRates"> | null = await ctx.runQuery(
+      internal.savings.getCachedExchangeRate,
       {},
     );
     const now = Date.now();
@@ -284,7 +284,7 @@ export const refreshExchangeRate = action({
       }
       const rate = validExchangeRate(payload.rate);
       const rateDate = validDate(payload.date);
-      await ctx.runMutation(internal.projections.storeExchangeRate, {
+      await ctx.runMutation(internal.savings.storeExchangeRate, {
         rate,
         rateDate,
         fetchedAt: now,
@@ -332,7 +332,7 @@ export const createBank = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const existing = await ctx.db
-      .query("projectionBanks")
+      .query("savingsBanks")
       .withIndex("by_user_sort", (q) => q.eq("userId", userId))
       .collect();
     const name = normalizedName(args.name);
@@ -353,7 +353,7 @@ export const createBank = mutation({
         ? undefined
         : normalizedNote(args.startingNote);
     const now = Date.now();
-    const bankId = await ctx.db.insert("projectionBanks", {
+    const bankId = await ctx.db.insert("savingsBanks", {
       userId,
       name,
       color,
@@ -368,7 +368,7 @@ export const createBank = mutation({
     });
 
     if (startingBalance !== undefined && startingDate !== undefined) {
-      await ctx.db.insert("projectionEntries", {
+      await ctx.db.insert("savingsEntries", {
         userId,
         bankId,
         date: startingDate,
@@ -386,7 +386,7 @@ export const createBank = mutation({
 
 export const updateBank = mutation({
   args: {
-    id: v.id("projectionBanks"),
+    id: v.id("savingsBanks"),
     name: v.string(),
     color: v.string(),
     interestEnabled: v.boolean(),
@@ -411,12 +411,12 @@ export const updateBank = mutation({
 });
 
 export const removeBank = mutation({
-  args: { id: v.id("projectionBanks") },
+  args: { id: v.id("savingsBanks") },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     await requireOwnedBank(ctx, args.id, userId);
     const entries = await ctx.db
-      .query("projectionEntries")
+      .query("savingsEntries")
       .withIndex("by_user_bank_date", (q) =>
         q.eq("userId", userId).eq("bankId", args.id))
       .collect();
@@ -427,14 +427,14 @@ export const removeBank = mutation({
 });
 
 export const reorderBanks = mutation({
-  args: { ids: v.array(v.id("projectionBanks")) },
+  args: { ids: v.array(v.id("savingsBanks")) },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const uniqueIds = [...new Set(args.ids)];
     if (uniqueIds.length !== args.ids.length)
       throw new Error("Bank order contains duplicates");
     const ownedBanks = await ctx.db
-      .query("projectionBanks")
+      .query("savingsBanks")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .collect();
     for (const id of uniqueIds) {
@@ -452,7 +452,7 @@ export const reorderBanks = mutation({
 
 export const createEntry = mutation({
   args: {
-    bankId: v.id("projectionBanks"),
+    bankId: v.id("savingsBanks"),
     date: v.string(),
     amount: v.number(),
     currency: currencyValidator,
@@ -462,7 +462,7 @@ export const createEntry = mutation({
     const userId = await requireUserId(ctx);
     await requireOwnedBank(ctx, args.bankId, userId);
     const now = Date.now();
-    return await ctx.db.insert("projectionEntries", {
+    return await ctx.db.insert("savingsEntries", {
       userId,
       bankId: args.bankId,
       date: validDate(args.date),
@@ -477,8 +477,8 @@ export const createEntry = mutation({
 
 export const updateEntry = mutation({
   args: {
-    id: v.id("projectionEntries"),
-    bankId: v.id("projectionBanks"),
+    id: v.id("savingsEntries"),
+    bankId: v.id("savingsBanks"),
     date: v.string(),
     amount: v.number(),
     currency: currencyValidator,
@@ -488,7 +488,7 @@ export const updateEntry = mutation({
     const userId = await requireUserId(ctx);
     const entry = await ctx.db.get(args.id);
     if (!entry || entry.userId !== userId)
-      throw new Error("Projection balance not found");
+      throw new Error("Savings balance not found");
     await requireOwnedBank(ctx, args.bankId, userId);
     await ctx.db.patch(args.id, {
       bankId: args.bankId,
@@ -503,12 +503,12 @@ export const updateEntry = mutation({
 });
 
 export const removeEntry = mutation({
-  args: { id: v.id("projectionEntries") },
+  args: { id: v.id("savingsEntries") },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const entry = await ctx.db.get(args.id);
     if (!entry || entry.userId !== userId)
-      throw new Error("Projection balance not found");
+      throw new Error("Savings balance not found");
     await ctx.db.delete(args.id);
     return args.id;
   },

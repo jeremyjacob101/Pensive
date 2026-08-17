@@ -1,18 +1,18 @@
 import Foundation
 import SwiftUI
 
-enum ProjectionCurrency: String, Codable, CaseIterable, Identifiable {
+enum SavingsCurrency: String, Codable, CaseIterable, Identifiable {
     case ils = "ILS"
     case usd = "USD"
 
     var id: String { rawValue }
     var symbol: String { self == .ils ? "₪" : "$" }
     var title: String { "\(symbol) \(rawValue)" }
-    var other: ProjectionCurrency { self == .ils ? .usd : .ils }
+    var other: SavingsCurrency { self == .ils ? .usd : .ils }
 }
 
-struct ProjectionCurrencySettings: Equatable {
-    var displayCurrency: ProjectionCurrency = .ils
+struct SavingsCurrencySettings: Equatable {
+    var displayCurrency: SavingsCurrency = .ils
     var manualUsdIlsRate: Double?
     var liveUsdIlsRate: Double?
     var liveRateDate: String?
@@ -26,7 +26,7 @@ struct ProjectionCurrencySettings: Equatable {
     var usesManualRate: Bool { manualUsdIlsRate != nil }
 }
 
-enum ProjectionChartMode: String, CaseIterable, Identifiable {
+enum SavingsChartMode: String, CaseIterable, Identifiable {
     case stacked
     case lines
     case total
@@ -35,7 +35,7 @@ enum ProjectionChartMode: String, CaseIterable, Identifiable {
     var title: String { rawValue.capitalized }
 }
 
-enum ProjectionHorizon: Int, CaseIterable, Identifiable {
+enum SavingsHorizon: Int, CaseIterable, Identifiable {
     case one = 1
     case three = 3
     case five = 5
@@ -51,19 +51,19 @@ enum ProjectionHorizon: Int, CaseIterable, Identifiable {
     var title: String { "\(rawValue)Y" }
 }
 
-struct ProjectionChartPoint: Identifiable, Hashable {
+struct SavingsChartPoint: Identifiable, Hashable {
     let date: Date
-    let isProjected: Bool
+    let isForecast: Bool
     let total: Double
     let values: [String: Double]
 
     var id: Date { date }
 }
 
-struct ProjectionBankFormValues: Equatable {
+struct SavingsBankFormValues: Equatable {
     var name = ""
     var colorHex = "#4389FF"
-    var currency: ProjectionCurrency = .ils
+    var currency: SavingsCurrency = .ils
     var interestEnabled = false
     var annualInterestRate = 0.0
     var compounding = "monthly"
@@ -72,15 +72,15 @@ struct ProjectionBankFormValues: Equatable {
     var startingNote = ""
 }
 
-struct ProjectionEntryFormValues: Equatable {
+struct SavingsEntryFormValues: Equatable {
     var bankID = ""
     var amount = 0.0
-    var currency: ProjectionCurrency = .ils
+    var currency: SavingsCurrency = .ils
     var date = Date()
     var note = ""
 }
 
-enum ProjectionFormatting {
+enum SavingsFormatting {
     static let isoDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -99,7 +99,7 @@ enum ProjectionFormatting {
     }()
 
     private static func makeMoneyFormatter(
-        currency: ProjectionCurrency,
+        currency: SavingsCurrency,
         cents: Bool
     ) -> NumberFormatter {
         let formatter = NumberFormatter()
@@ -118,7 +118,7 @@ enum ProjectionFormatting {
 
     static func money(
         _ value: Double,
-        currency: ProjectionCurrency = .ils,
+        currency: SavingsCurrency = .ils,
         cents: Bool = false
     ) -> String {
         let formatter = switch (currency, cents) {
@@ -131,15 +131,15 @@ enum ProjectionFormatting {
     }
 }
 
-enum ProjectionCalculator {
-    static func currency(_ value: String?) -> ProjectionCurrency {
-        ProjectionCurrency(rawValue: value ?? "") ?? .ils
+enum SavingsCalculator {
+    static func currency(_ value: String?) -> SavingsCurrency {
+        SavingsCurrency(rawValue: value ?? "") ?? .ils
     }
 
     static func convert(
         _ amount: Double,
-        from: ProjectionCurrency,
-        to: ProjectionCurrency,
+        from: SavingsCurrency,
+        to: SavingsCurrency,
         usdIlsRate: Double?
     ) -> Double? {
         guard from != to else { return amount }
@@ -149,7 +149,7 @@ enum ProjectionCalculator {
         return from == .usd ? amount * usdIlsRate : amount / usdIlsRate
     }
 
-    static func projectedBalance(
+    static func futureBalance(
         principal: Double,
         annualRate: Double,
         compounding: String,
@@ -161,8 +161,8 @@ enum ProjectionCalculator {
     }
 
     private static func isLater(
-        _ entry: ProjectionEntryDTO,
-        than current: ProjectionEntryDTO
+        _ entry: SavingsEntryDTO,
+        than current: SavingsEntryDTO
     ) -> Bool {
         entry.date > current.date ||
             (entry.date == current.date && (
@@ -173,13 +173,13 @@ enum ProjectionCalculator {
     }
 
     static func latestEntries(
-        banks: [ProjectionBankDTO],
-        entries: [ProjectionEntryDTO],
+        banks: [SavingsBankDTO],
+        entries: [SavingsEntryDTO],
         asOf: Date = Date()
-    ) -> [String: ProjectionEntryDTO] {
+    ) -> [String: SavingsEntryDTO] {
         let validBankIDs = Set(banks.map(\.id))
-        let asOfKey = ProjectionFormatting.isoDate.string(from: asOf)
-        var latest: [String: ProjectionEntryDTO] = [:]
+        let asOfKey = SavingsFormatting.isoDate.string(from: asOf)
+        var latest: [String: SavingsEntryDTO] = [:]
 
         for entry in entries where validBankIDs.contains(entry.bankId) && entry.date <= asOfKey {
             guard let current = latest[entry.bankId] else {
@@ -194,10 +194,10 @@ enum ProjectionCalculator {
     }
 
     static func requiresExchangeRate(
-        banks: [ProjectionBankDTO],
-        entries: [ProjectionEntryDTO],
+        banks: [SavingsBankDTO],
+        entries: [SavingsEntryDTO],
         selectedBankIDs: Set<String>,
-        displayCurrency: ProjectionCurrency,
+        displayCurrency: SavingsCurrency,
         asOf: Date = Date()
     ) -> Bool {
         let selectedBanks = banks.filter { selectedBankIDs.contains($0.id) }
@@ -207,21 +207,21 @@ enum ProjectionCalculator {
     }
 
     static func series(
-        banks: [ProjectionBankDTO],
-        entries: [ProjectionEntryDTO],
+        banks: [SavingsBankDTO],
+        entries: [SavingsEntryDTO],
         selectedBankIDs: Set<String>,
         horizonYears: Int,
         interestOn: Bool,
-        displayCurrency: ProjectionCurrency = .ils,
+        displayCurrency: SavingsCurrency = .ils,
         usdIlsRate: Double? = nil,
         today: Date = Date(),
         calendar: Calendar = .current
-    ) -> [ProjectionChartPoint] {
+    ) -> [SavingsChartPoint] {
         let selectedBanks = banks.filter { selectedBankIDs.contains($0.id) }
         guard !selectedBanks.isEmpty else { return [] }
 
         let startOfToday = calendar.startOfDay(for: today)
-        let todayKey = ProjectionFormatting.isoDate.string(from: startOfToday)
+        let todayKey = SavingsFormatting.isoDate.string(from: startOfToday)
         let selectedIDs = Set(selectedBanks.map(\.id))
         let selectedEntries = entries
             .filter { selectedIDs.contains($0.bankId) && $0.date <= todayKey }
@@ -237,8 +237,8 @@ enum ProjectionCalculator {
         let hasUsableRate = usdIlsRate.map { $0.isFinite && $0 > 0 } ?? false
         guard !currentRequiresRate || hasUsableRate else { return [] }
         let keys = Set(selectedEntries.map(\.date) + [todayKey]).sorted()
-        var latest: [String: ProjectionEntryDTO] = [:]
-        var historical: [ProjectionChartPoint] = []
+        var latest: [String: SavingsEntryDTO] = [:]
+        var historical: [SavingsChartPoint] = []
         var entryIndex = 0
 
         for key in keys {
@@ -250,7 +250,7 @@ enum ProjectionCalculator {
                 }
                 entryIndex += 1
             }
-            guard let date = ProjectionFormatting.isoDate.date(from: key) else { continue }
+            guard let date = SavingsFormatting.isoDate.date(from: key) else { continue }
             var values: [String: Double] = [:]
             var canRender = true
             for bank in selectedBanks {
@@ -271,9 +271,9 @@ enum ProjectionCalculator {
             }
             guard canRender else { continue }
             historical.append(
-                ProjectionChartPoint(
+                SavingsChartPoint(
                     date: date,
-                    isProjected: false,
+                    isForecast: false,
                     total: values.values.reduce(0, +),
                     values: values
                 )
@@ -281,7 +281,7 @@ enum ProjectionCalculator {
         }
 
         let monthCount = max(1, horizonYears * 12)
-        let future: [ProjectionChartPoint] = (1 ... monthCount).compactMap { month in
+        let future: [SavingsChartPoint] = (1 ... monthCount).compactMap { month in
             guard let date = calendar.date(byAdding: .month, value: month, to: startOfToday) else { return nil }
             let years = max(0, date.timeIntervalSince(startOfToday) / (365.2425 * 86_400))
             var values: [String: Double] = [:]
@@ -300,7 +300,7 @@ enum ProjectionCalculator {
                     principal = 0
                 }
                 values[bank.id] = interestOn && bank.interestEnabled
-                    ? projectedBalance(
+                    ? futureBalance(
                         principal: principal,
                         annualRate: bank.annualInterestRate,
                         compounding: bank.compounding,
@@ -308,9 +308,9 @@ enum ProjectionCalculator {
                     )
                     : principal
             }
-            return ProjectionChartPoint(
+            return SavingsChartPoint(
                 date: date,
-                isProjected: true,
+                isForecast: true,
                 total: values.values.reduce(0, +),
                 values: values
             )
@@ -320,20 +320,20 @@ enum ProjectionCalculator {
     }
 }
 
-extension ProjectionBankDTO {
-    var projectionCurrency: ProjectionCurrency {
-        ProjectionCalculator.currency(currency)
+extension SavingsBankDTO {
+    var savingsCurrency: SavingsCurrency {
+        SavingsCalculator.currency(currency)
     }
 }
 
-extension ProjectionEntryDTO {
-    var projectionCurrency: ProjectionCurrency {
-        ProjectionCalculator.currency(currency)
+extension SavingsEntryDTO {
+    var savingsCurrency: SavingsCurrency {
+        SavingsCalculator.currency(currency)
     }
 }
 
 extension Color {
-    init(projectionHex value: String) {
+    init(savingsHex value: String) {
         let hex = value.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         guard hex.count == 6, let raw = UInt64(hex, radix: 16) else {
             self = .blue

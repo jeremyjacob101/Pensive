@@ -1,17 +1,17 @@
-import { convertProjectionAmount, formatProjectionDate, formatProjectionMoney, localIsoDate, otherProjectionCurrency, projectionCurrencySymbol } from "../helpers/projections";
-import type { ProjectionBank, ProjectionBankId, ProjectionChartMode, ProjectionChartPoint, ProjectionCurrency } from "../types/projections";
+import { convertSavingsAmount, formatSavingsDate, formatSavingsMoney, localIsoDate, otherSavingsCurrency, savingsCurrencySymbol } from "../helpers/savings";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { SavingsBank, SavingsBankId, SavingsChartMode, SavingsChartPoint, SavingsCurrency } from "../types/savings";
 import { Check } from "lucide-react";
 import { useMemo } from "react";
 
-type ChartRow = ProjectionChartPoint &
+type ChartRow = SavingsChartPoint &
   Record<string, number | string | boolean | Record<string, number>>;
 
-function bankDataKey(id: ProjectionBankId) {
+function bankDataKey(id: SavingsBankId) {
   return `bank_${id}`;
 }
 
-function formatAxisMoney(value: number, currency: ProjectionCurrency) {
+function formatAxisMoney(value: number, currency: SavingsCurrency) {
   const absolute = Math.abs(value);
   const formatted =
     absolute >= 1_000_000
@@ -19,19 +19,19 @@ function formatAxisMoney(value: number, currency: ProjectionCurrency) {
       : absolute >= 1_000
         ? `${Math.round(value / 1_000)}k`
         : Math.round(value).toLocaleString("en-US");
-  return `${projectionCurrencySymbol(currency)}${formatted}`;
+  return `${savingsCurrencySymbol(currency)}${formatted}`;
 }
 
-export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, mode, displayCurrency, usdIlsRate, emptyMessage, onToggleBank, onToggleTotal }: {
-  points: ProjectionChartPoint[];
-  banks: ProjectionBank[];
-  selectedBankIds: Set<ProjectionBankId>;
+export function SavingsChart({ points, banks, selectedBankIds, totalVisible, mode, displayCurrency, usdIlsRate, emptyMessage, onToggleBank, onToggleTotal }: {
+  points: SavingsChartPoint[];
+  banks: SavingsBank[];
+  selectedBankIds: Set<SavingsBankId>;
   totalVisible: boolean;
-  mode: ProjectionChartMode;
-  displayCurrency: ProjectionCurrency;
+  mode: SavingsChartMode;
+  displayCurrency: SavingsCurrency;
   usdIlsRate: number | null;
   emptyMessage?: string;
-  onToggleBank: (id: ProjectionBankId) => void;
+  onToggleBank: (id: SavingsBankId) => void;
   onToggleTotal: () => void;
 }) {
   const selectedBanks = useMemo(
@@ -54,7 +54,7 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
 
   return (
     <>
-      <div className="projection-chart-legend" aria-label="Chart series">
+      <div className="savings-chart-legend" aria-label="Chart series">
         <SeriesToggle
           label="Total"
           color="#153CF8"
@@ -72,10 +72,10 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
         ))}
       </div>
 
-      <div className="projection-chart-canvas" data-testid="projection-chart">
+      <div className="savings-chart-canvas" data-testid="savings-chart">
         {rows.length === 0 ? (
-          <div className="projection-chart-empty">
-            {emptyMessage ?? "Select at least one bank to draw its projection."}
+          <div className="savings-chart-empty">
+            {emptyMessage ?? "Select at least one bank to draw its savings."}
           </div>
         ) : (
           <ResponsiveContainer
@@ -93,7 +93,7 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                 {selectedBanks.map((bank) => (
                   <linearGradient
                     key={bank._id}
-                    id={`projection-fill-${bank._id}`}
+                    id={`savings-fill-${bank._id}`}
                     x1="0"
                     y1="0"
                     x2="0"
@@ -112,7 +112,7 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                   </linearGradient>
                 ))}
                 <linearGradient
-                  id="projection-total-fill"
+                  id="savings-total-fill"
                   x1="0"
                   y1="0"
                   x2="0"
@@ -124,7 +124,7 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
               </defs>
               <CartesianGrid
                 vertical
-                stroke="var(--projection-grid)"
+                stroke="var(--savings-grid)"
                 strokeDasharray="3 4"
               />
               <XAxis
@@ -133,9 +133,9 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                 domain={["dataMin", "dataMax"]}
                 tickCount={9}
                 tickLine={false}
-                axisLine={{ stroke: "var(--projection-grid-strong)" }}
+                axisLine={{ stroke: "var(--savings-grid-strong)" }}
                 minTickGap={34}
-                tick={{ fill: "var(--projection-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--savings-muted)", fontSize: 12 }}
                 tickFormatter={(value: number) =>
                   new Intl.DateTimeFormat("en-US", {
                     year: "numeric",
@@ -147,20 +147,20 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                 tickLine={false}
                 axisLine={false}
                 width={70}
-                tick={{ fill: "var(--projection-muted)", fontSize: 12 }}
+                tick={{ fill: "var(--savings-muted)", fontSize: 12 }}
                 tickFormatter={(value: number) =>
                   formatAxisMoney(value, displayCurrency)
                 }
               />
               <ReferenceLine
                 x={todayTimestamp}
-                stroke="var(--projection-muted)"
+                stroke="var(--savings-muted)"
                 strokeDasharray="4 4"
                 ifOverflow="extendDomain"
                 label={{
                   value: "Today",
                   position: "insideTopRight",
-                  fill: "var(--projection-muted)",
+                  fill: "var(--savings-muted)",
                   fontSize: 11,
                 }}
               />
@@ -176,8 +176,8 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                     | undefined;
                   if (!props.active || !row) return null;
                   return (
-                    <div className="projection-chart-tooltip">
-                      <strong>{formatProjectionDate(row.date)}</strong>
+                    <div className="savings-chart-tooltip">
+                      <strong>{formatSavingsDate(row.date)}</strong>
                       <TooltipRow
                         label="Total"
                         color="#153CF8"
@@ -195,9 +195,9 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                           usdIlsRate={usdIlsRate}
                         />
                       ))}
-                      <span className="projection-tooltip-state">
-                        {row.isProjected
-                          ? "Projected balance"
+                      <span className="savings-tooltip-state">
+                        {row.isForecast
+                          ? "Forecast balance"
                           : "Balance snapshot"}
                       </span>
                     </div>
@@ -210,7 +210,7 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                   type="monotone"
                   dataKey="total"
                   stroke="none"
-                  fill="url(#projection-total-fill)"
+                  fill="url(#savings-total-fill)"
                   isAnimationActive={false}
                 />
               ) : null}
@@ -221,10 +221,10 @@ export function ProjectionChart({ points, banks, selectedBankIds, totalVisible, 
                       key={bank._id}
                       type="monotone"
                       dataKey={bankDataKey(bank._id)}
-                      stackId="projection-banks"
+                      stackId="savings-banks"
                       stroke={bank.color}
                       strokeWidth={1.6}
-                      fill={`url(#projection-fill-${bank._id})`}
+                      fill={`url(#savings-fill-${bank._id})`}
                       isAnimationActive={false}
                     />
                   ))
@@ -277,17 +277,14 @@ function SeriesToggle({ label, color, selected, onClick }: {
   return (
     <button
       type="button"
-      className={`projection-series-toggle${selected ? " selected" : ""}`}
+      className={`savings-series-toggle${selected ? " selected" : ""}`}
       onClick={onClick}
       aria-pressed={selected}
     >
-      <span className="projection-series-check" aria-hidden="true">
+      <span className="savings-series-check" aria-hidden="true">
         {selected ? <Check size={11} strokeWidth={3} /> : null}
       </span>
-      <span
-        className="projection-series-dot"
-        style={{ backgroundColor: color }}
-      />
+      <span className="savings-series-dot" style={{ backgroundColor: color }} />
       {label}
     </button>
   );
@@ -297,26 +294,26 @@ function TooltipRow({ label, color, value, currency, usdIlsRate }: {
   label: string;
   color: string;
   value: number;
-  currency: ProjectionCurrency;
+  currency: SavingsCurrency;
   usdIlsRate: number | null;
 }) {
-  const otherCurrency = otherProjectionCurrency(currency);
-  const otherValue = convertProjectionAmount(
+  const otherCurrency = otherSavingsCurrency(currency);
+  const otherValue = convertSavingsAmount(
     value,
     currency,
     otherCurrency,
     usdIlsRate,
   );
   return (
-    <span className="projection-tooltip-row">
-      <span className="projection-tooltip-label">
+    <span className="savings-tooltip-row">
+      <span className="savings-tooltip-label">
         <i style={{ backgroundColor: color }} />
         {label}
       </span>
-      <span className="projection-tooltip-values">
-        <b>{formatProjectionMoney(value, currency)}</b>
+      <span className="savings-tooltip-values">
+        <b>{formatSavingsMoney(value, currency)}</b>
         {otherValue === null ? null : (
-          <small>≈ {formatProjectionMoney(otherValue, otherCurrency)}</small>
+          <small>≈ {formatSavingsMoney(otherValue, otherCurrency)}</small>
         )}
       </span>
     </span>

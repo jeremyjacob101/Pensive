@@ -229,26 +229,25 @@ routePost("/api/summaries/range", (ctx, body) =>
   ctx.runQuery(api.summaries.range, body));
 routeGet("/api/tracking/list", (ctx) => ctx.runQuery(api.tracking.list, {}));
 
-routeGet("/api/projections/list", (ctx) =>
-  ctx.runQuery(api.projections.list, {}));
-routePost("/api/projections/currency-settings", (ctx, body) =>
-  ctx.runMutation(api.projections.setCurrencySettings, body));
-routePost("/api/projections/refresh-exchange-rate", (ctx, body) =>
-  ctx.runAction(api.projections.refreshExchangeRate, body));
-routePost("/api/projections/create-bank", (ctx, body) =>
-  ctx.runMutation(api.projections.createBank, body));
-routePost("/api/projections/update-bank", (ctx, body) =>
-  ctx.runMutation(api.projections.updateBank, body));
-routePost("/api/projections/remove-bank", (ctx, body) =>
-  ctx.runMutation(api.projections.removeBank, body));
-routePost("/api/projections/reorder-banks", (ctx, body) =>
-  ctx.runMutation(api.projections.reorderBanks, body));
-routePost("/api/projections/create-entry", (ctx, body) =>
-  ctx.runMutation(api.projections.createEntry, body));
-routePost("/api/projections/update-entry", (ctx, body) =>
-  ctx.runMutation(api.projections.updateEntry, body));
-routePost("/api/projections/remove-entry", (ctx, body) =>
-  ctx.runMutation(api.projections.removeEntry, body));
+routeGet("/api/savings/list", (ctx) => ctx.runQuery(api.savings.list, {}));
+routePost("/api/savings/currency-settings", (ctx, body) =>
+  ctx.runMutation(api.savings.setCurrencySettings, body));
+routePost("/api/savings/refresh-exchange-rate", (ctx, body) =>
+  ctx.runAction(api.savings.refreshExchangeRate, body));
+routePost("/api/savings/create-bank", (ctx, body) =>
+  ctx.runMutation(api.savings.createBank, body));
+routePost("/api/savings/update-bank", (ctx, body) =>
+  ctx.runMutation(api.savings.updateBank, body));
+routePost("/api/savings/remove-bank", (ctx, body) =>
+  ctx.runMutation(api.savings.removeBank, body));
+routePost("/api/savings/reorder-banks", (ctx, body) =>
+  ctx.runMutation(api.savings.reorderBanks, body));
+routePost("/api/savings/create-entry", (ctx, body) =>
+  ctx.runMutation(api.savings.createEntry, body));
+routePost("/api/savings/update-entry", (ctx, body) =>
+  ctx.runMutation(api.savings.updateEntry, body));
+routePost("/api/savings/remove-entry", (ctx, body) =>
+  ctx.runMutation(api.savings.removeEntry, body));
 
 routeGet("/api/notepad/get-mine", (ctx) =>
   ctx.runQuery(api.notepad.getMine, {}));

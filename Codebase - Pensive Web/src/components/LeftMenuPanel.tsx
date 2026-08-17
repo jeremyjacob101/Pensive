@@ -1,4 +1,4 @@
-import { ChartNoAxesColumnDecreasing, ListChecks, MoveDownLeft, MoveUpRight, NotebookPen, RotateCw, SlidersHorizontal, TrendingUp, User } from "lucide-react";
+import { ChartNoAxesColumnDecreasing, Landmark, ListChecks, MoveDownLeft, MoveUpRight, NotebookPen, RotateCw, SlidersHorizontal, User } from "lucide-react";
 import type { MenuItem, MenuItemKey } from "../types/ui";
 import { ThemeToggle } from "./ThemeToggle";
 import type { ReactNode } from "react";
@@ -76,8 +76,8 @@ function menuIcon(key: MenuItemKey): ReactNode {
   if (key === "notepad") {
     return <NotebookPen size={16} strokeWidth={2.2} color="#eab308" />;
   }
-  if (key === "projections") {
-    return <TrendingUp size={16} strokeWidth={2.2} color="#4f46e5" />;
+  if (key === "savings") {
+    return <Landmark size={16} strokeWidth={2.2} color="#4f46e5" />;
   }
   return <SlidersHorizontal size={16} strokeWidth={2.2} color="#ec4899" />;
 }
