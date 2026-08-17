@@ -29,6 +29,8 @@ struct FeatureRootView: View {
                 TrackingFeatureView(api: api)
             } else if tab == .notepad {
                 NotepadFeatureView(api: api)
+            } else if tab == .projections {
+                ProjectionsFeatureView(api: api)
             } else if tab == .options {
                 OptionsFeatureView(api: api)
             } else if tab == .user {

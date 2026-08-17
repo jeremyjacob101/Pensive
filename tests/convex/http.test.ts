@@ -23,8 +23,99 @@ describe("Convex HTTP routes", () => {
       "/api/notepad/get-mine",
       "/api/user-options/list",
       "/api/payback-links/list-incoming-candidates",
+      "/api/projections/list",
     ]) {
       const response = await t.fetch(path);
+      expect(response.status, path).toBe(401);
+      expect(await json(response), path).toMatchObject({
+        ok: false,
+        error: { code: "unauthorized" },
+      });
+    }
+  });
+
+  it("protects projection mutations and actions behind authentication", async () => {
+    const t = makeConvexTest();
+    const user = await createUser(t, "http-projection-user");
+    const ids = await t.run(async (ctx) => {
+      const bankId = await ctx.db.insert("projectionBanks", {
+        userId: user,
+        name: "Checking",
+        color: "#4389FF",
+        interestEnabled: false,
+        annualInterestRate: 0,
+        compounding: "monthly",
+        sortOrder: 0,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const entryId = await ctx.db.insert("projectionEntries", {
+        userId: user,
+        bankId,
+        date: "2026-01-01",
+        amount: 100,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      return { bankId, entryId };
+    });
+    const headers = { "content-type": "application/json" };
+    const requests = [
+      ["/api/projections/currency-settings", { displayCurrency: "ILS" }],
+      ["/api/projections/refresh-exchange-rate", { force: false }],
+      [
+        "/api/projections/create-bank",
+        {
+          name: "Checking",
+          color: "#4389FF",
+          interestEnabled: false,
+          annualInterestRate: 0,
+          compounding: "monthly",
+          currency: "ILS",
+        },
+      ],
+      [
+        "/api/projections/update-bank",
+        {
+          id: ids.bankId,
+          name: "Checking",
+          color: "#4389FF",
+          interestEnabled: false,
+          annualInterestRate: 0,
+          compounding: "monthly",
+          currency: "ILS",
+        },
+      ],
+      ["/api/projections/remove-bank", { id: ids.bankId }],
+      ["/api/projections/reorder-banks", { ids: [] }],
+      [
+        "/api/projections/create-entry",
+        {
+          bankId: ids.bankId,
+          date: "2026-01-01",
+          amount: 100,
+          currency: "ILS",
+        },
+      ],
+      [
+        "/api/projections/update-entry",
+        {
+          id: ids.entryId,
+          bankId: ids.bankId,
+          date: "2026-01-01",
+          amount: 100,
+          currency: "ILS",
+        },
+      ],
+      ["/api/projections/remove-entry", { id: ids.entryId }],
+    ] as const;
+
+    for (const [path, body] of requests) {
+      const response = await t.fetch(path, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
       expect(response.status, path).toBe(401);
       expect(await json(response), path).toMatchObject({
         ok: false,

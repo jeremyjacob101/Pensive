@@ -44,9 +44,33 @@ describe("Convex account deletion", () => {
       testApi.expenses.create,
       expenseInput("preserved-expense"),
     );
+    await client.mutation(testApi.projections.createBank, {
+      name: "Alice projections",
+      color: "#4389FF",
+      interestEnabled: true,
+      annualInterestRate: 1,
+      compounding: "monthly",
+      currency: "ILS",
+      startingBalance: 100,
+      startingDate: "2026-01-01",
+    });
+    await client.mutation(testApi.projections.setCurrencySettings, {
+      displayCurrency: "USD",
+      manualUsdIlsRate: 3.5,
+    });
+    await bobClient.mutation(testApi.projections.createBank, {
+      name: "Bob projections",
+      color: "#FF6758",
+      interestEnabled: false,
+      annualInterestRate: 0,
+      compounding: "monthly",
+      currency: "USD",
+      startingBalance: 200,
+      startingDate: "2026-01-01",
+    });
 
     const result = await client.mutation(testApi.account.deleteMine, {});
-    expect(result.deleted).toBeGreaterThanOrEqual(7);
+    expect(result.deleted).toBeGreaterThanOrEqual(10);
 
     const remaining = await t.run(async (ctx) => ({
       user: await ctx.db.get(alice),
@@ -74,6 +98,18 @@ describe("Convex account deletion", () => {
         .query("notepadWorkspaces")
         .withIndex("by_user_id", (q) => q.eq("userId", alice))
         .collect(),
+      projectionSettings: await ctx.db
+        .query("projectionSettings")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
+      projectionEntries: await ctx.db
+        .query("projectionEntries")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
+      projectionBanks: await ctx.db
+        .query("projectionBanks")
+        .withIndex("by_user_id", (q) => q.eq("userId", alice))
+        .collect(),
     }));
     expect(remaining).toEqual({
       user: null,
@@ -83,11 +119,20 @@ describe("Convex account deletion", () => {
       recurrings: [],
       options: [],
       notepad: [],
+      projectionSettings: [],
+      projectionEntries: [],
+      projectionBanks: [],
     });
     expect(
       await bobClient.query(testApi.expenses.list, {
         paginationOpts: { cursor: null, numItems: 10 },
       }),
     ).toMatchObject({ page: [{ expenseId: "preserved-expense" }] });
+    expect(
+      (await bobClient.query(testApi.projections.list, {})).banks,
+    ).toHaveLength(1);
+    expect(
+      (await bobClient.query(testApi.projections.list, {})).entries,
+    ).toHaveLength(1);
   });
 });

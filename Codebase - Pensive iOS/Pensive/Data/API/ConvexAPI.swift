@@ -13,6 +13,8 @@ enum ConvexEntity {
     enum Incoming {}
     enum Recurring {}
     enum PaybackLink {}
+    enum ProjectionBank {}
+    enum ProjectionEntry {}
     enum User {}
 }
 
@@ -88,6 +90,7 @@ protocol ConvexAPI {
     var recurrings: RecurringsAPI { get }
     var summaries: SummariesAPI { get }
     var tracking: TrackingAPI { get }
+    var projections: ProjectionsAPI { get }
     var notepad: NotepadAPI { get }
     var userOptions: UserOptionsAPI { get }
     var paybackLinks: PaybackLinksAPI { get }
@@ -141,6 +144,19 @@ protocol RecurringsAPI {
 
 protocol SummariesAPI { func range(_ request: SummaryRangeRequest) async throws -> SummaryRangeResponse }
 protocol TrackingAPI { func list() async throws -> TrackingResponse }
+
+protocol ProjectionsAPI {
+    func list() async throws -> ProjectionResponse
+    func setCurrencySettings(_ request: ProjectionCurrencySettingsRequest) async throws -> ProjectionCurrencySettingsMutationResponse
+    func refreshExchangeRate(force: Bool?) async throws -> ProjectionExchangeRateResponse
+    func createBank(_ request: ProjectionBankCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank>
+    func updateBank(_ request: ProjectionBankUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank>
+    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.ProjectionBank>
+    func reorderBanks(ids: [String]) async throws -> UpdatedCountResponse
+    func createEntry(_ request: ProjectionEntryCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
+    func updateEntry(_ request: ProjectionEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
+    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.ProjectionEntry>
+}
 
 protocol NotepadAPI {
     func getMine() async throws -> NotepadWorkspaceDTO
@@ -427,6 +443,121 @@ struct SummaryBucket: Codable { let month: String; let rawExpenses: Double; let 
 struct TrackingResponse: Codable { let currentMonth: String; let rows: [TrackingRow] }
 struct TrackingRow: Codable { let key: String; let source: String; let kind: String; let value: String; let parentValue: String?; let color: String; let label: String; let paidMonths: [String]; let rangeMonths: [String]; let statusByMonth: [String: String] }
 
+struct ProjectionResponse: Codable {
+    let banks: [ProjectionBankDTO]
+    let entries: [ProjectionEntryDTO]
+    let settings: ProjectionSettingsDTO?
+}
+
+struct ProjectionSettingsDTO: Codable, Hashable {
+    let displayCurrency: String
+    let manualUsdIlsRate: Double?
+    let liveUsdIlsRate: Double?
+    let liveRateDate: String?
+    let liveRateFetchedAt: Double?
+    let rateSource: String
+}
+
+struct ProjectionCurrencySettingsRequest: Codable {
+    let displayCurrency: String
+    let manualUsdIlsRate: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case displayCurrency
+        case manualUsdIlsRate
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(displayCurrency, forKey: .displayCurrency)
+        if let manualUsdIlsRate {
+            try container.encode(manualUsdIlsRate, forKey: .manualUsdIlsRate)
+        }
+    }
+}
+
+struct ProjectionCurrencySettingsMutationResponse: Codable {
+    let displayCurrency: String
+    let manualUsdIlsRate: Double?
+}
+
+struct ProjectionExchangeRateResponse: Codable {
+    let rate: Double
+    let rateDate: String
+    let fetchedAt: Double
+    let source: String
+    let isStale: Bool
+}
+
+struct ProjectionBankDTO: Codable, Identifiable, Hashable {
+    let _id: String
+    let _creationTime: Double?
+    let name: String
+    let color: String
+    let currency: String?
+    let interestEnabled: Bool
+    let annualInterestRate: Double
+    let compounding: String
+    let sortOrder: Double
+    let createdAt: Double
+    let updatedAt: Double
+
+    var id: String { _id }
+}
+
+struct ProjectionEntryDTO: Codable, Identifiable, Hashable {
+    let _id: String
+    let _creationTime: Double?
+    let bankId: String
+    let date: String
+    let amount: Double
+    let currency: String?
+    let note: String?
+    let createdAt: Double
+    let updatedAt: Double
+
+    var id: String { _id }
+}
+
+struct ProjectionBankCreateRequest: Codable {
+    let name: String
+    let color: String
+    let currency: String
+    let interestEnabled: Bool
+    let annualInterestRate: Double
+    let compounding: String
+    let startingBalance: Double?
+    let startingDate: String?
+    let startingNote: String?
+}
+
+struct ProjectionBankUpdateRequest: Codable {
+    let id: String
+    let name: String
+    let color: String
+    let currency: String
+    let interestEnabled: Bool
+    let annualInterestRate: Double
+    let compounding: String
+}
+
+struct ProjectionEntryCreateRequest: Codable {
+    let bankId: String
+    let date: String
+    let amount: Double
+    let currency: String
+    let note: String?
+}
+
+struct ProjectionEntryUpdateRequest: Codable {
+    let id: String
+    let bankId: String
+    let date: String
+    let amount: Double
+    let currency: String
+    let note: String?
+}
+
 struct NotepadWorkspaceDTO: Codable { let _id: String?; let _creationTime: Double?; let userId: String?; let notes: [NotepadNote]; let tables: [NotepadTable]; let updatedAt: Double }
 struct NotepadNote: Codable { let id: String; let title: String; let content: String }
 struct NotepadTable: Codable { let id: String; let title: String; let cells: [[String]] }
@@ -500,6 +631,7 @@ final class ConvexService: ConvexAPI {
     let recurrings: RecurringsAPI
     let summaries: SummariesAPI
     let tracking: TrackingAPI
+    let projections: ProjectionsAPI
     let notepad: NotepadAPI
     let userOptions: UserOptionsAPI
     let paybackLinks: PaybackLinksAPI
@@ -511,6 +643,7 @@ final class ConvexService: ConvexAPI {
         recurrings = RecurringsClient(client: client)
         summaries = SummariesClient(client: client)
         tracking = TrackingClient(client: client)
+        projections = ProjectionsClient(client: client)
         notepad = NotepadClient(client: client)
         userOptions = UserOptionsClient(client: client)
         paybackLinks = PaybackLinksClient(client: client)
@@ -598,6 +731,22 @@ private final class TrackingClient: TrackingAPI {
     init(client: HTTPClientProtocol) { self.client = client }
 
     func list() async throws -> TrackingResponse { try await client.send(Req.get("api/tracking/list"), body: Optional<EmptyBody>.none) }
+}
+
+private final class ProjectionsClient: ProjectionsAPI {
+    private let client: HTTPClientProtocol
+    init(client: HTTPClientProtocol) { self.client = client }
+
+    func list() async throws -> ProjectionResponse { try await client.send(Req.get("api/projections/list"), body: Optional<EmptyBody>.none) }
+    func setCurrencySettings(_ request: ProjectionCurrencySettingsRequest) async throws -> ProjectionCurrencySettingsMutationResponse { try await client.send(Req.mutation("api/projections/currency-settings"), body: request) }
+    func refreshExchangeRate(force: Bool?) async throws -> ProjectionExchangeRateResponse { try await client.send(Req.mutation("api/projections/refresh-exchange-rate"), body: ["force": force ?? false]) }
+    func createBank(_ request: ProjectionBankCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/create-bank"), body: request) as String) }
+    func updateBank(_ request: ProjectionBankUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/update-bank"), body: request) as String) }
+    func removeBank(id: String) async throws -> DocumentID<ConvexEntity.ProjectionBank> { DocumentID(try await client.send(Req.mutation("api/projections/remove-bank"), body: IDPayload(id: id)) as String) }
+    func reorderBanks(ids: [String]) async throws -> UpdatedCountResponse { try await client.send(Req.mutation("api/projections/reorder-banks"), body: ["ids": ids]) }
+    func createEntry(_ request: ProjectionEntryCreateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/create-entry"), body: request) as String) }
+    func updateEntry(_ request: ProjectionEntryUpdateRequest) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/update-entry"), body: request) as String) }
+    func removeEntry(id: String) async throws -> DocumentID<ConvexEntity.ProjectionEntry> { DocumentID(try await client.send(Req.mutation("api/projections/remove-entry"), body: IDPayload(id: id)) as String) }
 }
 
 private final class NotepadClient: NotepadAPI {
