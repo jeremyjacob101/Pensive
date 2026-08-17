@@ -73,6 +73,12 @@ struct SavingsFeatureView: View {
                     }
                 } label: {
                     Image(systemName: "plus")
+                        // Keep the toolbar menu reliably tappable for VoiceOver and UI tests.
+                        // The intrinsic symbol size is smaller than the system's recommended
+                        // control target and can produce an invalid accessibility hit point
+                        // when the page is hosted in a scroll view.
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityIdentifier("savings_add_menu")
                 .accessibilityLabel("Add savings item")
