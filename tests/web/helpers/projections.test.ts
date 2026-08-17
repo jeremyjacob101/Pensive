@@ -3,7 +3,7 @@ import type {
   ProjectionBank,
   ProjectionEntry,
 } from "@pensive/web/types/projections";
-import { buildProjectionSeries, calculateProjectedBalance, convertProjectionAmount, currentProjectionTotal, latestEntriesByBank } from "@pensive/web/helpers/projections";
+import { buildProjectionSeries, calculateProjectedBalance, convertProjectionAmount, currentProjectionTotal, latestEntriesByBank, requiresProjectionExchangeRate } from "@pensive/web/helpers/projections";
 import { describe, expect, it } from "vitest";
 
 function bank(
@@ -91,6 +91,73 @@ describe("projection calculations", () => {
     const latest = latestEntriesByBank([checking], snapshots, "2026-03-01");
     expect(latest.get(checking._id)?._id).toBe("same-date-last");
     expect(latest.has(ignored._id)).toBe(false);
+  });
+
+  it("does not require conversion for an older or future currency snapshot", () => {
+    const checking = bank("checking");
+    const entries = [
+      entry("old-usd", checking._id, "2026-01-01", 100, {
+        currency: "USD",
+      }),
+      entry("current-ils", checking._id, "2026-03-01", 350),
+      entry("future-usd", checking._id, "2026-12-01", 200, {
+        currency: "USD",
+      }),
+    ];
+
+    const latest = latestEntriesByBank([checking], entries, "2026-04-01");
+    expect(latest.get(checking._id)?.currency).toBe("ILS");
+    expect(
+      requiresProjectionExchangeRate(
+        [checking],
+        entries,
+        new Set([checking._id]),
+        "ILS",
+        "2026-04-01",
+      ),
+    ).toBe(false);
+
+    expect(
+      requiresProjectionExchangeRate(
+        [checking],
+        [
+          entry("current-usd", checking._id, "2026-03-01", 100, {
+            currency: "USD",
+          }),
+        ],
+        new Set([checking._id]),
+        "ILS",
+        "2026-04-01",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps current and projected totals when only history needs conversion", () => {
+    const checking = bank("checking");
+    const entries = [
+      entry("old-usd", checking._id, "2026-01-01", 100, {
+        currency: "USD",
+      }),
+      entry("current-ils", checking._id, "2026-03-01", 350),
+    ];
+
+    const series = buildProjectionSeries({
+      banks: [checking],
+      entries,
+      selectedBankIds: new Set([checking._id]),
+      horizonYears: 1,
+      interestOn: false,
+      displayCurrency: "ILS",
+      usdIlsRate: null,
+      today: "2026-04-01",
+    });
+
+    expect(series.at(-13)).toMatchObject({
+      date: "2026-04-01",
+      isProjected: false,
+      total: 350,
+    });
+    expect(series.at(-1)?.total).toBe(350);
   });
 
   it("builds horizons, ignores future-only currency mismatches, and blocks relevant missing rates", () => {

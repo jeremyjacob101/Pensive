@@ -1,4 +1,4 @@
-import { buildProjectionSeries, convertProjectionAmount, formatProjectionDate, formatProjectionMoney, isUsableProjectionRate, latestEntriesByBank, localIsoDate, otherProjectionCurrency, resolvedProjectionCurrency } from "../helpers/projections";
+import { buildProjectionSeries, convertProjectionAmount, formatProjectionDate, formatProjectionMoney, isUsableProjectionRate, latestEntriesByBank, otherProjectionCurrency, requiresProjectionExchangeRate, resolvedProjectionCurrency } from "../helpers/projections";
 import type { ProjectionBank, ProjectionBankDraft, ProjectionBankId, ProjectionChartMode, ProjectionCurrency, ProjectionCurrencySettings, ProjectionEntry, ProjectionEntryDraft, ProjectionHorizon } from "../types/projections";
 import { ArrowDown, ArrowUp, Banknote, CalendarPlus, Eye, Pencil, Plus, RefreshCw, Settings2, Trash2 } from "lucide-react";
 import { ProjectionCurrencySheet } from "../components/ProjectionCurrencySheet";
@@ -283,13 +283,13 @@ export function Projections() {
   const conversionBlocked = useMemo(
     () =>
       !isUsableProjectionRate(effectiveUsdIlsRate) &&
-      entries.some(
-        (entry) =>
-          selectedBankIds.has(entry.bankId) &&
-          entry.date <= localIsoDate() &&
-          resolvedProjectionCurrency(entry.currency) !== displayCurrency,
+      requiresProjectionExchangeRate(
+        banks,
+        entries,
+        selectedBankIds,
+        displayCurrency,
       ),
-    [displayCurrency, effectiveUsdIlsRate, entries, selectedBankIds],
+    [banks, displayCurrency, effectiveUsdIlsRate, entries, selectedBankIds],
   );
   const series = useMemo(
     () =>

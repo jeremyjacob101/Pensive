@@ -116,6 +116,19 @@ export function latestEntriesByBank(
   return result;
 }
 
+export function requiresProjectionExchangeRate(
+  banks: ProjectionBank[],
+  entries: ProjectionEntry[],
+  selectedBankIds: Set<ProjectionBankId>,
+  displayCurrency: ProjectionCurrency,
+  asOf = localIsoDate(),
+) {
+  const selectedBanks = banks.filter((bank) => selectedBankIds.has(bank._id));
+  return [...latestEntriesByBank(selectedBanks, entries, asOf).values()].some(
+    (entry) => resolvedProjectionCurrency(entry.currency) !== displayCurrency,
+  );
+}
+
 export function calculateProjectedBalance(
   principal: number,
   annualRate: number,
@@ -167,10 +180,15 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
         a.createdAt - b.createdAt ||
         a._creationTime - b._creationTime,
     );
-  const requiresRate = selectedEntries.some(
+  const currentByBank = latestEntriesByBank(
+    selectedBanks,
+    selectedEntries,
+    today,
+  );
+  const currentRequiresRate = [...currentByBank.values()].some(
     (entry) => resolvedProjectionCurrency(entry.currency) !== displayCurrency,
   );
-  if (requiresRate && !isUsableProjectionRate(usdIlsRate)) return [];
+  if (currentRequiresRate && !isUsableProjectionRate(usdIlsRate)) return [];
   const dates = [
     ...new Set([...selectedEntries.map((entry) => entry.date), today]),
   ].toSorted();
@@ -194,33 +212,37 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
     }
     const values: Record<string, number> = {};
     let total = 0;
+    let canRender = true;
     for (const bank of selectedBanks) {
       const entry = latest.get(bank._id);
-      const amount = entry
-        ? (convertProjectionAmount(
-            entry.amount,
-            resolvedProjectionCurrency(entry.currency),
-            displayCurrency,
-            usdIlsRate,
-          ) ?? 0)
-        : 0;
+      if (!entry) {
+        values[bank._id] = 0;
+        continue;
+      }
+      const amount = convertProjectionAmount(
+        entry.amount,
+        resolvedProjectionCurrency(entry.currency),
+        displayCurrency,
+        usdIlsRate,
+      );
+      if (amount === null) {
+        canRender = false;
+        break;
+      }
       values[bank._id] = amount;
       total += amount;
     }
-    historical.push({
-      date,
-      timestamp: parseIsoDate(date).getTime(),
-      isProjected: false,
-      total,
-      values,
-    });
+    if (canRender) {
+      historical.push({
+        date,
+        timestamp: parseIsoDate(date).getTime(),
+        isProjected: false,
+        total,
+        values,
+      });
+    }
   }
 
-  const currentByBank = latestEntriesByBank(
-    selectedBanks,
-    selectedEntries,
-    today,
-  );
   const anchor = parseIsoDate(today);
   const projection: ProjectionChartPoint[] = [];
   const monthCount = Math.max(1, Math.round(horizonYears * 12));
@@ -233,13 +255,14 @@ export function buildProjectionSeries({ banks, entries, selectedBankIds, horizon
     for (const bank of selectedBanks) {
       const entry = currentByBank.get(bank._id);
       const principal = entry
-        ? (convertProjectionAmount(
+        ? convertProjectionAmount(
             entry.amount,
             resolvedProjectionCurrency(entry.currency),
             displayCurrency,
             usdIlsRate,
-          ) ?? 0)
+          )
         : 0;
+      if (principal === null) return [];
       const value =
         interestOn && bank.interestEnabled
           ? calculateProjectedBalance(

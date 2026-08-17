@@ -88,6 +88,49 @@ final class ProjectionCalculatorTests: XCTestCase {
         XCTAssertNil(ProjectionCalculator.convert(1_000, from: .usd, to: .ils, usdIlsRate: nil))
     }
 
+    func testExchangeRateRequirementUsesOnlyTheLatestSnapshotAsOfToday() {
+        let bank = projectionBank(id: "checking", rate: 0)
+        let today = ProjectionFormatting.isoDate.date(from: "2026-08-11")!
+        let entries = [
+            projectionEntry(id: "old-usd", bankID: bank.id, date: "2026-01-01", amount: 100, currency: .usd),
+            projectionEntry(id: "current-ils", bankID: bank.id, date: "2026-08-01", amount: 350, currency: .ils),
+            projectionEntry(id: "future-usd", bankID: bank.id, date: "2026-12-01", amount: 200, currency: .usd)
+        ]
+
+        XCTAssertFalse(
+            ProjectionCalculator.requiresExchangeRate(
+                banks: [bank],
+                entries: entries,
+                selectedBankIDs: [bank.id],
+                displayCurrency: .ils,
+                asOf: today
+            )
+        )
+    }
+
+    func testSeriesKeepsCurrentAndProjectedTotalsWhenOnlyHistoryNeedsConversion() {
+        let bank = projectionBank(id: "checking", rate: 0)
+        let today = ProjectionFormatting.isoDate.date(from: "2026-04-01")!
+        let entries = [
+            projectionEntry(id: "old-usd", bankID: bank.id, date: "2026-01-01", amount: 100, currency: .usd),
+            projectionEntry(id: "current-ils", bankID: bank.id, date: "2026-03-01", amount: 350)
+        ]
+
+        let points = ProjectionCalculator.series(
+            banks: [bank],
+            entries: entries,
+            selectedBankIDs: [bank.id],
+            horizonYears: 1,
+            interestOn: false,
+            displayCurrency: .ils,
+            usdIlsRate: nil,
+            today: today
+        )
+
+        XCTAssertEqual(points.last(where: { !$0.isProjected })?.total ?? 0, 350, accuracy: 0.001)
+        XCTAssertEqual(points.last?.total ?? 0, 350, accuracy: 0.001)
+    }
+
     private func projectionBank(
         id: String,
         rate: Double,

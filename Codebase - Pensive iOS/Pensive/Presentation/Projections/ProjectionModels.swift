@@ -193,6 +193,19 @@ enum ProjectionCalculator {
         return latest
     }
 
+    static func requiresExchangeRate(
+        banks: [ProjectionBankDTO],
+        entries: [ProjectionEntryDTO],
+        selectedBankIDs: Set<String>,
+        displayCurrency: ProjectionCurrency,
+        asOf: Date = Date()
+    ) -> Bool {
+        let selectedBanks = banks.filter { selectedBankIDs.contains($0.id) }
+        return latestEntries(banks: selectedBanks, entries: entries, asOf: asOf)
+            .values
+            .contains { currency($0.currency) != displayCurrency }
+    }
+
     static func series(
         banks: [ProjectionBankDTO],
         entries: [ProjectionEntryDTO],
@@ -217,11 +230,12 @@ enum ProjectionCalculator {
                 if $0.createdAt != $1.createdAt { return $0.createdAt < $1.createdAt }
                 return ($0._creationTime ?? 0) < ($1._creationTime ?? 0)
             }
-        let requiresRate = selectedEntries.contains {
+        let currentEntries = latestEntries(banks: selectedBanks, entries: selectedEntries, asOf: startOfToday)
+        let currentRequiresRate = currentEntries.values.contains {
             currency($0.currency) != displayCurrency
         }
         let hasUsableRate = usdIlsRate.map { $0.isFinite && $0 > 0 } ?? false
-        guard !requiresRate || hasUsableRate else { return [] }
+        guard !currentRequiresRate || hasUsableRate else { return [] }
         let keys = Set(selectedEntries.map(\.date) + [todayKey]).sorted()
         var latest: [String: ProjectionEntryDTO] = [:]
         var historical: [ProjectionChartPoint] = []
@@ -238,18 +252,24 @@ enum ProjectionCalculator {
             }
             guard let date = ProjectionFormatting.isoDate.date(from: key) else { continue }
             var values: [String: Double] = [:]
+            var canRender = true
             for bank in selectedBanks {
                 guard let entry = latest[bank.id] else {
                     values[bank.id] = 0
                     continue
                 }
-                values[bank.id] = convert(
+                guard let amount = convert(
                     entry.amount,
                     from: currency(entry.currency),
                     to: displayCurrency,
                     usdIlsRate: usdIlsRate
-                ) ?? 0
+                ) else {
+                    canRender = false
+                    break
+                }
+                values[bank.id] = amount
             }
+            guard canRender else { continue }
             historical.append(
                 ProjectionChartPoint(
                     date: date,
@@ -260,7 +280,6 @@ enum ProjectionCalculator {
             )
         }
 
-        let currentEntries = latestEntries(banks: selectedBanks, entries: selectedEntries, asOf: startOfToday)
         let monthCount = max(1, horizonYears * 12)
         let future: [ProjectionChartPoint] = (1 ... monthCount).compactMap { month in
             guard let date = calendar.date(byAdding: .month, value: month, to: startOfToday) else { return nil }
@@ -268,14 +287,18 @@ enum ProjectionCalculator {
             var values: [String: Double] = [:]
             for bank in selectedBanks {
                 let entry = currentEntries[bank.id]
-                let principal = entry.flatMap {
-                    convert(
-                        $0.amount,
-                        from: currency($0.currency),
+                let principal: Double
+                if let entry {
+                    guard let converted = convert(
+                        entry.amount,
+                        from: currency(entry.currency),
                         to: displayCurrency,
                         usdIlsRate: usdIlsRate
-                    )
-                } ?? 0
+                    ) else { return nil }
+                    principal = converted
+                } else {
+                    principal = 0
+                }
                 values[bank.id] = interestOn && bank.interestEnabled
                     ? projectedBalance(
                         principal: principal,

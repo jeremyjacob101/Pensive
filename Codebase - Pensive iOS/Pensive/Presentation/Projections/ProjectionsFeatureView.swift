@@ -153,9 +153,12 @@ struct ProjectionsFeatureView: View {
     }
 
     private var conversionBlocked: Bool {
-        !hasUsableExchangeRate && viewModel.entries.contains {
-            selectedBankIDs.contains($0.bankId) && $0.projectionCurrency != displayCurrency
-        }
+        !hasUsableExchangeRate && ProjectionCalculator.requiresExchangeRate(
+            banks: viewModel.banks,
+            entries: viewModel.entries,
+            selectedBankIDs: selectedBankIDs,
+            displayCurrency: displayCurrency
+        )
     }
 
     private var latestByBank: [String: ProjectionEntryDTO] {
