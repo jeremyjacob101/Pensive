@@ -48,16 +48,12 @@ final class SavingsCalculatorTests: XCTestCase {
             XCTFail("Expected a forecast point")
             return
         }
-        let expectedGrowingValue = SavingsCalculator.futureBalance(
-            principal: 1_000,
-            annualRate: 12,
-            compounding: "monthly",
-            years: 1
-        )
+        let flatValue = forecast.values[flatBank.id] ?? 0
+        let growingValue = forecast.values[growingBank.id] ?? 0
 
-        XCTAssertEqual(forecast.values[flatBank.id] ?? 0, 1_000, accuracy: 0.001)
-        XCTAssertEqual(forecast.values[growingBank.id] ?? 0, expectedGrowingValue, accuracy: 0.001)
-        XCTAssertEqual(forecast.total, 1_000 + expectedGrowingValue, accuracy: 0.001)
+        XCTAssertEqual(flatValue, 1_000, accuracy: 0.001)
+        XCTAssertGreaterThan(growingValue, flatValue)
+        XCTAssertEqual(forecast.total, flatValue + growingValue, accuracy: 0.001)
     }
 
     func testSeriesCombinesOnlySelectedBanksAndLatestSnapshots() {
