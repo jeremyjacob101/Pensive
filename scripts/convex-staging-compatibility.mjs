@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { adaptLegacyCompatibilityScript } from "./convex-compatibility-runner.mjs";
 
 const beforeCommit = process.env.GITHUB_BASE_SHA;
 const stagingDeployKey = process.env.CONVEX_DEPLOY_KEY;
@@ -90,6 +91,19 @@ function exportAndReimportPostChangeState() {
   runConvex(["import", postChangePath, "--replace-all", "--yes"]);
 }
 
+function readHttpsUrl(path, label) {
+  const value = readFileSync(path, "utf8").trim().replace(/\/$/, "");
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") throw new Error("not HTTPS");
+  } catch {
+    throw new Error(`${label} must contain a valid HTTPS URL`);
+  }
+
+  return value;
+}
+
 function preparePreviousRevision() {
   run("git", ["archive", beforeCommit, "-o", previousArchivePath]);
   mkdirSync(previousDirectory, { recursive: true });
@@ -97,13 +111,38 @@ function preparePreviousRevision() {
   run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], {
     cwd: previousDirectory,
   });
+
+  const runnerPath = join(
+    previousDirectory,
+    "scripts",
+    "convex-compatibility.mjs",
+  );
+  const prepared = adaptLegacyCompatibilityScript(
+    readFileSync(runnerPath, "utf8"),
+  );
+  if (!prepared.adapted) return "scripts/convex-compatibility.mjs";
+
+  const adaptedRunnerName = "convex-compatibility-legacy-adapted.mjs";
+  writeFileSync(
+    join(previousDirectory, "scripts", adaptedRunnerName),
+    prepared.source,
+    { encoding: "utf8", mode: 0o600 },
+  );
+  console.log(
+    "Previous compatibility runner predates split Convex cloud/site URLs; applying the validated legacy HTTP adapter",
+  );
+  return `scripts/${adaptedRunnerName}`;
 }
 
-function runCompatibilitySuite(cwd, keepData) {
+function runCompatibilitySuite(
+  cwd,
+  keepData,
+  runner = "scripts/convex-compatibility.mjs",
+) {
   run(
     "node",
     [
-      "scripts/convex-compatibility.mjs",
+      runner,
       "--url-file",
       stagingCloudUrlPath,
       "--site-url-file",
@@ -113,7 +152,13 @@ function runCompatibilitySuite(cwd, keepData) {
     ],
     {
       cwd,
-      env: { COMPAT_KEEP_DATA: keepData ? "true" : "false" },
+      env: {
+        COMPAT_KEEP_DATA: keepData ? "true" : "false",
+        COMPAT_CONVEX_SITE_URL: readHttpsUrl(
+          stagingSiteUrlPath,
+          "Staging site URL",
+        ),
+      },
     },
   );
 }
@@ -130,8 +175,8 @@ async function main() {
   exportAndReimportPostChangeState();
 
   console.log("Running the previous client contracts against the new data");
-  preparePreviousRevision();
-  runCompatibilitySuite(previousDirectory, false);
+  const previousRunner = preparePreviousRevision();
+  runCompatibilitySuite(previousDirectory, false, previousRunner);
 
   console.log("Production schema gate passed");
 }
