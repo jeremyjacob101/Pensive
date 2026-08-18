@@ -34,9 +34,23 @@ export function dualWriteLedgerAmountFields(args: {
 }
 
 export function withLedgerAmountFields<T extends LedgerAmountFields>(row: T) {
+  const originalAmount = getOriginalAmount(row);
   return {
     ...row,
-    originalAmount: getOriginalAmount(row),
+    amount: originalAmount,
+    originalAmount,
     originalCurrency: getOriginalCurrency(row),
+  };
+}
+
+export function canonicalLedgerAmountFields(args: {
+  amount?: number;
+  originalAmount?: number;
+  originalCurrency?: OriginalCurrency;
+}) {
+  const originalAmount = getOriginalAmount(args);
+  return {
+    originalAmount,
+    originalCurrency: args.originalCurrency ?? ORIGINAL_CURRENCY,
   };
 }

@@ -1,74 +1,48 @@
-import { asUser, createUser, internalApi, makeConvexTest, testApi } from "./support";
+import { asUser, createUser, expenseInput, incomingInput, internalApi, makeConvexTest, recurringExpenseInput, testApi } from "./support";
 import { describe, expect, it } from "vitest";
 
 describe("original amount and currency migration", () => {
-  it("backfills legacy ledger rows in repeatable batches", async () => {
+  it("keeps canonical rows and makes the backfill a safe no-op after Release A", async () => {
     const t = makeConvexTest();
     const user = await createUser(t, "amount-migration-user");
-
-    const ids = await t.run(async (ctx) => {
-      const expenseId = await ctx.db.insert("expenses", {
-        userId: user,
-        expense: "Legacy expense",
-        account: "Checking",
-        category: "Food",
-        amount: 42,
-        monthYears: ["2025-01"],
-        date: "2025-01-01",
-        paidTo: "Cafe",
-        expenseId: "legacy-expense",
-      });
-      const incomingId = await ctx.db.insert("incomings", {
-        userId: user,
-        incoming: "Legacy incoming",
-        paidBy: "Employer",
-        incomeType: "Work",
-        account: "Checking",
-        amount: 84,
-        date: "2025-01-02",
-        monthYears: ["2025-01"],
-        incomingId: "legacy-incoming",
-      });
-      const recurringId = await ctx.db.insert("recurrings", {
-        userId: user,
-        status: "active",
-        kind: "expense",
-        name: "Legacy recurring",
-        amount: 21,
-        frequency: "Monthly",
-        dayOfMonth: 1,
-      });
-      return { expenseId, incomingId, recurringId };
-    });
-
     const client = asUser(t, user);
-    const legacyPage = await client.query(testApi.expenses.list, {
+
+    const expenseId = await client.mutation(
+      testApi.expenses.create,
+      expenseInput("canonical-expense", { amount: 42 }),
+    );
+    await client.mutation(
+      testApi.incomings.create,
+      incomingInput("canonical-incoming", { amount: 84 }),
+    );
+    await client.mutation(
+      testApi.recurrings.create,
+      recurringExpenseInput("canonical-recurring"),
+    );
+
+    const page = await client.query(testApi.expenses.list, {
       paginationOpts: { cursor: null, numItems: 10 },
     });
-    expect(legacyPage.page[0]).toMatchObject({
-      _id: ids.expenseId,
+    expect(page.page[0]).toMatchObject({
+      _id: expenseId,
       amount: 42,
       originalAmount: 42,
       originalCurrency: "ILS",
     });
 
-    for (const table of ["expenses", "incomings", "recurrings"] as const) {
-      const first = await t.mutation(
-        internalApi.amountMigrations.backfillBatch,
-        { table, batchSize: 1 },
-      );
-      expect(first).toMatchObject({
-        table,
-        scanned: 1,
-        patched: 1,
-        done: false,
-      });
+    const storedExpense = await t.run((ctx) => ctx.db.get(expenseId));
+    expect(storedExpense).toMatchObject({
+      originalAmount: 42,
+      originalCurrency: "ILS",
+    });
+    expect(storedExpense?.amount).toBeUndefined();
 
-      const second = await t.mutation(
+    for (const table of ["expenses", "incomings", "recurrings"] as const) {
+      const result = await t.mutation(
         internalApi.amountMigrations.backfillBatch,
         { table, batchSize: 1 },
       );
-      expect(second).toMatchObject({
+      expect(result).toMatchObject({
         table,
         scanned: 0,
         patched: 0,
@@ -82,11 +56,5 @@ describe("original amount and currency migration", () => {
       incomings: { total: 1, missing: 0 },
       recurrings: { total: 1, missing: 0 },
     });
-
-    const rerun = await t.mutation(internalApi.amountMigrations.backfillBatch, {
-      table: "expenses",
-      batchSize: 1,
-    });
-    expect(rerun).toMatchObject({ scanned: 0, patched: 0, done: true });
   });
 });

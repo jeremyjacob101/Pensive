@@ -523,7 +523,8 @@ export function Breakdown() {
     const addAmount = (
       kind: "expense" | "incoming",
       row: {
-        amount: number;
+        amount?: number;
+        originalAmount?: number;
         effectiveAmount?: number;
         monthYears?: string[];
         date: string;

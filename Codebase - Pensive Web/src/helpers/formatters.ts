@@ -28,11 +28,19 @@ export function formatWarnings(result: WarningResult | null | undefined) {
   return warnings.map((warning) => warning.message).join(" ");
 }
 
+export function getOriginalAmount(row: {
+  amount?: number;
+  originalAmount?: number;
+}) {
+  return row.originalAmount ?? row.amount ?? 0;
+}
+
 export function getEffectiveAmount(row: {
-  amount: number;
+  amount?: number;
+  originalAmount?: number;
   effectiveAmount?: number;
 }) {
-  return row.effectiveAmount ?? row.amount;
+  return row.effectiveAmount ?? getOriginalAmount(row);
 }
 
 export function getMonthSpanCount(row: { monthYears?: string[] }) {
@@ -40,7 +48,8 @@ export function getMonthSpanCount(row: { monthYears?: string[] }) {
 }
 
 export function getDisplayEffectiveAmount(row: {
-  amount: number;
+  amount?: number;
+  originalAmount?: number;
   effectiveAmount?: number;
   monthYears?: string[];
 }) {
@@ -51,7 +60,8 @@ export function getDisplayEffectiveAmount(row: {
 
 export function getProportionalEffectiveDisplay(
   row: {
-    amount: number;
+    amount?: number;
+    originalAmount?: number;
     effectiveAmount?: number;
     monthYears?: string[];
   },

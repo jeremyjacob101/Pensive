@@ -1,4 +1,4 @@
-import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
+import { formatMoney, getEffectiveAmount, getOriginalAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { EXPENSE_ACCOUNT_DESELECTED_KEY, EXPENSE_CATEGORY_DESELECTED_KEY } from "../keys/expenses";
 import { handleDeleteExpense, handleStartEditExpense, handleUpdateExpense } from "./actions";
 import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
@@ -304,7 +304,8 @@ export function Expenses() {
 
   const getScopedDisplayAmount = useCallback(
     (row: {
-      amount: number;
+      amount?: number;
+      originalAmount?: number;
       effectiveAmount?: number;
       monthYears?: string[];
     }) =>
@@ -352,7 +353,7 @@ export function Expenses() {
           baseExpenseId: sharedBaseId,
           latestDate: row.date,
           latestCreation: row._creationTime,
-          totalAmount: row.amount,
+          totalAmount: getOriginalAmount(row),
           totalEffectiveAmount: getEffectiveAmount(row),
           totalDisplayAmount: getScopedDisplayAmount(row).displayAmount,
           rows: [row],
@@ -361,7 +362,7 @@ export function Expenses() {
       }
 
       existing.rows.push(row);
-      existing.totalAmount += row.amount;
+      existing.totalAmount += getOriginalAmount(row);
       existing.totalEffectiveAmount += getEffectiveAmount(row);
       existing.totalDisplayAmount += getScopedDisplayAmount(row).displayAmount;
       if (
@@ -520,7 +521,8 @@ export function Expenses() {
             {partnerRows.map((partner) => (
               <div key={partner._id} className="partner-editor-row">
                 <span>
-                  {partner.expense} · ₪{partner.amount.toLocaleString("en-US")}
+                  {partner.expense} · ₪
+                  {getOriginalAmount(partner).toLocaleString("en-US")}
                 </span>
                 <button
                   type="button"
@@ -740,7 +742,7 @@ export function Expenses() {
                   const amountTooltip = group.rows
                     .map(
                       (row) =>
-                        `${row.expense}: ${formatMoney(row.amount)} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
+                        `${row.expense}: ${formatMoney(getOriginalAmount(row))} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
                     )
                     .join("\n");
 
@@ -899,7 +901,7 @@ export function Expenses() {
 
                               <div className="grouped-expense-row-amount-date">
                                 <span className="grouped-expense-row-amount">
-                                  {formatMoney(row.amount)}
+                                  {formatMoney(getOriginalAmount(row))}
                                 </span>
                                 <span className="grouped-expense-row-effective">
                                   {proportional.isPartial
@@ -1119,7 +1121,8 @@ export function Expenses() {
                               .join(", ") || "-"}
                           </div>
                           <div>
-                            <strong>Amount:</strong> {formatMoney(row.amount)}
+                            <strong>Amount:</strong>{" "}
+                            {formatMoney(getOriginalAmount(row))}
                           </div>
                           <div>
                             <strong>Effective:</strong>{" "}

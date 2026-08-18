@@ -1,4 +1,4 @@
-import { formatMoney, getEffectiveAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
+import { formatMoney, getEffectiveAmount, getOriginalAmount, getProportionalEffectiveDisplay } from "../helpers/formatters";
 import { INCOMING_ACCOUNT_DESELECTED_KEY, INCOMING_CATEGORY_DESELECTED_KEY } from "../keys/incomings";
 import { handleDeleteIncoming, handleStartEditIncoming, handleUpdateIncoming } from "./actions";
 import { getOptionColor, getScopedOptionColor, toOptionValues } from "../helpers/options";
@@ -298,7 +298,8 @@ export function Incomings() {
 
   const getScopedDisplayAmount = useCallback(
     (row: {
-      amount: number;
+      amount?: number;
+      originalAmount?: number;
       effectiveAmount?: number;
       monthYears?: string[];
     }) =>
@@ -344,7 +345,7 @@ export function Incomings() {
           baseIncomingId: baseId,
           latestDate: row.date,
           latestCreation: row._creationTime,
-          totalAmount: row.amount,
+          totalAmount: getOriginalAmount(row),
           totalEffectiveAmount: getEffectiveAmount(row),
           totalDisplayAmount: getScopedDisplayAmount(row).displayAmount,
           rows: [row],
@@ -353,7 +354,7 @@ export function Incomings() {
       }
 
       existing.rows.push(row);
-      existing.totalAmount += row.amount;
+      existing.totalAmount += getOriginalAmount(row);
       existing.totalEffectiveAmount += getEffectiveAmount(row);
       existing.totalDisplayAmount += getScopedDisplayAmount(row).displayAmount;
       if (
@@ -512,7 +513,8 @@ export function Incomings() {
             {partnerRows.map((partner) => (
               <div key={partner._id} className="partner-editor-row">
                 <span>
-                  {partner.incoming} · ₪{partner.amount.toLocaleString("en-US")}
+                  {partner.incoming} · ₪
+                  {getOriginalAmount(partner).toLocaleString("en-US")}
                 </span>
                 <button
                   type="button"
@@ -728,7 +730,7 @@ export function Incomings() {
                   const amountTooltip = group.rows
                     .map(
                       (row) =>
-                        `${row.incoming}: ${formatMoney(row.amount)} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
+                        `${row.incoming}: ${formatMoney(getOriginalAmount(row))} raw / ${formatMoney(getEffectiveAmount(row))} effective`,
                     )
                     .join("\n");
 
@@ -844,7 +846,7 @@ export function Incomings() {
 
                               <div className="grouped-expense-row-amount-date">
                                 <span className="grouped-expense-row-amount">
-                                  {formatMoney(row.amount)}
+                                  {formatMoney(getOriginalAmount(row))}
                                 </span>
                                 <span className="grouped-expense-row-effective">
                                   {proportional.isPartial
@@ -1068,7 +1070,8 @@ export function Incomings() {
                               .join(", ") || "-"}
                           </div>
                           <div>
-                            <strong>Amount:</strong> {formatMoney(row.amount)}
+                            <strong>Amount:</strong>{" "}
+                            {formatMoney(getOriginalAmount(row))}
                           </div>
                           <div>
                             <strong>Effective:</strong>{" "}

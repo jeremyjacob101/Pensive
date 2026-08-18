@@ -1,4 +1,4 @@
-import { formatMoney, formatWarnings, getEffectiveAmount, toAmount } from "../helpers/formatters";
+import { formatMoney, formatWarnings, getEffectiveAmount, getOriginalAmount, toAmount } from "../helpers/formatters";
 import { DisclosureSection, FormField } from "./EntryModal";
 import type { PaybackDraft } from "../types/paybackDraft";
 import { Link2, Pencil, Trash2, X } from "lucide-react";
@@ -62,7 +62,7 @@ export function PaybackDraftEditor({ entryKind, value, onChange, disabled = fals
             {candidates?.map((candidate) => (
               <option key={candidate._id} value={candidate._id}>
                 {candidate.date} · {getCandidateName(candidate)} ·{" "}
-                {formatMoney(candidate.amount)}
+                {formatMoney(getOriginalAmount(candidate))}
               </option>
             ))}
           </select>
@@ -234,7 +234,7 @@ export function ExpensePaybackLinkManager({ expenseId, disabled }: {
             {candidates?.map((candidate) => (
               <option key={candidate._id} value={candidate._id}>
                 {candidate.date} · {candidate.incoming} ·{" "}
-                {formatMoney(candidate.amount)} raw /{" "}
+                {formatMoney(getOriginalAmount(candidate))} raw /{" "}
                 {formatMoney(getEffectiveAmount(candidate))} effective
               </option>
             ))}
@@ -408,7 +408,7 @@ export function IncomingPaybackLinkManager({ incomingId, disabled }: {
             {candidates?.map((candidate) => (
               <option key={candidate._id} value={candidate._id}>
                 {candidate.date} · {candidate.expense} ·{" "}
-                {formatMoney(candidate.amount)} raw /{" "}
+                {formatMoney(getOriginalAmount(candidate))} raw /{" "}
                 {formatMoney(getEffectiveAmount(candidate))} effective
               </option>
             ))}
