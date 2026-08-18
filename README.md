@@ -102,6 +102,28 @@ npm run convex:dev
 
 This creates or connects the Convex development deployment and generates the shared API types.
 
+### Development database mock data
+
+The development-only seed runner replaces all application data in the configured Convex development deployment with deterministic synthetic data. It preserves auth users and credentials so the existing development login continues to work. The default `realistic` profile creates thousands of expenses, hundreds of incomings, grouped/bulk rows, recurring templates, large one-time purchases, multi-month bills, internal transfers, partial and multi-expense paybacks, savings history, and notepad content. The `stress` profile creates a substantially larger dataset for pagination and performance checks.
+
+The runner refuses to execute unless `.env.local` contains a `CONVEX_DEPLOYMENT` beginning with `dev:`. It always targets that development deployment and prints a replacement warning before it starts.
+
+```bash
+# Replace all development application data using the primary dev user automatically.
+npm run dev:db:seed
+
+# Optional larger dataset.
+npm run dev:db:seed -- --profile stress
+
+# Optional overrides for a different user or deterministic seed endpoint.
+npm run dev:db:seed -- \
+  --user-id <development-user-id> \
+  --seed 20260818 \
+  --as-of 2026-08-18
+```
+
+The internal seed functions are pushed to the dev deployment by the runner before they execute. The replacement clears application records for every user, then creates the mock dataset for the selected user; auth users and credentials remain intact. Do not substitute `--prod`, a staging deployment, or a production deployment for the runner’s fixed `--deployment dev` target.
+
 ### Production Schema Checkpoints
 
 Production promotion is staging-first. Feature branches merge into `staging`; production is advanced only by the manually dispatched `Promote Staging to Main` workflow. That workflow verifies the exact staging commit, detects changes to `convex/schema.ts`, and—only for schema changes—exports production, stores the ZIP in production Convex File Storage, records it in `backupSnapshots`, imports it into the disposable staging deployment, and runs forward and backward compatibility contracts. If every check passes, the workflow advances `main` to that exact tested staging commit and deploys production. Non-schema promotions skip the snapshot and compatibility work.

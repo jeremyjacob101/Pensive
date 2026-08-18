@@ -12,6 +12,8 @@ import type * as account from "../account.js";
 import type * as auth from "../auth.js";
 import type * as backupSnapshots from "../backupSnapshots.js";
 import type * as baseSubIds from "../baseSubIds.js";
+import type * as devSeed from "../devSeed.js";
+import type * as devSeedData from "../devSeedData.js";
 import type * as effectiveAmounts from "../effectiveAmounts.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
@@ -37,6 +39,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   backupSnapshots: typeof backupSnapshots;
   baseSubIds: typeof baseSubIds;
+  devSeed: typeof devSeed;
+  devSeedData: typeof devSeedData;
   effectiveAmounts: typeof effectiveAmounts;
   expenses: typeof expenses;
   http: typeof http;
