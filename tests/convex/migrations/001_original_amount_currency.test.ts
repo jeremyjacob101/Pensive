@@ -1,7 +1,7 @@
-import { asUser, createUser, internalApi, makeConvexTest, testApi } from "./support";
+import { asUser, createUser, internalApi, makeConvexTest, testApi } from "../support";
 import { describe, expect, it } from "vitest";
 
-describe("original amount and currency migration", () => {
+describe("migration 001: original amount and currency", () => {
   it("backfills legacy ledger rows in repeatable batches", async () => {
     const t = makeConvexTest();
     const user = await createUser(t, "amount-migration-user");
@@ -54,7 +54,7 @@ describe("original amount and currency migration", () => {
 
     for (const table of ["expenses", "incomings", "recurrings"] as const) {
       const first = await t.mutation(
-        internalApi.amountMigrations.backfillBatch,
+        internalApi.migrations["001_original_amount_currency"].backfillBatch,
         { table, batchSize: 1 },
       );
       expect(first).toMatchObject({
@@ -65,7 +65,7 @@ describe("original amount and currency migration", () => {
       });
 
       const second = await t.mutation(
-        internalApi.amountMigrations.backfillBatch,
+        internalApi.migrations["001_original_amount_currency"].backfillBatch,
         { table, batchSize: 1 },
       );
       expect(second).toMatchObject({
@@ -76,17 +76,23 @@ describe("original amount and currency migration", () => {
       });
     }
 
-    const verification = await t.query(internalApi.amountMigrations.verify, {});
+    const verification = await t.query(
+      internalApi.migrations["001_original_amount_currency"].verify,
+      {},
+    );
     expect(verification).toEqual({
       expenses: { total: 1, missing: 0 },
       incomings: { total: 1, missing: 0 },
       recurrings: { total: 1, missing: 0 },
     });
 
-    const rerun = await t.mutation(internalApi.amountMigrations.backfillBatch, {
-      table: "expenses",
-      batchSize: 1,
-    });
+    const rerun = await t.mutation(
+      internalApi.migrations["001_original_amount_currency"].backfillBatch,
+      {
+        table: "expenses",
+        batchSize: 1,
+      },
+    );
     expect(rerun).toMatchObject({ scanned: 0, patched: 0, done: true });
   });
 });

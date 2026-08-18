@@ -9,7 +9,6 @@
  */
 
 import type * as account from "../account.js";
-import type * as amountMigrations from "../amountMigrations.js";
 import type * as auth from "../auth.js";
 import type * as backupSnapshots from "../backupSnapshots.js";
 import type * as baseSubIds from "../baseSubIds.js";
@@ -20,6 +19,7 @@ import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
 import type * as incomings from "../incomings.js";
 import type * as ledgerAmounts from "../ledgerAmounts.js";
+import type * as migrations_001_original_amount_currency from "../migrations/001_original_amount_currency.js";
 import type * as monthYears from "../monthYears.js";
 import type * as notepad from "../notepad.js";
 import type * as paybackHelpers from "../paybackHelpers.js";
@@ -30,15 +30,10 @@ import type * as summaries from "../summaries.js";
 import type * as tracking from "../tracking.js";
 import type * as userOptions from "../userOptions.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   account: typeof account;
-  amountMigrations: typeof amountMigrations;
   auth: typeof auth;
   backupSnapshots: typeof backupSnapshots;
   baseSubIds: typeof baseSubIds;
@@ -49,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   incomings: typeof incomings;
   ledgerAmounts: typeof ledgerAmounts;
+  "migrations/001_original_amount_currency": typeof migrations_001_original_amount_currency;
   monthYears: typeof monthYears;
   notepad: typeof notepad;
   paybackHelpers: typeof paybackHelpers;
