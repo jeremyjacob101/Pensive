@@ -15,6 +15,8 @@
     "convex:backfill-original-amount-currency": "node scripts/backfill-original-amount-and-currency.mjs",
     "convex:schema-checkpoint": "node scripts/convex-schema-checkpoint.mjs",
     "convex:staging-compatibility": "node scripts/convex-staging-compatibility.mjs",
+    "dev:db:list-users": "node scripts/dev-db-seed.mjs --list-users",
+    "dev:db:seed": "node scripts/dev-db-seed.mjs",
     "test": "npm run test:unit && npm run test:convex",
     "test:unit": "vitest run --config tests/vitest.config.ts tests/web tests/scripts",
     "test:convex": "vitest run --config tests/vitest.config.ts tests/convex",
