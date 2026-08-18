@@ -79,15 +79,23 @@ describe("CI test safety", () => {
   it("passes separate Convex cloud and site URLs to compatibility contracts", async () => {
     const stagingScript = await script("convex-staging-compatibility.mjs");
     const compatibilityScript = await script("convex-compatibility.mjs");
+    const runnerScript = await script("convex-compatibility-runner.mjs");
     const deploymentUrlScript = await script("write-deployment-url.mjs");
 
     expect(stagingScript).toContain("DEPLOYMENT_SITE_URL_OUTPUT");
     expect(stagingScript).toContain('"--site-url-file"');
+    expect(stagingScript).toContain("adaptLegacyCompatibilityScript");
+    expect(stagingScript).toContain("COMPAT_CONVEX_SITE_URL");
+    expect(stagingScript).toContain(
+      "runCompatibilitySuite(previousDirectory, false, previousRunner)",
+    );
     expect(deploymentUrlScript).toContain("VITE_CONVEX_SITE_URL");
     expect(compatibilityScript).toContain('"--site-url-file"');
     expect(compatibilityScript).toContain("fetch(`${siteUrl}${path}`");
     expect(compatibilityScript).toContain("new ConvexHttpClient(cloudUrl)");
     expect(compatibilityScript).toContain("responseSummary(result)");
+    expect(runnerScript).toContain("LEGACY_HTTP_REQUEST");
+    expect(runnerScript).toContain("LEGACY_CONVEX_CLIENT");
   });
 
   it("keeps the automatic main-to-hotfix reset as a guarded ref sync", async () => {
