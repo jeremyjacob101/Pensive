@@ -319,7 +319,7 @@ Pensive is available under the MIT License. The copyright
 year is updated automatically each January while preserving 2026 as the
 project's original year.
 
-See the [LICENSE](LICENSE.md) file for the full text.
+See [LICENSE](LICENSE.md) for full text.
 
 ## Notes for Contributors
 

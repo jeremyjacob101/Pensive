@@ -52,6 +52,12 @@ storage fields. It accepts legacy `amount` mutation payloads and returns an
 
 Release B must not be deployed until the backfill verification passes.
 
+On the Release B branch, the numbered migration test verifies the contract
+after rollout: new writes store only the canonical fields, client reads still
+expose the `amount` alias, and Migration 001 is a safe no-op across all three
+tables. The legacy-row backfill test remains in Release A2, where the schema
+still permits the pre-migration shape.
+
 ## Compatibility matrix
 
 | Scenario                               | Supported? | Reason                                                                          |

@@ -1,4 +1,4 @@
-import { dualWriteLedgerAmountFields, getOriginalAmount, withLedgerAmountFields } from "./ledgerAmounts";
+import { canonicalLedgerAmountFields, getOriginalAmount, withLedgerAmountFields } from "./ledgerAmounts";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { normalizeMonthYearsInput } from "./monthYears";
@@ -18,7 +18,7 @@ const recurringArgs = {
   status: v.string(),
   kind: v.union(v.literal("expense"), v.literal("incoming")),
   name: v.string(),
-  amount: v.number(),
+  amount: v.optional(v.number()),
   originalAmount: v.optional(v.number()),
   originalCurrency: v.optional(v.literal("ILS")),
   frequency: v.string(),
@@ -81,9 +81,15 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     validateRecurringFields(args);
-    const ledgerAmount = dualWriteLedgerAmountFields(args);
+    const {
+      amount: _legacyAmount,
+      originalAmount: _originalAmount,
+      originalCurrency: _originalCurrency,
+      ...restArgs
+    } = args;
+    const ledgerAmount = canonicalLedgerAmountFields(args);
     return await ctx.db.insert("recurrings", {
-      ...args,
+      ...restArgs,
       ...ledgerAmount,
       frequency: RECURRING_FREQUENCY,
       ...(args.kind === "expense"
@@ -110,9 +116,15 @@ export const bulkCreate = mutation({
     const userId = await requireUserId(ctx);
     for (const row of rows) {
       validateRecurringFields(row);
-      const ledgerAmount = dualWriteLedgerAmountFields(row);
+      const {
+        amount: _legacyAmount,
+        originalAmount: _originalAmount,
+        originalCurrency: _originalCurrency,
+        ...restRow
+      } = row;
+      const ledgerAmount = canonicalLedgerAmountFields(row);
       await ctx.db.insert("recurrings", {
-        ...row,
+        ...restRow,
         ...ledgerAmount,
         frequency: RECURRING_FREQUENCY,
         userId,
@@ -143,12 +155,18 @@ export const update = mutation({
     const existing = await ctx.db.get(id);
     if (!existing || existing.userId !== userId) throw new Error("Not found");
     validateRecurringFields(rest);
-    const ledgerAmount = dualWriteLedgerAmountFields(rest);
+    const {
+      amount: _legacyAmount,
+      originalAmount: _originalAmount,
+      originalCurrency: _originalCurrency,
+      ...restArgs
+    } = rest;
+    const ledgerAmount = canonicalLedgerAmountFields(rest);
     await ctx.db.patch(id, {
-      ...rest,
+      ...restArgs,
       ...ledgerAmount,
       frequency: RECURRING_FREQUENCY,
-      ...(rest.kind === "expense"
+      ...(restArgs.kind === "expense"
         ? {
             recurringIncomingPaidBy: undefined,
             recurringIncomingType: undefined,
@@ -318,7 +336,7 @@ async function materializeRecurringRow(
     recurringIncomingType?: string;
     recurringIncomingSubtype?: string;
     recurringIncomingAccount?: string;
-    amount: number;
+    amount?: number;
     originalAmount?: number;
     originalCurrency?: "ILS";
     notes?: string;
@@ -349,7 +367,6 @@ async function materializeRecurringRow(
       incomeType: recurring.recurringIncomingType ?? "",
       incomeSubtype: recurring.recurringIncomingSubtype ?? "",
       account: recurring.recurringIncomingAccount ?? "",
-      amount: originalAmount,
       originalAmount,
       originalCurrency: recurring.originalCurrency ?? "ILS",
       effectiveAmount: originalAmount,
@@ -376,7 +393,6 @@ async function materializeRecurringRow(
     account: recurring.recurringExpenseAccount ?? "",
     category: recurring.recurringExpenseCategory ?? "",
     subcategory: recurring.recurringExpenseSubcategory ?? "",
-    amount: originalAmount,
     originalAmount,
     originalCurrency: recurring.originalCurrency ?? "ILS",
     effectiveAmount: originalAmount,

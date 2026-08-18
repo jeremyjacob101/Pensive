@@ -1,8 +1,8 @@
+import { getOriginalAmount, randomId16, toAmount } from "../helpers/formatters";
 import { getMonthFromIsoDate, parseMonthYears } from "../helpers/dates";
 import type { Dispatch, SetStateAction, SyntheticEvent } from "react";
 import type { WorkspaceMutations } from "../types/workspaceActions";
 import type { EditValues, FormType } from "../types/workspace";
-import { randomId16, toAmount } from "../helpers/formatters";
 import type { Doc } from "@pensive/convex-data-model";
 import type { OptionKind } from "../types/schema";
 
@@ -258,8 +258,8 @@ export function handleStartEditExpense(
     account: row.account,
     category: row.category,
     subcategory: row.subcategory ?? "",
-    amount: String(row.amount),
-    effectiveAmount: String(row.effectiveAmount ?? row.amount),
+    amount: String(getOriginalAmount(row)),
+    effectiveAmount: String(row.effectiveAmount ?? getOriginalAmount(row)),
     effectiveAmountMode: row.effectiveAmountMode ?? "auto",
     date: row.date,
     monthYears: JSON.stringify(
@@ -284,8 +284,8 @@ export function handleStartEditIncoming(
     incomeType: row.incomeType,
     incomeSubtype: row.incomeSubtype ?? "",
     account: row.account,
-    amount: String(row.amount),
-    effectiveAmount: String(row.effectiveAmount ?? row.amount),
+    amount: String(getOriginalAmount(row)),
+    effectiveAmount: String(row.effectiveAmount ?? getOriginalAmount(row)),
     effectiveAmountMode: row.effectiveAmountMode ?? "auto",
     date: row.date,
     monthYears: JSON.stringify(
@@ -307,7 +307,7 @@ export function handleStartEditRecurring(
     status: row.status,
     kind: row.kind ?? "expense",
     name: row.name,
-    amount: String(row.amount),
+    amount: String(getOriginalAmount(row)),
     frequency: row.frequency,
     dayOfMonth: String(row.dayOfMonth),
     recurringExpenseAccount: row.recurringExpenseAccount ?? "",

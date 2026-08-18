@@ -1,3 +1,4 @@
+import { canonicalLedgerAmountFields, getOriginalAmount } from "./ledgerAmounts";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { generateSeedData } from "./devSeedData";
 import type { Id } from "./_generated/dataModel";
@@ -14,6 +15,8 @@ const expenseRowValidator = v.object({
   category: v.string(),
   subcategory: v.optional(v.string()),
   amount: v.number(),
+  originalAmount: v.optional(v.number()),
+  originalCurrency: v.optional(v.literal("ILS")),
   effectiveAmount: v.number(),
   effectiveAmountMode: effectiveAmountModeValidator,
   monthYears: v.array(v.string()),
@@ -34,6 +37,8 @@ const incomingRowValidator = v.object({
   incomeSubtype: v.optional(v.string()),
   account: v.string(),
   amount: v.number(),
+  originalAmount: v.optional(v.number()),
+  originalCurrency: v.optional(v.literal("ILS")),
   effectiveAmount: v.number(),
   effectiveAmountMode: effectiveAmountModeValidator,
   date: v.string(),
@@ -65,6 +70,8 @@ const recurringValidator = v.object({
   kind: v.union(v.literal("expense"), v.literal("incoming")),
   name: v.string(),
   amount: v.number(),
+  originalAmount: v.optional(v.number()),
+  originalCurrency: v.optional(v.literal("ILS")),
   frequency: v.string(),
   dayOfMonth: v.number(),
   recurringExpenseAccount: v.optional(v.string()),
@@ -149,6 +156,25 @@ function generatedData(args: {
   asOfDate: string;
 }) {
   return generateSeedData(args);
+}
+
+function canonicalizeLedgerRow<
+  T extends {
+    amount?: number;
+    originalAmount?: number;
+    originalCurrency?: "ILS";
+  },
+>(row: T) {
+  const {
+    amount: _legacyAmount,
+    originalAmount: _originalAmount,
+    originalCurrency: _originalCurrency,
+    ...rest
+  } = row;
+  return {
+    ...rest,
+    ...canonicalLedgerAmountFields(row),
+  };
 }
 
 export const listUsers = internalQuery({
@@ -289,7 +315,12 @@ export const insertExpenses = internalMutation({
   handler: async (ctx, { userId, rows }) => {
     const ids: Id<"expenses">[] = [];
     for (const row of rows)
-      ids.push(await ctx.db.insert("expenses", { ...row, userId }));
+      ids.push(
+        await ctx.db.insert("expenses", {
+          ...canonicalizeLedgerRow(row),
+          userId,
+        }),
+      );
     return ids;
   },
 });
@@ -309,7 +340,7 @@ export const seedExpenseBatch = internalMutation({
     for (const row of batch) {
       const { key: _key, ...expense } = row;
       const id = await ctx.db.insert("expenses", {
-        ...expense,
+        ...canonicalizeLedgerRow(expense),
         userId: args.userId,
       });
       rows.push({ key: row.key, id });
@@ -331,7 +362,12 @@ export const insertIncomings = internalMutation({
   handler: async (ctx, { userId, rows }) => {
     const ids: Id<"incomings">[] = [];
     for (const row of rows)
-      ids.push(await ctx.db.insert("incomings", { ...row, userId }));
+      ids.push(
+        await ctx.db.insert("incomings", {
+          ...canonicalizeLedgerRow(row),
+          userId,
+        }),
+      );
     return ids;
   },
 });
@@ -351,7 +387,7 @@ export const seedIncomingBatch = internalMutation({
     for (const row of batch) {
       const { key: _key, ...incoming } = row;
       const id = await ctx.db.insert("incomings", {
-        ...incoming,
+        ...canonicalizeLedgerRow(incoming),
         userId: args.userId,
       });
       rows.push({ key: row.key, id });
@@ -401,7 +437,10 @@ export const insertRecurrings = internalMutation({
   },
   handler: async (ctx, { userId, rows }) => {
     for (const row of rows)
-      await ctx.db.insert("recurrings", { ...row, userId });
+      await ctx.db.insert("recurrings", {
+        ...canonicalizeLedgerRow(row),
+        userId,
+      });
     return { inserted: rows.length };
   },
 });
@@ -503,7 +542,10 @@ export const seedSupportingData = internalMutation({
     if (!Number.isFinite(timestamp)) throw new Error("Invalid seed timestamp");
 
     for (const row of data.recurrings) {
-      await ctx.db.insert("recurrings", { ...row, userId: args.userId });
+      await ctx.db.insert("recurrings", {
+        ...canonicalizeLedgerRow(row),
+        userId: args.userId,
+      });
     }
     await ctx.db.insert("notepadWorkspaces", {
       userId: args.userId,
@@ -653,7 +695,9 @@ export const verify = internalQuery({
       groupedIncomingRows: incomings.filter((row) => row.baseIncomingId).length,
       multiMonthExpenseRows: expenses.filter((row) => row.monthYears.length > 1)
         .length,
-      largeExpenseRows: expenses.filter((row) => row.amount >= 4_000).length,
+      largeExpenseRows: expenses.filter(
+        (row) => getOriginalAmount(row) >= 4_000,
+      ).length,
       paidBackIncomingRows: incomings.filter(
         (row) => row.incomeType === "Paid Back",
       ).length,

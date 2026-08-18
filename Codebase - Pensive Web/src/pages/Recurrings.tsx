@@ -7,6 +7,7 @@ import type { WorkspaceMutations } from "../types/workspaceActions";
 import type { UserOptions, EditValues } from "../types/workspace";
 import { useAutoLoadMore } from "../hooks/useAutoLoadMore";
 import { OptionPicker } from "../components/OptionPicker";
+import { getOriginalAmount } from "../helpers/formatters";
 import { CreditCard, Plus, Repeat } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { formatOrdinalDay } from "../helpers/dates";
@@ -107,7 +108,7 @@ export function Recurrings() {
                             aria-hidden="true"
                           />
                         </span>
-                        <span>₪{row.amount}</span>
+                        <span>₪{getOriginalAmount(row)}</span>
                       </div>
                       <span
                         className="entry-card-primary-divider"
@@ -313,7 +314,7 @@ export function Recurrings() {
                             aria-hidden="true"
                           />
                         </span>
-                        <span>₪{row.amount}</span>
+                        <span>₪{getOriginalAmount(row)}</span>
                       </div>
                       <span
                         className="entry-card-primary-divider"

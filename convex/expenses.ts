@@ -1,5 +1,5 @@
 import { deletePaybackLinksForExpense, normalizeEffectiveAmountFields, recomputeExpenseEffectiveAmount, syncExpensePaybackLinks, type EffectiveAmountMode } from "./paybackHelpers";
-import { dualWriteLedgerAmountFields, withLedgerAmountFields } from "./ledgerAmounts";
+import { canonicalLedgerAmountFields, withLedgerAmountFields } from "./ledgerAmounts";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import { normalizeMonthYearsInput } from "./monthYears";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -317,7 +317,7 @@ export const create = mutation({
     account: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
-    amount: v.number(),
+    amount: v.optional(v.number()),
     originalAmount: v.optional(v.number()),
     originalCurrency: v.optional(v.literal("ILS")),
     effectiveAmount: v.optional(v.number()),
@@ -335,18 +335,27 @@ export const create = mutation({
   },
   handler: async (ctx, { paybackLinks, ...args }) => {
     const userId = await requireUserId(ctx);
-    const expenseId = args.expenseId.trim() || randomId16();
-    const shared = normalizeSharedFields(args);
-    const monthYears = normalizeMonthYearsInput(args.monthYears, args.date);
-    const ledgerAmount = dualWriteLedgerAmountFields(args);
+    const {
+      amount: _legacyAmount,
+      originalAmount: _originalAmount,
+      originalCurrency: _originalCurrency,
+      ...restArgs
+    } = args;
+    const expenseId = restArgs.expenseId.trim() || randomId16();
+    const shared = normalizeSharedFields(restArgs);
+    const monthYears = normalizeMonthYearsInput(
+      restArgs.monthYears,
+      restArgs.date,
+    );
+    const ledgerAmount = canonicalLedgerAmountFields(args);
     const effective = normalizeEffectiveAmountFields({
-      ...args,
+      ...restArgs,
       amount: ledgerAmount.originalAmount,
       monthYears,
     });
 
     const id = await ctx.db.insert("expenses", {
-      ...args,
+      ...restArgs,
       ...ledgerAmount,
       ...shared,
       ...effective,
@@ -370,7 +379,7 @@ export const bulkCreate = mutation({
         account: v.string(),
         category: v.string(),
         subcategory: v.optional(v.string()),
-        amount: v.number(),
+        amount: v.optional(v.number()),
         originalAmount: v.optional(v.number()),
         originalCurrency: v.optional(v.literal("ILS")),
         effectiveAmount: v.optional(v.number()),
@@ -391,14 +400,20 @@ export const bulkCreate = mutation({
   handler: async (ctx, { rows }) => {
     const userId = await requireUserId(ctx);
     for (const row of rows) {
-      const { paybackLinks, ...expenseRow } = row;
+      const {
+        paybackLinks,
+        amount: _legacyAmount,
+        originalAmount: _originalAmount,
+        originalCurrency: _originalCurrency,
+        ...expenseRow
+      } = row;
       const expenseId = expenseRow.expenseId.trim() || randomId16();
       const shared = normalizeSharedFields(expenseRow);
       const monthYears = normalizeMonthYearsInput(
         expenseRow.monthYears,
         expenseRow.date,
       );
-      const ledgerAmount = dualWriteLedgerAmountFields(expenseRow);
+      const ledgerAmount = canonicalLedgerAmountFields(row);
       const effective = normalizeEffectiveAmountFields({
         ...expenseRow,
         amount: ledgerAmount.originalAmount,
@@ -447,7 +462,7 @@ export const update = mutation({
     account: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
-    amount: v.number(),
+    amount: v.optional(v.number()),
     originalAmount: v.optional(v.number()),
     originalCurrency: v.optional(v.literal("ILS")),
     effectiveAmount: v.optional(v.number()),
@@ -476,7 +491,13 @@ export const update = mutation({
     const expenseId = rest.expenseId.trim() || existing.expenseId;
     const shared = normalizeSharedFields(rest);
     const monthYears = normalizeMonthYearsInput(rest.monthYears, rest.date);
-    const ledgerAmount = dualWriteLedgerAmountFields(rest);
+    const ledgerAmount = canonicalLedgerAmountFields(rest);
+    const {
+      amount: _legacyAmount,
+      originalAmount: _originalAmount,
+      originalCurrency: _originalCurrency,
+      ...restArgs
+    } = rest;
     const nextEffectiveAmountMode =
       effectiveAmountMode ??
       ((existing.effectiveAmountMode ?? "auto") as EffectiveAmountMode);
@@ -488,7 +509,7 @@ export const update = mutation({
         : ledgerAmount.originalAmount;
 
     await ctx.db.patch(id, {
-      ...rest,
+      ...restArgs,
       ...ledgerAmount,
       ...shared,
       monthYears,
