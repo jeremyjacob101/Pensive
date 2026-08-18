@@ -9,6 +9,7 @@
  */
 
 import type * as account from "../account.js";
+import type * as amountMigrations from "../amountMigrations.js";
 import type * as auth from "../auth.js";
 import type * as backupSnapshots from "../backupSnapshots.js";
 import type * as baseSubIds from "../baseSubIds.js";
@@ -18,6 +19,7 @@ import type * as effectiveAmounts from "../effectiveAmounts.js";
 import type * as expenses from "../expenses.js";
 import type * as http from "../http.js";
 import type * as incomings from "../incomings.js";
+import type * as ledgerAmounts from "../ledgerAmounts.js";
 import type * as monthYears from "../monthYears.js";
 import type * as notepad from "../notepad.js";
 import type * as paybackHelpers from "../paybackHelpers.js";
@@ -36,6 +38,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   account: typeof account;
+  amountMigrations: typeof amountMigrations;
   auth: typeof auth;
   backupSnapshots: typeof backupSnapshots;
   baseSubIds: typeof baseSubIds;
@@ -45,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   http: typeof http;
   incomings: typeof incomings;
+  ledgerAmounts: typeof ledgerAmounts;
   monthYears: typeof monthYears;
   notepad: typeof notepad;
   paybackHelpers: typeof paybackHelpers;

@@ -1,4 +1,5 @@
 import { getAllocationWarnings, getPaybackLinkTimestamp, recomputeLinkedEffectiveAmounts } from "./paybackHelpers";
+import { withLedgerAmountFields } from "./ledgerAmounts";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
@@ -61,7 +62,7 @@ export const listForExpense = query({
     for (const link of links) {
       const incoming = await ctx.db.get(link.incomingId);
       if (!incoming || incoming.userId !== userId) continue;
-      rows.push({ ...link, incoming });
+      rows.push({ ...link, incoming: withLedgerAmountFields(incoming) });
     }
     return rows.sort((a, b) => b.createdAt - a.createdAt);
   },
@@ -85,7 +86,7 @@ export const listForIncoming = query({
     for (const link of links) {
       const expense = await ctx.db.get(link.expenseId);
       if (!expense || expense.userId !== userId) continue;
-      rows.push({ ...link, expense });
+      rows.push({ ...link, expense: withLedgerAmountFields(expense) });
     }
     return rows.sort((a, b) => b.createdAt - a.createdAt);
   },
@@ -95,11 +96,12 @@ export const listIncomingCandidates = query({
   args: {},
   handler: async (ctx) => {
     const userId = await requireUserId(ctx);
-    return await ctx.db
+    const rows = await ctx.db
       .query("incomings")
       .withIndex("by_user_id_date", (q) => q.eq("userId", userId))
       .order("desc")
       .take(200);
+    return rows.map(withLedgerAmountFields);
   },
 });
 
@@ -107,11 +109,12 @@ export const listExpenseCandidates = query({
   args: {},
   handler: async (ctx) => {
     const userId = await requireUserId(ctx);
-    return await ctx.db
+    const rows = await ctx.db
       .query("expenses")
       .withIndex("by_user_id_date", (q) => q.eq("userId", userId))
       .order("desc")
       .take(200);
+    return rows.map(withLedgerAmountFields);
   },
 });
 

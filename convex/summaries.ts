@@ -1,5 +1,6 @@
 import { getEffectiveAmountFallback } from "./paybackHelpers";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { getOriginalAmount } from "./ledgerAmounts";
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -82,7 +83,12 @@ function normalizedRowMonths(row: { date: string; monthYears?: string[] }) {
 function addScopedAmount(
   buckets: Map<string, SummaryBucket>,
   totals: Omit<SummaryBucket, "month">,
-  row: { date: string; monthYears?: string[]; amount: number },
+  row: {
+    date: string;
+    monthYears?: string[];
+    amount?: number;
+    originalAmount?: number;
+  },
   effectiveAmount: number,
   kind: "expense" | "incoming",
   targetMonthSet: Set<string>,
@@ -92,7 +98,7 @@ function addScopedAmount(
   const matchingMonths = months.filter((month) => targetMonthSet.has(month));
   if (matchingMonths.length === 0) return;
 
-  const rawShare = row.amount / monthCount;
+  const rawShare = getOriginalAmount(row) / monthCount;
   const effectiveShare = effectiveAmount / monthCount;
 
   for (const month of matchingMonths) {
