@@ -27,6 +27,8 @@ export default defineSchema({
     category: v.string(),
     subcategory: v.optional(v.string()),
     amount: v.number(),
+    originalAmount: v.optional(v.number()),
+    originalCurrency: v.optional(v.literal("ILS")),
     effectiveAmount: v.optional(v.number()),
     effectiveAmountMode: v.optional(
       v.union(v.literal("auto"), v.literal("manual")),
@@ -55,6 +57,8 @@ export default defineSchema({
     incomeSubtype: v.optional(v.string()),
     account: v.string(),
     amount: v.number(),
+    originalAmount: v.optional(v.number()),
+    originalCurrency: v.optional(v.literal("ILS")),
     effectiveAmount: v.optional(v.number()),
     effectiveAmountMode: v.optional(
       v.union(v.literal("auto"), v.literal("manual")),
@@ -109,6 +113,8 @@ export default defineSchema({
     kind: v.optional(v.union(v.literal("expense"), v.literal("incoming"))),
     name: v.string(),
     amount: v.number(),
+    originalAmount: v.optional(v.number()),
+    originalCurrency: v.optional(v.literal("ILS")),
     frequency: v.string(),
     dayOfMonth: v.number(),
     recurringExpenseAccount: v.optional(v.string()),

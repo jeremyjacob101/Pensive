@@ -1,5 +1,6 @@
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { getOriginalAmount } from "./ledgerAmounts";
 
 export type EffectiveAmountMode = "auto" | "manual";
 
@@ -47,10 +48,11 @@ export function normalizeEffectiveAmountFields(input: EffectiveAmountInput): {
 }
 
 export function getEffectiveAmountFallback(row: {
-  amount: number;
+  amount?: number;
+  originalAmount?: number;
   effectiveAmount?: number;
 }) {
-  return row.effectiveAmount ?? row.amount;
+  return row.effectiveAmount ?? getOriginalAmount(row);
 }
 
 async function sumExpenseLinks(
@@ -91,7 +93,7 @@ export async function recomputeExpenseEffectiveAmount(
   }
 
   const allocated = await sumExpenseLinks(ctx, userId, expenseId);
-  const effectiveAmount = expense.amount - allocated;
+  const effectiveAmount = getOriginalAmount(expense) - allocated;
   await ctx.db.patch(expenseId, {
     effectiveAmount,
     effectiveAmountMode: "auto",
@@ -111,7 +113,7 @@ export async function recomputeIncomingEffectiveAmount(
   }
 
   const allocated = await sumIncomingLinks(ctx, userId, incomingId);
-  const effectiveAmount = incoming.amount - allocated;
+  const effectiveAmount = getOriginalAmount(incoming) - allocated;
   await ctx.db.patch(incomingId, {
     effectiveAmount,
     effectiveAmountMode: "auto",
@@ -379,21 +381,23 @@ export async function getAllocationWarnings(
     ]);
 
   const warnings: PaybackAllocationWarning[] = [];
-  if (expense && expenseAllocated > expense.amount) {
-    const overAllocatedBy = expenseAllocated - expense.amount;
+  if (expense && expenseAllocated > getOriginalAmount(expense)) {
+    const amount = getOriginalAmount(expense);
+    const overAllocatedBy = expenseAllocated - amount;
     warnings.push({
       kind: "expense",
-      amount: expense.amount,
+      amount,
       allocated: expenseAllocated,
       overAllocatedBy,
       message: `Expense is over-allocated by ${overAllocatedBy}.`,
     });
   }
-  if (incoming && incomingAllocated > incoming.amount) {
-    const overAllocatedBy = incomingAllocated - incoming.amount;
+  if (incoming && incomingAllocated > getOriginalAmount(incoming)) {
+    const amount = getOriginalAmount(incoming);
+    const overAllocatedBy = incomingAllocated - amount;
     warnings.push({
       kind: "incoming",
-      amount: incoming.amount,
+      amount,
       allocated: incomingAllocated,
       overAllocatedBy,
       message: `Incoming is over-allocated by ${overAllocatedBy}.`,

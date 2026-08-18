@@ -1,3 +1,4 @@
+import { dualWriteLedgerAmountFields, getOriginalAmount, withLedgerAmountFields } from "./ledgerAmounts";
 import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { normalizeMonthYearsInput } from "./monthYears";
@@ -18,6 +19,8 @@ const recurringArgs = {
   kind: v.union(v.literal("expense"), v.literal("incoming")),
   name: v.string(),
   amount: v.number(),
+  originalAmount: v.optional(v.number()),
+  originalCurrency: v.optional(v.literal("ILS")),
   frequency: v.string(),
   dayOfMonth: v.number(),
   recurringExpenseAccount: v.optional(v.string()),
@@ -64,11 +67,12 @@ export const list = query({
   handler: async (ctx, { paginationOpts }) => {
     const userId = await requireUserId(ctx);
     const numItems = Math.min(paginationOpts.numItems, 50);
-    return await ctx.db
+    const page = await ctx.db
       .query("recurrings")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .order("desc")
       .paginate({ ...paginationOpts, numItems });
+    return { ...page, page: page.page.map(withLedgerAmountFields) };
   },
 });
 
@@ -77,8 +81,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     validateRecurringFields(args);
+    const ledgerAmount = dualWriteLedgerAmountFields(args);
     return await ctx.db.insert("recurrings", {
       ...args,
+      ...ledgerAmount,
       frequency: RECURRING_FREQUENCY,
       ...(args.kind === "expense"
         ? {
@@ -104,8 +110,10 @@ export const bulkCreate = mutation({
     const userId = await requireUserId(ctx);
     for (const row of rows) {
       validateRecurringFields(row);
+      const ledgerAmount = dualWriteLedgerAmountFields(row);
       await ctx.db.insert("recurrings", {
         ...row,
+        ...ledgerAmount,
         frequency: RECURRING_FREQUENCY,
         userId,
       });
@@ -135,8 +143,10 @@ export const update = mutation({
     const existing = await ctx.db.get(id);
     if (!existing || existing.userId !== userId) throw new Error("Not found");
     validateRecurringFields(rest);
+    const ledgerAmount = dualWriteLedgerAmountFields(rest);
     await ctx.db.patch(id, {
       ...rest,
+      ...ledgerAmount,
       frequency: RECURRING_FREQUENCY,
       ...(rest.kind === "expense"
         ? {
@@ -309,6 +319,8 @@ async function materializeRecurringRow(
     recurringIncomingSubtype?: string;
     recurringIncomingAccount?: string;
     amount: number;
+    originalAmount?: number;
+    originalCurrency?: "ILS";
     notes?: string;
     recurringExpenseAccount?: string;
     recurringExpenseCategory?: string;
@@ -324,6 +336,7 @@ async function materializeRecurringRow(
 
   if (kind === "incoming") {
     const monthYears = normalizeMonthYearsInput([], runDate);
+    const originalAmount = getOriginalAmount(recurring);
     const alreadyIncoming = await ctx.db
       .query("incomings")
       .withIndex("by_incoming_id", (q) => q.eq("incomingId", automationKey))
@@ -336,8 +349,10 @@ async function materializeRecurringRow(
       incomeType: recurring.recurringIncomingType ?? "",
       incomeSubtype: recurring.recurringIncomingSubtype ?? "",
       account: recurring.recurringIncomingAccount ?? "",
-      amount: recurring.amount,
-      effectiveAmount: recurring.amount,
+      amount: originalAmount,
+      originalAmount,
+      originalCurrency: recurring.originalCurrency ?? "ILS",
+      effectiveAmount: originalAmount,
       effectiveAmountMode: "auto",
       date: runDate,
       monthYears,
@@ -353,6 +368,7 @@ async function materializeRecurringRow(
     .withIndex("by_expense_id", (q) => q.eq("expenseId", automationKey))
     .first();
   if (alreadyExpense) return { created: 0, skipped: 1 };
+  const originalAmount = getOriginalAmount(recurring);
   await ctx.db.insert("expenses", {
     monthYears: normalizeMonthYearsInput([], runDate),
     userId,
@@ -360,8 +376,10 @@ async function materializeRecurringRow(
     account: recurring.recurringExpenseAccount ?? "",
     category: recurring.recurringExpenseCategory ?? "",
     subcategory: recurring.recurringExpenseSubcategory ?? "",
-    amount: recurring.amount,
-    effectiveAmount: recurring.amount,
+    amount: originalAmount,
+    originalAmount,
+    originalCurrency: recurring.originalCurrency ?? "ILS",
+    effectiveAmount: originalAmount,
     effectiveAmountMode: "auto",
     date: runDate,
     paidTo: recurring.recurringExpensePaidTo ?? "",
