@@ -1,8 +1,8 @@
-import { asUser, createUser, expenseInput, incomingInput, internalApi, makeConvexTest, recurringExpenseInput, testApi } from "./support";
+import { asUser, createUser, expenseInput, incomingInput, internalApi, makeConvexTest, recurringExpenseInput, testApi } from "../support";
 import { describe, expect, it } from "vitest";
 
-describe("original amount and currency migration", () => {
-  it("keeps canonical rows and makes the backfill a safe no-op after Release A", async () => {
+describe("migration 001: original amount and currency", () => {
+  it("keeps canonical rows and makes the backfill a safe no-op after Release B", async () => {
     const t = makeConvexTest();
     const user = await createUser(t, "amount-migration-user");
     const client = asUser(t, user);
@@ -39,7 +39,7 @@ describe("original amount and currency migration", () => {
 
     for (const table of ["expenses", "incomings", "recurrings"] as const) {
       const result = await t.mutation(
-        internalApi.amountMigrations.backfillBatch,
+        internalApi.migrations["001_original_amount_currency"].backfillBatch,
         { table, batchSize: 1 },
       );
       expect(result).toMatchObject({
@@ -50,7 +50,10 @@ describe("original amount and currency migration", () => {
       });
     }
 
-    const verification = await t.query(internalApi.amountMigrations.verify, {});
+    const verification = await t.query(
+      internalApi.migrations["001_original_amount_currency"].verify,
+      {},
+    );
     expect(verification).toEqual({
       expenses: { total: 1, missing: 0 },
       incomings: { total: 1, missing: 0 },

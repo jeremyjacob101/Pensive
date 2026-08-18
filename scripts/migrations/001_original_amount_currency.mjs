@@ -14,7 +14,7 @@ function runBatch(table) {
   const args = [
     "convex",
     "run",
-    "amountMigrations:backfillBatch",
+    "migrations/001_original_amount_currency:backfillBatch",
     JSON.stringify({ table, batchSize }),
   ];
   if (useProd) args.push("--prod");
