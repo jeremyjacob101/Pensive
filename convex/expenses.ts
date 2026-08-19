@@ -7,6 +7,8 @@ import { paginationOptsValidator } from "convex/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
+const DATE_SCOPE_OVERLAP_SCAN_LIMIT = 10_000;
+
 function randomId16() {
   const alphabet =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -199,9 +201,19 @@ export const listByDateScope = query({
         .query("expenses")
         .withIndex("by_user_id_date", (q) => q.eq("userId", userId))
         .order("desc")
-        .take(500);
+        .take(DATE_SCOPE_OVERLAP_SCAN_LIMIT + 1);
+      const scanWasCapped = candidates.length > DATE_SCOPE_OVERLAP_SCAN_LIMIT;
+      const overlapRows = scanWasCapped
+        ? candidates.slice(0, DATE_SCOPE_OVERLAP_SCAN_LIMIT)
+        : candidates;
 
-      for (const row of candidates) {
+      if (scanWasCapped) {
+        console.warn(
+          `[expenses.listByDateScope] Possible missing rows: overlap scan exceeded its ${DATE_SCOPE_OVERLAP_SCAN_LIMIT.toLocaleString()}-row cap.`,
+        );
+      }
+
+      for (const row of overlapRows) {
         if ((row.monthYears ?? []).some((month) => monthSet.has(month))) {
           rowsById.set(row._id, row);
         }
