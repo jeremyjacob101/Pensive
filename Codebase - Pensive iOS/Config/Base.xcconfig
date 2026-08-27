@@ -1,5 +1,5 @@
 // Shared build settings across all environments
-PRODUCT_BUNDLE_IDENTIFIER = com.pensive.app
+PRODUCT_BUNDLE_IDENTIFIER = com.jj.pensive
 SWIFT_VERSION = 5.10
 URL_SCHEME_HTTPS = https:
 URL_SLASH = /
