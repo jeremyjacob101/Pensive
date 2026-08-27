@@ -293,8 +293,8 @@ Local credentials are cleared only after the server confirms deletion.
 ## App Store Preparation
 
 - App Store listing name: `Pensive Financial`
-- App version: `1.0.0`
-- Build: `1`
+- App version: `1.0.1`
+- Build: `2`
 - Bundle identifier: `com.pensive.app`
 - Minimum iOS version: `17.0`
 - Device family: iPhone and iPad
