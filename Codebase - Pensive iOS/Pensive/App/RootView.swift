@@ -92,6 +92,14 @@ private struct LoginView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isLoading)
                 .accessibilityIdentifier("auth_submit_button")
+
+                HStack(spacing: 20) {
+                    Link("Privacy Policy", destination: AppExternalLinks.privacyPolicy)
+                        .accessibilityIdentifier("login_privacy_policy_link")
+                    Link("Support", destination: AppExternalLinks.support)
+                        .accessibilityIdentifier("login_support_link")
+                }
+                .font(.footnote)
             }
             .padding()
             .frame(maxWidth: .infinity)

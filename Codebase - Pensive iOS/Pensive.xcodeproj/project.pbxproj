@@ -41,6 +41,7 @@
 		AF4070AAB7832A1C49055D9F /* LedgerFilterViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF5EB4419C4BB1E558B382CF /* LedgerFilterViews.swift */; };
 		AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D71033083881BE72A1960881 /* Assets.xcassets */; };
 		B34ABF846AFCCD35441F7176 /* LedgerFeatureScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38140937C8C582135D4833A7 /* LedgerFeatureScreens.swift */; };
+		B790FF1CBECEB4B5C178C1EA /* AppExternalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5FB7E2B8F35B47F24B1EAF /* AppExternalLinks.swift */; };
 		B8BBF58733BA2E70FC254D47 /* LedgerEditorSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9992B27D2CA1C4383C5967 /* LedgerEditorSheets.swift */; };
 		BF1098553F052B200F4BD0C6 /* LedgerFilterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB630409B28C347110E9E61 /* LedgerFilterStore.swift */; };
 		C6339F91B8D369B4220BDB57 /* UIWorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16ED4F9DC0B47CF8A00A3571 /* UIWorkflowTests.swift */; };
@@ -50,6 +51,7 @@
 		D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2EA53F054D3A56EA0DFA56 /* AppShellModels.swift */; };
 		D710A82875130A668F7C0C06 /* APIContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E643389862A22F23B3BB6616 /* APIContractTests.swift */; };
 		DA16EC759C47927E7062061C /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7EF56A041587E1F34F2EC0 /* AppContainer.swift */; };
+		E22A1FFA3F661D3021164703 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2F66C7C69A6212EFDD98D4D6 /* PrivacyInfo.xcprivacy */; };
 		E6CDB1D2FD90169D1C4AB86E /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487A86873988C9719FAF2797 /* AuthViewModel.swift */; };
 		E9DCC8C3FD3CD91C891D4B02 /* UserFeatureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E980065606A7092386FCE4A4 /* UserFeatureView.swift */; };
 		EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4079923627B6EFA6F2BE16E7 /* AppShellView.swift */; };
@@ -90,6 +92,7 @@
 		14B0A5238291F25F063E45FD /* Pensive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pensive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16ED4F9DC0B47CF8A00A3571 /* UIWorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIWorkflowTests.swift; sourceTree = "<group>"; };
 		27991D4F555E429982C9C524 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		2F66C7C69A6212EFDD98D4D6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		30A6AF691A89E55513F428E9 /* LedgerPresentationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerPresentationModels.swift; sourceTree = "<group>"; };
 		3689D1DBEC19C2DE8E333818 /* RecurringsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecurringsView.swift; sourceTree = "<group>"; };
 		37FC40024A84513ECC515CEC /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -106,6 +109,7 @@
 		612F6E4F700BF671453E69AD /* SavingsFeatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavingsFeatureView.swift; sourceTree = "<group>"; };
 		639EA6BC4FCCEE9CB64D49E4 /* BreakdownFeatureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BreakdownFeatureView.swift; sourceTree = "<group>"; };
 		726D060B5033637BD6C1931C /* LedgerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerModels.swift; sourceTree = "<group>"; };
+		7B5FB7E2B8F35B47F24B1EAF /* AppExternalLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppExternalLinks.swift; sourceTree = "<group>"; };
 		81994A0DDF9ABF6EBE75AF27 /* SavingsEditorSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavingsEditorSheets.swift; sourceTree = "<group>"; };
 		838BEEAD2A8CA4C0C68ED1D9 /* ShellSearchAndToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellSearchAndToolbar.swift; sourceTree = "<group>"; };
 		8479583B43D68079DA9E53FC /* LedgerFeatureViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LedgerFeatureViewModel.swift; sourceTree = "<group>"; };
@@ -269,6 +273,7 @@
 			children = (
 				D71033083881BE72A1960881 /* Assets.xcassets */,
 				D98F13E54929428601D27C98 /* Info.plist */,
+				2F66C7C69A6212EFDD98D4D6 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -351,6 +356,7 @@
 			isa = PBXGroup;
 			children = (
 				27991D4F555E429982C9C524 /* AppEnvironment.swift */,
+				7B5FB7E2B8F35B47F24B1EAF /* AppExternalLinks.swift */,
 				E9BB32F187EA1C144E85C794 /* AuthTokenStore.swift */,
 				31335DE7BFA6640EEBD5707F /* Persistence */,
 			);
@@ -509,16 +515,20 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					20F36AE3A98E72FEE24F0561 = {
+						DevelopmentTeam = UZ7YLA6V9D;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 7CC550A6AF542C8F80D81633;
 					};
 					458D95EEDDAB4737346856FA = {
+						DevelopmentTeam = UZ7YLA6V9D;
 						ProvisioningStyle = Automatic;
 					};
 					5D0368D51DE1D1D78A815F42 = {
+						DevelopmentTeam = UZ7YLA6V9D;
 						ProvisioningStyle = Automatic;
 					};
 					7CC550A6AF542C8F80D81633 = {
+						DevelopmentTeam = UZ7YLA6V9D;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -551,6 +561,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AF95A863F479E37AE1852BAA /* Assets.xcassets in Resources */,
+				E22A1FFA3F661D3021164703 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -571,6 +582,7 @@
 			files = (
 				DA16EC759C47927E7062061C /* AppContainer.swift in Sources */,
 				C6F788FE8114E3B5CCFF50CA /* AppEnvironment.swift in Sources */,
+				B790FF1CBECEB4B5C178C1EA /* AppExternalLinks.swift in Sources */,
 				D1233E5C0290B20AA7826124 /* AppShellModels.swift in Sources */,
 				EF655E0C25D7092F9EF3E764 /* AppShellView.swift in Sources */,
 				9492B5AF340E0C7762D91E7B /* AuthState.swift in Sources */,

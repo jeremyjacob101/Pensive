@@ -15,6 +15,18 @@ struct UserFeatureView: View {
                     .accessibilityIdentifier("user_username_value")
             }
 
+            Section("Help & Privacy") {
+                Link(destination: AppExternalLinks.privacyPolicy) {
+                    Label("Privacy Policy", systemImage: "hand.raised.fill")
+                }
+                .accessibilityIdentifier("privacy_policy_link")
+
+                Link(destination: AppExternalLinks.support) {
+                    Label("Support", systemImage: "questionmark.circle.fill")
+                }
+                .accessibilityIdentifier("support_link")
+            }
+
             Section {
                 Button("Sign Out", role: .destructive) {
                     accountActionsPresented = true
@@ -44,4 +56,3 @@ struct UserFeatureView: View {
         }
     }
 }
-

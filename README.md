@@ -292,6 +292,7 @@ Local credentials are cleared only after the server confirms deletion.
 
 ## App Store Preparation
 
+- App Store listing name: `Pensive Financial`
 - App version: `1.0.0`
 - Build: `1`
 - Bundle identifier: `com.pensive.app`
@@ -299,8 +300,12 @@ Local credentials are cleared only after the server confirms deletion.
 - Device family: iPhone and iPad
 - In-app account deletion: included
 - Keychain-based session storage: configured
+- Privacy manifest: configured
+- Privacy policy: https://gist.github.com/jeremyjacob101/0027b47ff7f147f1cd189185d48f5909
+- Support: https://jeremyjacob.site
+- In-app privacy-policy and support links: included
 
-Before release, upload a signed archive to TestFlight, complete App Privacy responses, provide a reviewer demo account, add screenshots and support metadata, and publish a privacy-policy URL in App Store Connect.
+Before release, upload a signed archive to TestFlight, complete App Privacy responses, provide a reviewer demo account, add iPhone and iPad screenshots, and enter the privacy-policy and support URLs in App Store Connect.
 
 ## Current Limitations
 

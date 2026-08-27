@@ -50,5 +50,4 @@ This policy may be updated as Pensive changes. The effective date above will be 
 
 ## Contact
 
-For privacy questions, account deletion help, or requests concerning your information, contact the Pensive team through the support contact listed in the App Store listing.
-
+For privacy questions, account deletion help, or requests concerning your information, email the Pensive team at [jeremyjacob101@gmail.com](mailto:jeremyjacob101@gmail.com). Additional support information is available at [jeremyjacob.site](https://jeremyjacob.site).
