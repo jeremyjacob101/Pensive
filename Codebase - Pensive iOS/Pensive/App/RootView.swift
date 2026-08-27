@@ -56,16 +56,8 @@ private struct LoginView: View {
                 Text("Pensive")
                     .font(.largeTitle.weight(.semibold))
 
-                Text(viewModel.entryMode == .signIn ? "Sign in to continue" : "Create your account")
+                Text("Sign in to continue")
                     .foregroundStyle(.secondary)
-
-                Picker("Auth Mode", selection: $viewModel.entryMode) {
-                    ForEach(AuthViewModel.EntryMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("auth_mode_picker")
 
                 TextField("Username", text: $viewModel.username)
                     .textInputAutocapitalization(.never)
@@ -78,13 +70,6 @@ private struct LoginView: View {
                     .textContentType(.password)
                     .textFieldStyle(.roundedBorder)
                     .accessibilityIdentifier("password_field")
-
-                if viewModel.entryMode == .createAccount {
-                    SecureField("Confirm Password", text: $viewModel.confirmPassword)
-                        .textContentType(.newPassword)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier("confirm_password_field")
-                }
 
                 if let inlineError = viewModel.inlineError, !inlineError.isEmpty {
                     Text(inlineError)
@@ -100,7 +85,7 @@ private struct LoginView: View {
                     if viewModel.isLoading {
                         ProgressView()
                     } else {
-                        Text(viewModel.entryMode == .signIn ? "Sign In" : "Create Account")
+                        Text("Sign In")
                     }
                 }
                 .frame(maxWidth: .infinity)

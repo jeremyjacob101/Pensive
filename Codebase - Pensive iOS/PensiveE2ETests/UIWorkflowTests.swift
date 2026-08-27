@@ -6,7 +6,7 @@ final class UIWorkflowTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testUnauthenticatedUserCanValidateSignInAndSwitchToSignUp() {
+    func testUnauthenticatedUserCanValidateSignIn() {
         let app = XCUIApplication()
         configure(app, authenticated: false)
         app.launchEnvironment["UI_TEST_UNAUTHENTICATED"] = "1"
@@ -17,12 +17,10 @@ final class UIWorkflowTests: XCTestCase {
         XCTAssertTrue(app.secureTextFields["password_field"].waitForExistence(timeout: 3))
         app.buttons["auth_submit_button"].tap()
         XCTAssertTrue(app.staticTexts["Enter a username."].waitForExistence(timeout: 3))
-
-        let modePicker = app.segmentedControls["auth_mode_picker"]
-        XCTAssertTrue(modePicker.waitForExistence(timeout: 3))
-        modePicker.buttons["Create Account"].tap()
-        XCTAssertTrue(app.secureTextFields["confirm_password_field"].waitForExistence(timeout: 3))
-        XCTAssertEqual(app.buttons["auth_submit_button"].label, "Create Account")
+        XCTAssertFalse(app.segmentedControls["auth_mode_picker"].exists)
+        XCTAssertFalse(app.secureTextFields["confirm_password_field"].exists)
+        XCTAssertFalse(app.buttons["Create Account"].exists)
+        XCTAssertEqual(app.buttons["auth_submit_button"].label, "Sign In")
     }
 
     func testAuthenticatedUserCanOpenExpenseEditorAndCancelWithoutPersisting() {

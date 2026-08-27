@@ -2,17 +2,9 @@ import Foundation
 
 @MainActor
 final class AuthViewModel: ObservableObject {
-    enum EntryMode: String, CaseIterable, Identifiable {
-        case signIn = "Sign In"
-        case createAccount = "Create Account"
-        var id: String { rawValue }
-    }
-
     @Published private(set) var state: AuthState
-    @Published var entryMode: EntryMode = .signIn
     @Published var username: String = ""
     @Published var password: String = ""
-    @Published var confirmPassword: String = ""
     @Published private(set) var inlineError: String?
 
     private let sessionStore: SessionStoring
@@ -63,27 +55,17 @@ final class AuthViewModel: ObservableObject {
             return
         }
 
-        if entryMode == .createAccount {
-            guard password == confirmPassword else {
-                inlineError = "Passwords do not match."
-                return
-            }
-            sessionStore.signUp(username: username, password: password)
-        } else {
-            sessionStore.signIn(username: username, password: password)
-        }
+        sessionStore.signIn(username: username, password: password)
     }
 
     func signOut() {
         clearCredentials()
-        entryMode = .signIn
         inlineError = nil
         sessionStore.signOut()
     }
 
     func deleteAccount() {
         clearCredentials()
-        entryMode = .signIn
         inlineError = nil
         sessionStore.deleteAccount()
     }
@@ -106,11 +88,9 @@ final class AuthViewModel: ObservableObject {
         switch next {
         case .authenticated:
             clearCredentials()
-            entryMode = .signIn
             inlineError = nil
         case .unauthenticated:
             clearCredentials()
-            entryMode = .signIn
         default:
             break
         }
@@ -119,6 +99,5 @@ final class AuthViewModel: ObservableObject {
     private func clearCredentials() {
         username = ""
         password = ""
-        confirmPassword = ""
     }
 }

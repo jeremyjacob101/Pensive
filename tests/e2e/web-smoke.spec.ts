@@ -7,23 +7,17 @@ test.describe("web unauthenticated shell", () => {
     await expect(page).toHaveURL(/\/login(?:\?|$)/);
   });
 
-  test("renders the login form and supports switching authentication modes", async ({
-    page,
-  }) => {
+  test("renders only the login form", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Pensive" })).toBeVisible();
     await expect(page.getByPlaceholder("Username")).toBeVisible();
     await expect(page.getByPlaceholder("Password")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
-
-    await page
-      .getByRole("button", { name: "Need an account? Sign up" })
-      .click();
+    await expect(
+      page.getByRole("button", { name: "Need an account? Sign up" }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Create Account" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Already have an account? Sign in" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 
   test("does not submit an empty credential form", async ({ page }) => {

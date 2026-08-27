@@ -56,29 +56,30 @@ describe("LoginPage", () => {
     expect(await screen.findByText("Expenses")).toBeInTheDocument();
   });
 
-  it("switches between sign-in and sign-up and displays authentication errors", async () => {
+  it("only exposes sign-in and displays authentication errors", async () => {
     const signInPassword = vi
       .fn()
       .mockRejectedValue(new Error("Invalid credentials"));
     renderLogin(signInPassword);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Need an account? Sign up" }),
-    );
+    expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Create Account" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Need an account? Sign up" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Create Account" }),
+    ).not.toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("Username"), {
-      target: { value: "new-user" },
+      target: { value: "existing-user" },
     });
     fireEvent.change(screen.getByPlaceholderText("Password"), {
       target: { value: "bad" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
     expect(await screen.findByText("Invalid credentials")).toBeInTheDocument();
     expect(signInPassword).toHaveBeenCalledWith({
-      username: "new-user",
+      username: "existing-user",
       password: "bad",
-      flow: "signUp",
+      flow: "signIn",
     });
   });
 });

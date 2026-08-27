@@ -22,7 +22,6 @@ export function LoginPage() {
   }, []);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +30,7 @@ export function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await signInPassword({ username, password, flow: mode });
+      await signInPassword({ username, password, flow: "signIn" });
       const from = getRedirectTarget(location.state);
       navigate(from || "/expenses", { replace: true });
     } catch (err) {
@@ -69,21 +68,7 @@ export function LoginPage() {
             required
           />
           <button type="submit" disabled={loading}>
-            {loading
-              ? "Please wait..."
-              : mode === "signIn"
-                ? "Sign In"
-                : "Create Account"}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setMode((prev) => (prev === "signIn" ? "signUp" : "signIn"))
-            }
-          >
-            {mode === "signIn"
-              ? "Need an account? Sign up"
-              : "Already have an account? Sign in"}
+            {loading ? "Please wait..." : "Sign In"}
           </button>
           {error ? <p>{error}</p> : null}
         </form>
