@@ -4,8 +4,9 @@ extension View {
     @ViewBuilder
     func debugBuildBanner() -> some View {
         #if DEBUG
-        safeAreaInset(edge: .top, spacing: 0) {
+        overlay(alignment: .top) {
             DebugBuildBanner()
+                .allowsHitTesting(false)
         }
         #else
         self
